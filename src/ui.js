@@ -689,10 +689,23 @@ function stlText() {
   const sf = f => v.type === 'phi' ? { r: v.R * Math.max(0.06, 1 - (2 * f - 1) ** 2), off: 0 } : v.type === 'V' ? { r: v.R * Math.max(0.05, f), off: 0 } : { r: v.R, off: v.type === 'helical' ? v.helix * A.D2R * f : 0 };
   return GEO.stl(GEO.vawtBlade(sf, getAf(S.af.vawt), v.c, v.pitch, 0, v.H, 0), 'vawt_blade_mm');
 }
+const MIME = { csv: 'text/csv', html: 'text/html', zip: 'application/zip', stl: 'model/stl', dat: 'text/plain' };
+function blobSave(filename, data) {
+  try {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: (MIME[filename.split('.').pop()] || 'text/plain') + ';charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    return true;
+  } catch (e) { return false; }
+}
+// returns 'api' (claude.ai downloads), 'blob' (browser download started, may be blocked silently), or false
 async function save(filename, data) {
-  if (!downloads) return false;
-  try { await downloads.save({ filename, data }); toast('已儲存 ' + filename); } catch (e) { if (e && e.code !== 'declined') toast('無法儲存:' + (e.message || e.code)); }
-  return true;
+  if (downloads) {
+    try { await downloads.save({ filename, data }); toast('已儲存 ' + filename); } catch (e) { if (e && e.code !== 'declined') toast('無法儲存:' + (e.message || e.code)); }
+    return 'api';
+  }
+  if (blobSave(filename, data)) { toast('已開始下載 ' + filename); return 'blob'; }
+  return false;
 }
 function openExport() {
   const m = document.createElement('div'); m.className = 'modal';
@@ -702,7 +715,10 @@ function openExport() {
     <textarea id="expTxt" class="hidden" style="min-height:220px"></textarea>
     <div class="btns"><button class="btn ghost" data-x="close">關閉</button></div></div>`;
   document.body.appendChild(m);
-  const show = (txt) => { const t = m.querySelector('#expTxt'); t.classList.remove('hidden'); t.value = txt; t.select(); toast('此環境無法直接下載,已顯示內容供複製'); };
+  const show = (txt, quiet) => { const t = m.querySelector('#expTxt'); t.classList.remove('hidden'); t.value = txt; t.select(); if (!quiet) toast('此環境無法直接下載,已顯示內容供複製'); };
+  // after a Blob download we cannot know whether the browser blocked it; offer the text as a manual fallback
+  const offer = (txt) => { let b = m.querySelector('#expShow'); if (!b) { b = document.createElement('button'); b.id = 'expShow'; b.className = 'btn ghost'; b.textContent = '沒有開始下載?顯示內容供複製'; m.querySelector('#expTxt').before(b); } b.onclick = () => show(txt, true); };
+  const done = (r, txt) => { if (!r) show(txt); else if (r === 'blob') offer(txt); };
   m.addEventListener('click', async e => {
     const x = e.target.dataset.x; if (!x && e.target !== m) return;
     if (e.target === m || x === 'close') { m.remove(); return; }
@@ -711,10 +727,10 @@ function openExport() {
       const files = [{ name: tag + '_blade.stl', text: stlText() }, { name: tag + '_geometry.csv', text: csvGeometry() }, { name: tag + '_polar.csv', text: csvPolar() }, { name: tag + '_performance.csv', text: csvPerf() }];
       if (S.mode === 'HAWT') stSorted().forEach((s, j) => files.push({ name: `airfoil_station${j + 1}_rR${s.f.toFixed(2)}.dat`, text: afCoords(getAf(s.k)) }));
       else files.push({ name: 'airfoil.dat', text: afCoords(getAf(S.af.vawt)) });
-      if (!(await save(tag + '_design.zip', GEO.zip(files)))) show(files.map(f => '=== ' + f.name + ' ===\n' + (f.name.endsWith('.stl') ? '(STL 太大,請在可下載的環境匯出)' : f.text)).join('\n\n'));
+      done(await save(tag + '_design.zip', GEO.zip(files)), files.map(f => '=== ' + f.name + ' ===\n' + (f.name.endsWith('.stl') ? '(STL 太大,請在可下載的環境匯出)' : f.text)).join('\n\n'));
     } else {
       const txt = x === 'geo' ? csvGeometry() : x === 'pol' ? csvPolar() : csvPerf();
-      if (!(await save(`${tag}_${{ geo: 'geometry', pol: 'polar', perf: 'performance' }[x]}.csv`, txt))) show(txt);
+      done(await save(`${tag}_${{ geo: 'geometry', pol: 'polar', perf: 'performance' }[x]}.csv`, txt), txt);
     }
   });
 }

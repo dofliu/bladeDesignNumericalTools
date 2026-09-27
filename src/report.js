@@ -261,11 +261,8 @@ const Report = (function () {
   async function download() {
     if (!last) return;
     const name = `wind-turbine-report-${last.date.replace(/-/g, '')}.html`;
-    if (!(await save(name, fullHtml()))) {
-      const blob = new Blob([fullHtml()], { type: 'text/html' }), a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      toast('若沒有開始下載,請改用「列印 / 另存 PDF」');
-    }
+    const r = await save(name, fullHtml());
+    if (r !== 'api') toast(r ? '若沒有開始下載,請改用「列印 / 另存 PDF」' : '此環境無法下載,請改用「列印 / 另存 PDF」');
   }
   function printIt() {
     if (!last) return;

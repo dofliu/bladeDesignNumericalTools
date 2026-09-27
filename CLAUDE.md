@@ -27,6 +27,8 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 
 離線跑 e2e:`CHROME_PATH=... THREE_LOCAL=path/to/three.min.js npm run test:e2e`(three.js 預設從 cdnjs 載入)。
 
+若 cdnjs 被擋,可用 `npm pack three@0.128.0` 取得 `package/build/three.min.js` 當 `THREE_LOCAL`。MPPT 追蹤率在各次執行間約有 ±4% 波動(載入後前 2 秒的紊流模擬是隨機的),門檻 90% 已留餘裕。
+
 **每次修改後的流程:** `npm run check && npm test && npm run build && npm run test:e2e`,並打開 dist 實際看一次畫面(桌面 1440×900 與手機 390×844)。改到控制器或模擬時一定要跑 e2e,因為 MPPT 回歸只在瀏覽器測試裡。
 
 ## 架構
@@ -79,7 +81,7 @@ rebuild(geo): designHAWT()/designVAWT() → computePerf() → autoMatchGen() →
 要繼續能貼回 claude.ai 發佈,dist 必須維持:
 
 - 單一 HTML、< 16 MB;外部 script 只能來自 `cdnjs.cloudflare.com`、`cdn.jsdelivr.net/npm`、`cdn.tailwindcss.com`、`code.jquery.com`;樣式只能 Google Fonts;**不能 fetch 其他網站**、不能載入遠端圖片
-- 下載檔案透過 `window.claude.use('downloads')`(`ui.js` 的 `save()`);其他託管環境沒有這個 API,報告已有 Blob 下載備援,**匯出視窗目前只退回文字框**,部署到 GitHub Pages 前應補上 Blob 下載
+- 下載檔案透過 `window.claude.use('downloads')`(`ui.js` 的 `save()`);其他託管環境(GitHub Pages、本機開檔)沒有這個 API 時,`save()` 自動改用 Blob 下載(`blobSave()`),回傳 `'api'` / `'blob'` / `false`。匯出視窗在 Blob 下載後另提供「顯示內容供複製」按鈕,因為瀏覽器可能無聲擋下下載;e2e 會檢查三種匯出的檔名與大小
 - localStorage 可用(鍵:`wt-snaps-v1` 方案、`wt-theme` 佈景),一律包 try/catch
 - 主題色全部用 CSS 變數(`--accent` `--c1..c5` `--signal` 等),深色模式要兩處同步(`@media prefers-color-scheme` 與 `[data-theme=dark]`)
 - 手機斷點 860px;手機版底部導覽 `.bnav`,設定面板以 `.app.m-set` 切換
