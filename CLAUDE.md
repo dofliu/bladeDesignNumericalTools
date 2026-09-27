@@ -29,7 +29,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 
 若 cdnjs 被擋,可用 `npm pack three@0.128.0` 取得 `package/build/three.min.js` 當 `THREE_LOCAL`。MPPT 追蹤率在各次執行間約有 ±4% 波動(載入後前 2 秒的紊流模擬是隨機的),門檻 90% 已留餘裕。
 
-**每次修改後的流程:** `npm run check && npm test && npm run build && npm run test:e2e`,並打開 dist 實際看一次畫面(桌面 1440×900 與手機 390×844)。改到控制器或模擬時一定要跑 e2e,因為 MPPT 回歸只在瀏覽器測試裡。
+**每次修改後的流程:** `npm run check && npm test && npm run build && npm run test:e2e`,並打開 dist 實際看一次畫面(桌面 1440×900 與手機 390×844)。`npm test` 的 `tests/core.test.mjs` 已把 MPPT 追蹤率回歸搬進 Node(直接 `require` `src/core.js`,幾秒內跑完);`tests/e2e.smoke.mjs` 保留同一組回歸與畫面/匯出檢查,驗證的是建置後的 dist 成品,改到控制器或模擬時兩邊都要跑。
 
 ## 架構
 
@@ -41,7 +41,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 2 | `charts.js` | 輕量 canvas 繪圖 `Plot.draw(canvas, opts)`;`Plot.draw.force = {W,H,dpr}` 用於離屏擷取 | `Plot` |
 | 3 | `geo.js` | 葉片幾何放樣、STL(mm)、store-only ZIP | `GEO` |
 | 4 | `scene.js` | Three.js r128 場景(自製軌道控制、煙流粒子、偏航) | `Scene3D` |
-| 5 | `core.js` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep` | `S` `G` `SIM` |
+| 5 | `core.js` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep`;與 `aero.js` 相同,包成可在 Node 執行的模組(`require` 前需先設定全域 `AERO`,見 `tests/core.test.mjs`) | `S` `G` `SIM` |
 | 6 | `ui.js` | 左側設定面板、圖表分頁、方案比較、匯出、工作區切換、主迴圈 `init()` | 多數 UI 函式 |
 | 7 | `bench.js` | 單葉片工作區;共用繪圖工具 `fitCv` `arrow` `interp1` `card` | `Bench` |
 | 8 | `flow.js` | 流場工作區 | `Flow` |

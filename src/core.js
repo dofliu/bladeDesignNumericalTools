@@ -1,4 +1,11 @@
 /* ===== App core: state, computation, simulation ===== */
+// Wrapped as a Node/browser dual-export module (like aero.js) so simStep() and the
+// design/perf pipeline can be driven from Node tests without a DOM (see tests/core.test.mjs).
+// In the concatenated single-script build, Object.assign(root, API) below republishes every
+// name this file used to expose as a bare top-level identifier, so ui.js/bench.js/flow.js/
+// report.js keep working unchanged.
+(function (root) {
+'use strict';
 const A = AERO;
 const MATERIALS = {
   gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
@@ -479,3 +486,9 @@ function steadyPower(V) {
   }
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
+
+const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
+  stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
+  simStep, recordHist, steadyPower };
+if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
+})(this);
