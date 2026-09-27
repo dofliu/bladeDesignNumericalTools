@@ -118,4 +118,6 @@ rebuild(geo): designHAWT()/designVAWT() → computePerf() → autoMatchGen() →
 
 ## 下一步
 
-見 `docs/ROADMAP.md`(依效益排序)。開始新功能前,先向使用者確認優先順序。
+見 `docs/ROADMAP.md`(依效益排序)。互動工作階段中,開始新功能前先向使用者確認優先順序。
+
+**自動開發排程**:使用者已設定每 6 小時自動推進一次 ROADMAP,並明確確認授權自動 commit / push / 建立 PR / 合併到 `main`(不需人工審查)。排程執行時依 `docs/AUTOPILOT.md` 的規則進行(依 ROADMAP 順序、不需再詢問),進度記在 `docs/AUTOPILOT_LOG.md`。

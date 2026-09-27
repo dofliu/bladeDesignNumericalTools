@@ -35,6 +35,7 @@ scripts/        建置腳本
 tests/          Node 單元測試與瀏覽器 e2e 測試
 dist/           建置結果(目前版本已附上)
 docs/ROADMAP.md 開發路線圖
+docs/AUTOPILOT.md 自動開發排程規則(每 6 小時一次)
 CLAUDE.md       給 Claude Code 的專案說明
 ```
 
