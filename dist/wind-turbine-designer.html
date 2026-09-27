@@ -1145,6 +1145,74 @@ const GEO = (function () {
     out.push('endsolid ' + name);
     return out.join('\n');
   }
+  /* ---------- Cross-section properties (thin shell over the airfoil profile) ---------- */
+  function signedArea(pts) {
+    let A = 0;
+    for (let i = 0; i < pts.length; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length]; A += x0 * y1 - x1 * y0; }
+    return A / 2;
+  }
+  // Raw area + first/second moments of a closed polygon about the ORIGIN (not its own centroid),
+  // so composite sections (outer-minus-inner shell) can be summed before shifting axes once at
+  // the end (parallel-axis on two different own-centroids would be wrong). Auto-orients to CCW.
+  function polygonMoments(ptsIn) {
+    const pts = signedArea(ptsIn) < 0 ? ptsIn.slice().reverse() : ptsIn;
+    const n = pts.length;
+    let A = 0, Mx = 0, My = 0, Ixx = 0, Iyy = 0, Ixy = 0;
+    for (let i = 0; i < n; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % n];
+      const cr = x0 * y1 - x1 * y0;
+      A += cr; My += (x0 + x1) * cr; Mx += (y0 + y1) * cr;
+      Ixx += (y0 * y0 + y0 * y1 + y1 * y1) * cr;
+      Iyy += (x0 * x0 + x0 * x1 + x1 * x1) * cr;
+      Ixy += (x0 * y1 + 2 * x0 * y0 + 2 * x1 * y1 + x1 * y0) * cr;
+    }
+    A /= 2;
+    return { area: A, My: My / 6, Mx: Mx / 6, Ixx: Ixx / 12, Iyy: Iyy / 12, Ixy: Ixy / 24 }; // My=∫x dA, Mx=∫y dA
+  }
+  function aboutCentroid(m) {
+    const cx = m.area > 0 ? m.My / m.area : 0, cy = m.area > 0 ? m.Mx / m.area : 0;
+    return { area: m.area, cx, cy, Ixx: m.Ixx - m.area * cy * cy, Iyy: m.Iyy - m.area * cx * cx, Ixy: m.Ixy - m.area * cx * cy };
+  }
+  // Inward miter offset of a closed polygon by distance t (e.g. to carve out a shell's inner
+  // wall). Auto-orients to CCW first. Simple vertex-normal-bisector join; not a robust general
+  // polygon offset (no handling of self-intersection at very sharp/reflex corners or t large
+  // relative to local curvature), adequate for smooth, cosine-spaced airfoil profiles.
+  function offsetPolygon(ptsIn, t) {
+    const pts = signedArea(ptsIn) < 0 ? ptsIn.slice().reverse() : ptsIn;
+    const n = pts.length;
+    const edgeNormal = i => {
+      const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % n];
+      const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1;
+      return [dy / L, -dx / L]; // outward normal (CCW polygon)
+    };
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const nPrev = edgeNormal((i - 1 + n) % n), nNext = edgeNormal(i);
+      let bx = nPrev[0] + nNext[0], by = nPrev[1] + nNext[1];
+      const bl = Math.hypot(bx, by) || 1; bx /= bl; by /= bl;
+      const cosHalf = Math.max(bx * nNext[0] + by * nNext[1], 0.15); // clamp: no spikes at sharp corners
+      const scale = t / cosHalf;
+      out.push([pts[i][0] - bx * scale, pts[i][1] - by * scale]);
+    }
+    return out;
+  }
+  // Section properties of a thin shell (thickness `thickness`, uniform, both in metres) over an
+  // airfoil profile af:{x,yu,yl} (unit chord, LE->TE), for a section of the given chord (metres).
+  // Returns area (m^2), centroid cx/cy (m from LE, chord-axis/thickness-axis) and second moments
+  // of area Ixx/Iyy/Ixy about the centroid (m^4). Falls back to the solid section if the shell
+  // thickness would consume (near-)the whole profile.
+  function sectionProperties(af, chord, thickness) {
+    const pts = loop(af);
+    const outer = polygonMoments(pts);
+    const inner = polygonMoments(offsetPolygon(pts, thickness / chord));
+    const combined = inner.area <= 0 || inner.area >= outer.area * 0.98 ? outer : {
+      area: outer.area - inner.area, My: outer.My - inner.My, Mx: outer.Mx - inner.Mx,
+      Ixx: outer.Ixx - inner.Ixx, Iyy: outer.Iyy - inner.Iyy, Ixy: outer.Ixy - inner.Ixy,
+    };
+    const c = aboutCentroid(combined);
+    return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
+  }
+
   // store-only ZIP
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
   function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
@@ -1170,7 +1238,7 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;
 
