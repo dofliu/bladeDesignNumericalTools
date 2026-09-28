@@ -412,7 +412,9 @@
         const cn = cl * cph + cd * sp, ct = cl * sp - cd * cph;
         const q = 0.5 * rho * W * W * c * e.dr;
         qS += B * q * ct * r; tS += B * q * cn;
-        if (k === 0) detail = { r, a, ap, alpha: alpha * R2D, phi: phi * R2D, cl, cd, W, F };
+        // dT/dQ: this one blade's lumped transverse force (N) and torque (Nm) contribution of the
+        // annulus (already includes the dr width via q), for spanwise structural-load estimates.
+        if (k === 0) detail = { r, a, ap, alpha: alpha * R2D, phi: phi * R2D, cl, cd, W, F, dT: q * cn, dQ: q * ct * r };
       }
       Q += qS / nPsi; T += tS / nPsi;
       out.push(detail);

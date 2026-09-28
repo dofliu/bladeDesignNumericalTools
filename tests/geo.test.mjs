@@ -71,3 +71,57 @@ test('sectionProperties: thin shell area is close to perimeter * thickness', () 
   assert.ok(s.Ixx > 0 && s.Iyy > 0, 'positive second moments');
   assert.ok(s.cx > 0.2 * chord && s.cx < 0.6 * chord, 'centroid within chord');
 });
+
+/* ---------- Blade structural loads (bending moment / centrifugal axial / beam deflection) ---------- */
+// Idealized cantilever, uniform EI and a uniform distributed transverse load w over the whole span
+// L, discretized as many equal point loads at midpoint-rule stations (same lumping the real blade-
+// element stations use): checked against the closed-form cantilever solution.
+function uniformLoadStations(L, w, n) {
+  const dr = L / n, stations = [];
+  for (let i = 0; i < n; i++) stations.push({ r: (i + 0.5) * dr, dF: w * dr });
+  return stations;
+}
+
+test('bendingMomentProfile: uniformly loaded cantilever matches the closed-form M(x)=w(L-x)^2/2', () => {
+  const L = 2, w = 50, n = 400;
+  const stations = uniformLoadStations(L, w, n);
+  const M = GEO.bendingMomentProfile(stations);
+  near(M[0], w * L * L / 2, 0.01 * w * L * L / 2, 'root moment');
+  near(M[Math.floor(n / 2)], w * (L - stations[Math.floor(n / 2)].r) ** 2 / 2, 0.02 * w * L * L / 2, 'mid-span moment');
+  near(M[n - 1], 0, 0.01 * w * L * L / 2, 'tip moment ~ 0');
+});
+
+test('beamCurvatureDeflection: uniformly loaded cantilever tip deflection matches wL^4/(8EI)', () => {
+  const L = 2, w = 50, EI = 3000, n = 400;
+  const M = GEO.bendingMomentProfile(uniformLoadStations(L, w, n));
+  const beam = GEO.beamCurvatureDeflection(uniformLoadStations(L, w, n).map((s, i) => ({ r: s.r, M: M[i], EI })));
+  const tip = beam.defl[beam.defl.length - 1], ref = w * L ** 4 / (8 * EI);
+  near(tip, ref, 0.01 * ref, 'tip deflection');
+});
+
+test('axialForceProfile: uniform rotating rod matches N(r)=rho_lin*omega^2*(L^2-r^2)/2', () => {
+  const L = 2, rhoLin = 5, omega = 10, n = 400, dr = L / n;
+  const stations = []; for (let i = 0; i < n; i++) stations.push({ r: (i + 0.5) * dr, dm: rhoLin * dr });
+  const N = GEO.axialForceProfile(stations, omega);
+  near(N[0], rhoLin * omega * omega * L * L / 2, 0.01 * rhoLin * omega * omega * L * L / 2, 'root axial force');
+  near(N[n - 1], 0, 1e-6, 'tip axial force ~ 0');
+});
+
+test('bladeStructure: 3-blade R1.5 m λ7 rotor gives a plausible root moment, tapering loads and a safety margin', () => {
+  const af = A.naca4('4412'), ps = A.buildPolarSet(A.buildAeroModel(af));
+  const b = A.bestLD(ps, 3e5);
+  const rows = A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr: 7, aDes: b.a, clDes: b.cl, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChordRatio: 0.2 });
+  const cfg = { R: 1.5, Rhub: 0.15, B: 3, rows, rho: 1.225, mu: 1.81e-5, polarFor: () => ps };
+  const omega = 7 * 8 / 1.5;
+  const res = A.bemPoint(cfg, 8, omega, 0, 0, null);
+  const mat = { fill: 0.28, E: 20e9, sigmaAllow: 100e6 }; // GFRP-like reference values
+  const matRho = 1850;
+  rows.forEach(r => { r.dm = matRho * mat.fill * A.airfoilArea(af) * r.c * r.c * r.dr; });
+  const afs = rows.map(() => af);
+  const st = GEO.bladeStructure(rows, afs, res.elems, mat, omega);
+  near(st.rootMoment, 63.6, 3, 'root bending moment (Nm), GFRP reference blade');
+  assert.ok(st.stations.every((s, i) => i === 0 || s.M <= st.stations[i - 1].M + 1e-9), 'bending moment tapers monotonically toward the tip');
+  assert.ok(st.stations.every((s, i) => i === 0 || s.N <= st.stations[i - 1].N + 1e-9), 'centrifugal axial force tapers monotonically toward the tip');
+  assert.ok(st.tipDeflection > 0 && st.tipDeflection < 0.1 * 1.5, 'tip deflection is small relative to blade radius');
+  assert.ok(st.safetyFactor > 1, 'GFRP reference blade has a positive structural margin at the design point');
+});

@@ -45,6 +45,20 @@ test('BEM: 3-blade R1.5 m rotor designed for λ7', () => {
   near(yaw, 0.309, 0.02, 'Cp at 30° yaw');
 });
 
+test('BEM: per-station dT/dQ (one blade) sum to the total thrust/torque', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('4412')));
+  const b = A.bestLD(ps, 3e5);
+  const rows = A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr: 7, aDes: b.a, clDes: b.cl, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChordRatio: 0.2 });
+  const cfg = { R: 1.5, Rhub: 0.15, B: 3, rows, rho: 1.225, mu: 1.81e-5, polarFor: () => ps };
+  const omega = 7 * 8 / 1.5; // design TSR 7 at V=8 m/s
+  const res = A.bemPoint(cfg, 8, omega, 0, 0, null);
+  const B = 3;
+  const sumT = res.elems.reduce((s, e) => s + e.dT, 0) * B, sumQ = res.elems.reduce((s, e) => s + e.dQ, 0) * B;
+  near(sumT, res.T, 1e-6 * Math.abs(res.T) + 1e-6, 'sum(dT)*B == T');
+  near(sumQ, res.Q, 1e-6 * Math.abs(res.Q) + 1e-6, 'sum(dQ)*B == Q');
+  assert.ok(res.elems.every(e => e.dT > 0 && e.dQ > 0), 'thrust/torque contributions stay positive along the span at the design point');
+});
+
 test('DMST: H-type and Φ-type Darrieus', () => {
   const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('0018')));
   const run = type => A.vawtCurve({ type, R: 1, H: 2, B: 3, c: 0.15, pitch: 0, helix: 120, nz: 10, polar: ps, rho: 1.225, mu: 1.81e-5, struts: 2 }, 8, 7)

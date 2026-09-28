@@ -182,6 +182,88 @@ const GEO = (function () {
     return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
   }
 
+  /* ---------- Blade structural loads (flapwise bending + centrifugal axial) ----------
+   * Static, single-operating-point estimate from lumped per-station point loads (the BEM annulus
+   * force/torque already integrates over its dr, so treating it as a point load at the station's
+   * radius is the standard blade-element simplification). Known simplifications, disclosed to the
+   * user alongside the other model limits in CLAUDE.md: bending is about the section's own chord
+   * axis without transforming for local twist; edgewise (torque-driven) bending, dynamic/fatigue
+   * effects and stress-stiffening from the axial load are not included; HAWT only (VAWT centrifugal
+   * loading and DMST unsteady loads are geometrically different and not covered here).
+   */
+  // Cantilever bending moment at each station from transverse point loads dF_i (N) at r_i, fixed at
+  // the most-inboard station: M(r_i) = sum of dF_j*(r_j-r_i) over stations outboard of i.
+  function bendingMomentProfile(stations) { // stations: [{r, dF}] ascending r
+    return stations.map((s, i) => {
+      let M = 0;
+      for (let j = i + 1; j < stations.length; j++) M += stations[j].dF * (stations[j].r - s.r);
+      return M;
+    });
+  }
+  // Axial tension at each station from the centrifugal pull of all (point) mass outboard of it:
+  // N(r_i) = sum of dm_j*omega^2*r_j over stations outboard of i.
+  function axialForceProfile(stations, omega) { // stations: [{r, dm}] ascending r
+    const w2 = omega * omega;
+    return stations.map((s, i) => {
+      let N = 0;
+      for (let j = i + 1; j < stations.length; j++) N += stations[j].dm * w2 * stations[j].r;
+      return N;
+    });
+  }
+  // Euler-Bernoulli curvature -> slope -> deflection by trapezoidal double integration, cantilevered
+  // (zero slope and deflection) at the first, most-inboard station.
+  function beamCurvatureDeflection(stations) { // stations: [{r, M, EI}] ascending r
+    const kappa = stations.map(s => s.M / s.EI);
+    const slope = [0], defl = [0];
+    for (let i = 1; i < stations.length; i++) {
+      const dr = stations[i].r - stations[i - 1].r;
+      slope.push(slope[i - 1] + 0.5 * (kappa[i] + kappa[i - 1]) * dr);
+      defl.push(defl[i - 1] + 0.5 * (slope[i] + slope[i - 1]) * dr);
+    }
+    return { slope, defl };
+  }
+  // Per-station shell section properties for material `mat` ({fill,...}); the shell thickness is
+  // solved (bisection) so its area matches the fill-fraction mass model used for blade mass
+  // (mat.fill * solid cross-section area), so the two stay consistent. `mat.fill>=0.98` (solid
+  // materials, e.g. wood) skips the shell and uses the solid section directly. cMax is the largest
+  // thickness-direction distance from the centroid, i.e. the extreme fibre for flapwise bending
+  // about the section's own chord axis.
+  function sectionSeries(rows, afs, mat) {
+    return rows.map((row, i) => {
+      const af = afs[i];
+      let sec;
+      if (mat.fill >= 0.98) sec = sectionProperties(af, row.c, 0);
+      else {
+        const outerArea = aboutCentroid(polygonMoments(loop(af))).area * row.c * row.c;
+        const target = mat.fill * outerArea;
+        let lo = 1e-5 * row.c, hi = 0.45 * row.c;
+        for (let it = 0; it < 30; it++) {
+          const mid = 0.5 * (lo + hi);
+          if (sectionProperties(af, row.c, mid).area < target) lo = mid; else hi = mid;
+        }
+        sec = sectionProperties(af, row.c, 0.5 * (lo + hi));
+      }
+      const cMax = Math.max(...loop(af).map(([, y]) => Math.abs(y * row.c - sec.cy)));
+      return { r: row.r, area: sec.area, Ixx: sec.Ixx, cMax };
+    });
+  }
+  // rows: [{r,c,dm}] ascending r (dm = per-station blade mass, kg); afs: matching airfoil shapes;
+  // elems: matching BEM design-point detail (bemPoint's per-station `dT`); mat: MATERIALS[...]
+  // entry (fill, E, sigmaAllow); omega: rotor speed (rad/s) at the design point.
+  function bladeStructure(rows, afs, elems, mat, omega) {
+    const sec = sectionSeries(rows, afs, mat);
+    const M = bendingMomentProfile(rows.map((row, i) => ({ r: row.r, dF: elems[i].dT })));
+    const N = axialForceProfile(rows.map(row => ({ r: row.r, dm: row.dm })), omega);
+    const beam = beamCurvatureDeflection(rows.map((row, i) => ({ r: row.r, M: M[i], EI: mat.E * sec[i].Ixx })));
+    const stations = rows.map((row, i) => {
+      const sigmaBend = sec[i].area > 0 ? M[i] * sec[i].cMax / sec[i].Ixx : 0;
+      const sigmaAxial = sec[i].area > 0 ? N[i] / sec[i].area : 0;
+      return { r: row.r, M: M[i], N: N[i], area: sec[i].area, Ixx: sec[i].Ixx, sigmaBend, sigmaAxial, sigma: sigmaBend + sigmaAxial };
+    });
+    const sigmaMax = Math.max(...stations.map(s => s.sigma));
+    return { stations, rootMoment: M[0], tipDeflection: beam.defl[beam.defl.length - 1], sigmaMax, safetyFactor: mat.sigmaAllow / Math.max(sigmaMax, 1e-6) };
+  }
+
   // store-only ZIP
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
   function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
@@ -207,6 +289,7 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties,
+    bendingMomentProfile, axialForceProfile, beamCurvatureDeflection, sectionSeries, bladeStructure };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;

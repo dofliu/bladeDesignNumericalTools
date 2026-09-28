@@ -7,12 +7,15 @@
 (function (root) {
 'use strict';
 const A = AERO;
+const GB = GEO;
+// E (Pa) 與 sigmaAllow(Pa,容許應力估計) 為文獻常見數量級的參考預設值,非特定產品實測值;
+// 供 designHAWT() 的簡化結構估算(結構分析限制見 CLAUDE.md/ROADMAP)使用。
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, sigmaAllow: 100e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, sigmaAllow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, sigmaAllow: 110e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, sigmaAllow: 20e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, sigmaAllow: 250e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -186,12 +189,13 @@ function designHAWT() {
   // mass & inertia
   const mat = MATERIALS[h.material];
   let m = 0, J = 0;
-  rows.forEach((x, i) => { const dm = mat.rho * mat.fill * A.airfoilArea(afs[i]) * x.c * x.c * x.dr; m += dm; J += dm * x.r * x.r; });
+  rows.forEach((x, i) => { const dm = mat.rho * mat.fill * A.airfoilArea(afs[i]) * x.c * x.c * x.dr; x.dm = dm; m += dm; J += dm * x.r * x.r; });
   const mb = m;
   m *= h.B; J *= h.B;
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  G.structure = GB.bladeStructure(rows, afs, resD.elems, mat, omD);
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
