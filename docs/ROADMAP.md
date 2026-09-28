@@ -4,10 +4,15 @@
 
 ## 1. 工程基礎整理(建議最先做)
 
-- 把 `src/*.js` 改成 ES modules,用 Vite 建置;仍輸出單一 HTML(`vite-plugin-singlefile`),保留貼回 claude.ai 的能力。
+- 把 `src/*.js` 改成 ES modules,用 Vite 建置;仍輸出單一 HTML(`vite-plugin-singlefile`),保留貼回 claude.ai 的能力。項目大,拆成以下子步驟逐一完成,每步都要維持可建置、`npm test`/`npm run test:e2e` 全過:
+  - [x] 加入 `vite` 為 devDependency;把 `charts.js`/`geo.js`(無跨檔案依賴的兩個葉節點模組)改寫成真正的 ES module(`src/charts.mjs`/`src/geo.mjs`,具名 `export`),`scripts/build.mjs` 改用 Vite 的 `build({ build: { lib } })` API 把每個 `.mjs` 打包成指定全域名稱(`Plot`/`GEO`)的 IIFE,其餘檔案的字串串接與執行順序不變。`scripts/check.mjs` 一併掃 `.mjs`。
+  - [ ] 用同樣模式轉 `scene.js`(依賴 `AERO`?先確認無跨檔案全域依賴,或改成 `import`)。
+  - [ ] 轉 `aero.js`、`core.js`:這兩個已經是 Node/瀏覽器雙模組匯出的 IIFE,要改成拿掉 IIFE、直接 `export`,同時保留 `tests/aero.test.mjs`、`tests/core.test.mjs` 現有的 Node `require`/`import` 相容性(可能要把測試也改成 `import`)。`core.js` 用到 `AERO` 需改成 `import * as AERO from './aero.mjs'`。
+  - [ ] 轉 `ui.js`、`bench.js`、`flow.js`、`report.js`:這四個檔互相與對 `S`/`G`/`SIM`/`AERO`/`Plot`/`GEO`/`Scene3D` 的依賴最多,逐一補上 `import`,是風險最高的一批,建議一次一個檔案、每次都跑完整驗證。
+  - [ ] 全部檔案都是 ES module 後,把 `scripts/build.mjs` 換成單一 Vite 設定(`vite-plugin-singlefile`,入口為 `src/shell.html` 或新的 `src/main.js`),移除手動字串串接;確認 dist 仍是單一 HTML、< 16 MB、外部資源白名單不變。
+  - 驗收(整體,子步驟完成時逐步核對):`npm test` 涵蓋控制器;dist 行為與現版一致(e2e 全過、截圖比對)。
 - ~~把 `core.js` 的設計與模擬邏輯拆成不依賴 DOM 的模組(目前 `simStep` 只能在瀏覽器測),把 MPPT 回歸測試移到 Node 單元測試。~~ 已完成:`core.js` 改成與 `aero.js` 相同的 Node/瀏覽器雙模組匯出(IIFE + `module.exports` / `Object.assign(root, API)`),不影響串接組建後的全域變數溝通;`tests/core.test.mjs` 直接在 Node 跑 HAWT/VAWT 三種控制器 × 兩種風速的追蹤率回歸(門檻同 e2e 的 90%),`npm test` 現在幾秒內就能驗證控制器邏輯。`tests/e2e.smoke.mjs` 的瀏覽器版回歸保留,作為建置後成品(dist)的端對端驗證。
 - ~~補上匯出視窗在非 claude.ai 環境的 Blob 下載備援(`ui.js` 的 `openExport` / `save`)。~~ 已完成,e2e 已涵蓋。
-- 驗收:`npm test` 涵蓋控制器;dist 行為與現版一致(e2e 全過、截圖比對)。
 
 ## 2. 真實翼型資料:XFOIL 整合
 

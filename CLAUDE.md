@@ -33,13 +33,13 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 
 ## 架構
 
-目前**不是 ES modules**:`scripts/build.mjs` 依固定順序把 `src/*.js` 串進 `src/shell.html` 的同一個 `<script>`,模組之間靠全域變數溝通。順序很重要:
+大部分模組**還不是 ES modules**:`scripts/build.mjs` 依固定順序把 `src/*.js` 串進 `src/shell.html` 的同一個 `<script>`,模組之間靠全域變數溝通。`charts.js`/`geo.js` 已改寫成 `src/charts.mjs`/`src/geo.mjs`(真正的 `import`/`export`),`scripts/build.mjs` 用 Vite 的 `build({ build: { lib: {...} } })` 把它們各自打包成一個指定全域名稱(`Plot`/`GEO`)的 IIFE,再照原順序串接,對外行為與純字串串接完全相同(見 `ROADMAP.md` 第 1 項的子步驟)。順序很重要:
 
 | 順序 | 檔案 | 內容 | 主要全域 |
 |---|---|---|---|
 | 1 | `aero.js` | 氣動核心(純函式,可在 Node 執行):翼型產生、`.dat` 解析、Hess-Smith 面板法(含場速度 `vel`)、半經驗極曲線 + Viterna、BEM、DMST、Savonius | `AERO`(core 內別名 `A`) |
-| 2 | `charts.js` | 輕量 canvas 繪圖 `Plot.draw(canvas, opts)`;`Plot.draw.force = {W,H,dpr}` 用於離屏擷取 | `Plot` |
-| 3 | `geo.js` | 葉片幾何放樣、STL(mm)、store-only ZIP | `GEO` |
+| 2 | `charts.mjs` | 輕量 canvas 繪圖 `Plot.draw(canvas, opts)`;`Plot.draw.force = {W,H,dpr}` 用於離屏擷取;真正的 ES module,建置時由 Vite 打包成 `Plot` 全域 | `Plot` |
+| 3 | `geo.mjs` | 葉片幾何放樣、STL(mm)、store-only ZIP;真正的 ES module,建置時由 Vite 打包成 `GEO` 全域 | `GEO` |
 | 4 | `scene.js` | Three.js r128 場景(自製軌道控制、煙流粒子、偏航) | `Scene3D` |
 | 5 | `core.js` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep`;與 `aero.js` 相同,包成可在 Node 執行的模組(`require` 前需先設定全域 `AERO`,見 `tests/core.test.mjs`) | `S` `G` `SIM` |
 | 6 | `ui.js` | 左側設定面板、圖表分頁、方案比較、匯出、工作區切換、主迴圈 `init()` | 多數 UI 函式 |
@@ -47,7 +47,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 8 | `flow.js` | 流場工作區 | `Flow` |
 | 9 | `report.js` | 虛擬風洞自動測試 + 報告產生/下載 | `Report` |
 
-`src/package.json` 只是讓 Node 把 `aero.js` 當 CommonJS 載入(測試用),與瀏覽器無關。
+`src/package.json` 只是讓 Node 把 `aero.js`/`core.js` 當 CommonJS 載入(測試用),與瀏覽器無關;`.mjs` 檔不受它影響,一律是 ES module。
 
 ### 資料流
 
