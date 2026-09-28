@@ -7,6 +7,7 @@
 1. **準備**
    - `git fetch origin && git checkout main && git pull`,從最新的 `main` 開始。
    - 讀 `CLAUDE.md`、`docs/ROADMAP.md`、本文件與 `docs/AUTOPILOT_LOG.md`(最後幾筆)。
+   - 同一時間可能有多個排程工作階段在跑(2026-09-28 曾有約 20 個同時跑、對同一個 ROADMAP 子項開了 18 個重複 PR)。所以除了開頭檢查,**建立 PR 前與合併前都要再 `git fetch origin main` 並列出開著的 `[autopilot]` PR**:若 `main` 已經包含同一個子項的變更,或已有別的開著的 PR 在做同一項,就關閉自己的 PR、不要合併(PR 留言說明重複),本次結束。
 2. **先處理未完成的自動 PR**
    - 若 repo 裡有標題以 `[autopilot]` 開頭、仍開著的 PR:先把它處理完(修好 → 驗證 → 合併;或確認做不下去就關閉並在日誌說明),**本次不再開新工作**。
 3. **選工作**
@@ -14,7 +15,7 @@
    - 切成**一次執行做得完、可以單獨驗證**的小步(約 1–3 小時的工作量、diff 盡量 < 800 行,不含 `dist/`)。大項目(例如 Vite 遷移、XFOIL 整合)分多次完成,每次都要讓專案維持可建置、可用的狀態。
    - 在 ROADMAP 該項下方用 `- [x]` / `- [ ]` 記錄拆分後的子步驟,讓下一次執行知道進度。
 4. **開發**
-   - 分支:使用工作階段指定的開發分支;若沒有指定,建立 `autopilot/YYYYMMDD-HHMM`(UTC)。
+   - 分支:**一律使用工作階段指定的 `claude/` 開發分支**;若沒有指定,建立 `claude/autopilot-YYYYMMDD-HHMM`(UTC)。不要用其他前綴:`claude/` 以外的分支在 push 前會被額外檢查,可能擋住無人值守的執行。
    - 遵守 `CLAUDE.md` 的程式風格、發佈環境限制(單一 HTML、claude.ai artifact 相容)與模型誠實說明。
    - 動到 `aero.js` 必須補測試;動到控制器 / 模擬必須跑 e2e。
 5. **驗證(全部通過才可以合併)**
@@ -28,7 +29,7 @@
 6. **提交與合併**
    - commit 訊息、PR 標題與內文一律繁體中文。PR 標題格式:`[autopilot] <ROADMAP 項次>:<這次做了什麼>`。
    - PR 內文包含:做了什麼、為什麼、驗證結果(貼上測試輸出摘要)、已知限制、下一步。
-   - 驗證全數通過 → 以 **squash merge** 合併到 `main`,合併後刪除分支(若工具允許)。
+   - 驗證全數通過(且依步驟 1 的重複檢查確認沒有撞車)→ 以 **squash merge** 合併到 `main`。合併後**不要刪除遠端分支**(刪除遠端分支會被 auto mode 分類器當成破壞性動作擋下,讓執行卡住)。
    - 驗證沒通過且本次修不好 → **不要合併**;PR 保持開啟,在 PR 內文說明卡在哪裡,下一次執行會先處理它(見步驟 2)。
 7. **記錄**
    - 在 `docs/AUTOPILOT_LOG.md` 最上方新增一筆(日期、PR 連結、摘要、測試結果、下一步),與功能變更放在同一個 PR。
@@ -49,8 +50,16 @@
 - 某項需要使用者決定(例如要不要放棄 claude.ai 相容、選哪個材料資料庫)→ 開一個 `[autopilot] 需要決定:...` 的 PR 或 issue 描述選項與建議,跳到下一個不相依的項目。
 - 連續兩次執行都卡在同一個問題 → 在日誌與 PR 說明,改做下一個不相依的項目。
 
+## 無人值守:不要讓執行卡住
+
+排程啟動的 prompt 不算使用者即時同意,執行中沒有人會回答問題或核准提示。所以:
+
+- 不要提問後等回覆;需要決定的事照上一節開 issue,然後繼續做別的。
+- 避開 auto mode 分類器預設會擋的動作:刪除遠端分支 / tag、`git reset --hard`、force push、修改 `.claude/settings.json` 等權限設定(自我修改權限一律會被擋,只能由使用者本人改)。
+- 某個動作被擋下(permission denied / classifier)→ 不要換個方式繞過,略過它,在 PR 內文與日誌寫清楚是哪個動作、為什麼需要,留給使用者處理。
+
 ## 環境備忘(Claude Code 雲端容器)
 
-- Node 22 與 Playwright(全域安裝,Chromium 在 `/opt/pw-browsers`)已預裝。e2e 用 ESM `import 'playwright'`,不吃 `NODE_PATH`,可以暫時 `ln -sfn "$(npm root -g)" node_modules` 再執行,**跑完刪掉這個連結,不要 commit**。若專案已加入 devDependencies,改用 `npm ci`。
+- Node 22 與 Playwright(全域安裝,Chromium 在 `/opt/pw-browsers`,容器已設定 `PLAYWRIGHT_BROWSERS_PATH`,不必另設 `CHROME_PATH`)已預裝。e2e 用 ESM `import 'playwright'`,不吃 `NODE_PATH`,可以暫時 `ln -sfn /opt/node22/lib/node_modules node_modules` 再執行,跑完用 `rm -f node_modules` 刪掉這個連結,**不要 commit**。若專案已加入 devDependencies,改用 `npm ci`。
 - cdnjs 可能被網路政策擋住:`npm pack three@0.128.0 && tar xzf three-0.128.0.tgz package/build/three.min.js`,把 `THREE_LOCAL` 指到解出的檔案(放在 scratchpad,不要放進 repo)。
 - 沒有 `gh` CLI:用 GitHub MCP 工具(`mcp__github__create_pull_request`、`mcp__github__merge_pull_request` 等)建立與合併 PR。
