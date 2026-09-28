@@ -117,8 +117,8 @@ const Report = (function () {
     let sec = 0; const hN = t => `<h2>${++sec}. ${t}</h2>`;
     let h = `<div class="rh"><div class="rk">設計規劃與虛擬風洞測試報告</div><h1>${esc(title)}</h1><div class="meta">${dateS}${R0.author ? ' · ' + esc(R0.author) : ''} · 由風力機葉片設計工具產生</div></div>`;
     // summary box
-    const aep = snapAEP({ A: G.A, cpMax: G.cpMax });
-    h += `<div class="sum"><div><b>${fmt(G.cpMax, 3)}</b><span>最大功率係數 Cp</span></div><div><b>${fmt(G.lopt, 2)}</b><span>最佳尖速比</span></div><div><b>${fmtP(0.5 * rho * G.A * (H ? S.hawt.Vd : 8) ** 3 * G.cpMax)}</b><span>氣動功率 @ ${H ? fmt(S.hawt.Vd, 1) : 8} m/s</span></div><div><b>${fmt(aep, 0)}</b><span>年發電量 kWh(理想,年均 ${fmt(S.perf.Vavg, 1)} m/s)</span></div></div>`;
+    const aep = snapAEP({ A: G.A, cpMax: G.cpMax }), cf = capacityFactor(aep, S.load.Pmax);
+    h += `<div class="sum"><div><b>${fmt(G.cpMax, 3)}</b><span>最大功率係數 Cp</span></div><div><b>${fmt(G.lopt, 2)}</b><span>最佳尖速比</span></div><div><b>${fmtP(0.5 * rho * G.A * (H ? S.hawt.Vd : 8) ** 3 * G.cpMax)}</b><span>氣動功率 @ ${H ? fmt(S.hawt.Vd, 1) : 8} m/s</span></div><div><b>${fmt(aep, 0)}</b><span>年發電量 kWh(理想,Weibull 年均 ${fmt(S.perf.Vavg, 1)} m/s、k=${fmt(S.perf.k, 1)})</span></div><div><b>${fmt(cf * 100, 0)}%</b><span>容量因數(對發電機額定 ${fmtP(S.load.Pmax)})</span></div></div>`;
     if (R0.goal) h += `<p class="goal"><b>設計目標:</b>${esc(R0.goal)}</p>`;
     // 1 design conditions
     h += hN('設計條件');
@@ -211,7 +211,7 @@ const Report = (function () {
 .rpt .rh{border-bottom:3px solid #1D5C9E;padding-bottom:12px;margin-bottom:16px}.rpt .rk{color:#1D5C9E;font-weight:600;font-size:13px;letter-spacing:.08em}
 .rpt h1{font-size:24px;margin:4px 0}.rpt .meta{color:#5A6C76;font-size:12.5px}
 .rpt h2{font-size:18px;margin:28px 0 10px;padding-bottom:4px;border-bottom:1px solid #CAD5DA;break-after:avoid}.rpt h3{font-size:15px;margin:18px 0 6px}
-.rpt .sum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}.rpt .sum div{background:#EEF3F5;border-radius:8px;padding:10px 12px}.rpt .sum b{display:block;font-size:22px;color:#1D5C9E}.rpt .sum span{font-size:12px;color:#5A6C76}
+.rpt .sum{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:12px 0}.rpt .sum div{background:#EEF3F5;border-radius:8px;padding:10px 12px}.rpt .sum b{display:block;font-size:22px;color:#1D5C9E}.rpt .sum span{font-size:12px;color:#5A6C76}
 .rpt table{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:13px}.rpt th,.rpt td{border:1px solid #CAD5DA;padding:5px 7px;text-align:right}.rpt th{background:#EEF3F5;font-weight:600}.rpt td:first-child,.rpt th:first-child{text-align:left}
 .rpt table.kvt th{width:32%;text-align:left}.rpt table.kvt td{text-align:left}.rpt table.small{font-size:12px}
 .rpt figure{margin:10px 0;break-inside:avoid}.rpt figure img{width:100%;border:1px solid #E1E8EB;border-radius:6px}.rpt figcaption{font-size:12px;color:#5A6C76;text-align:center;margin-top:4px}

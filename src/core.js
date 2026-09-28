@@ -23,8 +23,25 @@ const S = {
   vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true },
-  perf: { Vavg: 5.5 }
+  perf: { Vavg: 5.5, k: 2 }
 };
+
+/* ---------- wind resource: Weibull distribution & capacity factor ---------- */
+function gammaFn(x) { // Lanczos approximation (g=7, n=9)
+  const p = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+    -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  if (x < 0.5) return Math.PI / (Math.sin(Math.PI * x) * gammaFn(1 - x));
+  x -= 1;
+  let a = p[0]; const t = x + 7.5;
+  for (let i = 1; i < 9; i++) a += p[i] / (x + i);
+  return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
+}
+function weibullPdf(v, meanV, k) { // Weibull pdf with mean meanV and shape k (k=2 is the Rayleigh case)
+  if (v <= 0) return 0;
+  const c = meanV / gammaFn(1 + 1 / k);
+  return (k / c) * Math.pow(v / c, k - 1) * Math.exp(-Math.pow(v / c, k));
+}
+function capacityFactor(aepKWh, ratedW) { return ratedW > 0 ? aepKWh / (ratedW * 8760 / 1000) : 0; }
 
 /* ---------- air properties ---------- */
 function air() {
@@ -489,6 +506,6 @@ function steadyPower(V) {
 
 const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
   stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower };
+  simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
 })(this);

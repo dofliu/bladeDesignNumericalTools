@@ -365,14 +365,19 @@ function chartOpts() {
     bind('alView', 'input', e => { S.af.alphaView = +e.target.value; o.querySelector('#alTxt').textContent = e.target.value + '°'; redrawStatic(); });
     bind('fullR', 'change', e => { S.af.full = e.target.checked; redrawStatic(); });
   } else if (S.ctab === 'perf') {
-    o.innerHTML = `<label>年平均風速 <input id="vavg" type="number" min="2" max="12" step="0.1" value="${S.perf.Vavg}" style="width:60px"> m/s</label>`;
+    o.innerHTML = `<label>年平均風速 <input id="vavg" type="number" min="2" max="12" step="0.1" value="${S.perf.Vavg}" style="width:60px"> m/s</label>` +
+      `<label title="Weibull 形狀參數 k(2 = Rayleigh 分布,地形起伏越平緩、風速越穩定 k 越大)">Weibull k <input id="wbk" type="number" min="1.2" max="3.5" step="0.1" value="${S.perf.k}" style="width:50px"></label>`;
     o.querySelector('#vavg').addEventListener('change', e => { S.perf.Vavg = Math.max(1, +e.target.value || 5); redrawStatic(); });
+    o.querySelector('#wbk').addEventListener('change', e => { S.perf.k = Math.min(3.5, Math.max(1.2, +e.target.value || 2)); redrawStatic(); });
   } else if (S.ctab === 'cmp') {
     const opts = [['tw', '扭角分布'], ['a', '設計點攻角'], ['c', '弦長分布'], ['tc', '厚度分布'], ['pc', '功率曲線']];
     o.innerHTML = `<label>中間圖 <select id="cmpView">${opts.map(([v, t]) => `<option value="${v}" ${(S.cmpView || 'tw') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>` +
-      `<label>年平均風速 <input id="vavg2" type="number" min="2" max="12" step="0.1" value="${S.perf.Vavg}" style="width:60px"> m/s</label><button class="iconbtn" id="snapSave2">＋ 儲存目前方案</button>`;
+      `<label>年平均風速 <input id="vavg2" type="number" min="2" max="12" step="0.1" value="${S.perf.Vavg}" style="width:60px"> m/s</label>` +
+      `<label title="Weibull 形狀參數 k(2 = Rayleigh 分布)">Weibull k <input id="wbk2" type="number" min="1.2" max="3.5" step="0.1" value="${S.perf.k}" style="width:50px"></label>` +
+      `<button class="iconbtn" id="snapSave2">＋ 儲存目前方案</button>`;
     o.querySelector('#cmpView').addEventListener('change', e => { S.cmpView = e.target.value; redrawStatic(); });
     o.querySelector('#vavg2').addEventListener('change', e => { S.perf.Vavg = Math.max(1, +e.target.value || 5); redrawStatic(); });
+    o.querySelector('#wbk2').addEventListener('change', e => { S.perf.k = Math.min(3.5, Math.max(1.2, +e.target.value || 2)); redrawStatic(); });
     o.querySelector('#snapSave2').addEventListener('click', saveSnap);
   } else if (S.ctab === 'live') {
     o.innerHTML = `<button class="iconbtn" id="clrHist">清除紀錄</button>`;
@@ -433,9 +438,9 @@ function loadSnap(sn) {
   if (S.mode !== sn.mode) setMode(sn.mode); else { renderPane(); pendingStart = true; rebuild(true); chartOpts(); }
   toast('已載入「' + sn.name + '」');
 }
-function snapAEP(m) { // ideal MPPT (Cp,max tracking, no rated-power cap), Rayleigh distribution
-  const { rho } = air(), Va = S.perf.Vavg, eta = 0.92 * S.load.eta; let e = 0;
-  for (let v = 0.5; v <= 25.001; v += 0.5) { const f = Math.PI / 2 * v / Va ** 2 * Math.exp(-Math.PI / 4 * (v / Va) ** 2); e += 0.5 * rho * m.A * v ** 3 * m.cpMax * eta * f * 0.5 * 8760 / 1000; }
+function snapAEP(m) { // ideal MPPT (Cp,max tracking, no rated-power cap), Weibull(Vavg, k) wind distribution
+  const { rho } = air(), Va = S.perf.Vavg, k = S.perf.k || 2, eta = 0.92 * S.load.eta; let e = 0;
+  for (let v = 0.5; v <= 25.001; v += 0.5) { const f = weibullPdf(v, Va, k); e += 0.5 * rho * m.A * v ** 3 * m.cpMax * eta * f * 0.5 * 8760 / 1000; }
   return e;
 }
 function setCmpLayout(on) {
@@ -471,15 +476,17 @@ function drawCompare() {
   const rows = [{ ...cur, cur: true }, ...SNAPS];
   const best = k => Math.max(...rows.map(r => r[k] || 0));
   const aeps = rows.map(r => snapAEP(r)), bestAep = Math.max(...aeps);
+  const cfs = aeps.map(e => capacityFactor(e, S.load.Pmax)), bestCf = Math.max(...cfs);
   const bw = r => r.band && r.band[0] != null ? r.band[1] - r.band[0] : 0, bestBw = Math.max(...rows.map(bw));
   const cls = (val, b) => Math.abs(val - b) < 1e-9 && rows.length > 1 ? 'best' : '';
-  let h = `<table><colgroup><col style="width:38%"><col style="width:12%"><col style="width:10%"><col style="width:15%"><col style="width:12%"><col style="width:13%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、未限額定,年平均風速 ${fmt(S.perf.Vavg, 1)} m/s">AEP<br><small>kWh/年</small></th></tr></thead><tbody>`;
+  let h = `<table><colgroup><col style="width:38%"><col style="width:12%"><col style="width:10%"><col style="width:15%"><col style="width:12%"><col style="width:13%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、未限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th></tr></thead><tbody>`;
   rows.forEach((r, i) => {
     const sw = r.cur ? `<span class="sw" style="background:transparent;border:1.5px dashed ${col('--ink')}"></span>` : `<input type="checkbox" data-vis="${r.id}" ${r.vis ? 'checked' : ''} aria-label="顯示"><span class="sw" style="background:${col(SNAP_COL[r.ci])}"></span>`;
     const sub = `${r.sub}${r.cpDes != null ? ` · Cp(λd) ${fmt(r.cpDes, 3)}` : ''} · ${fmt(r.mass, 2)} kg${r.mode === 'HAWT' ? '/葉' : ''}`;
     h += `<tr class="${r.cur ? 'cur' : ''}"><td class="nm"><div class="nmh">${sw}${r.cur ? `<b>目前設計</b>` : `<input data-name="${r.id}" value="${r.name.replace(/"/g, '&quot;')}" title="${r.name.replace(/"/g, '&quot;')}" aria-label="方案名稱">`}</div>${r.cur ? `<div class="sub">${designName()}</div>` : ''}<div class="sub">${sub}</div><div class="acts">${r.cur ? '<button class="btn" id="snapSave">儲存為方案</button>' : `<button class="btn ghost" data-load="${r.id}" title="載入此方案">載入</button><button class="btn ghost" data-del="${r.id}" aria-label="刪除" title="刪除">刪除</button>`}</div></td>
       <td class="${cls(r.cpMax, best('cpMax'))}">${fmt(r.cpMax, 3)}</td><td>${fmt(r.lopt, 2)}</td><td class="${cls(bw(r), bestBw)}">${r.band && r.band[0] != null ? fmt(r.band[0], 1) + '–' + fmt(r.band[1], 1) : '–'}</td>
       <td class="${cls(aeps[i], bestAep)}">${fmt(aeps[i], 0)}</td>
+      <td class="${cls(cfs[i], bestCf)}">${fmt(cfs[i] * 100, 0)}%</td>
       </tr>`;
   });
   h += `</tbody></table>`;
@@ -619,7 +626,7 @@ function drawPerf() {
   });
   // power curve
   const Vs = [], Pm = [], Pf = [], wb = [];
-  const Va = S.perf.Vavg;
+  const Va = S.perf.Vavg, kW = S.perf.k || 2;
   let aepM = 0, aepF = 0;
   const etaG = 0.92 * S.load.eta;
   for (let v = 0.5; v <= 25.001; v += 0.5) {
@@ -630,13 +637,14 @@ function drawPerf() {
     Pm.push(lim ? NaN : pm);
     const st = steadyPower(v);
     Pf.push(S.load.ospd && (st.w > S.load.wmaxRpm * Math.PI / 30 || st.Pout > 1.25 * S.load.Pmax) ? NaN : st.Pout);
-    const f = Math.PI / 2 * v / Va ** 2 * Math.exp(-Math.PI / 4 * (v / Va) ** 2);
+    const f = weibullPdf(v, Va, kW);
     wb.push(f);
     aepM += (isFinite(Pm[Pm.length - 1]) ? Pm[Pm.length - 1] : 0) * f * 0.5 * 8760 / 1000;
     aepF += (isFinite(Pf[Pf.length - 1]) ? Pf[Pf.length - 1] : 0) * f * 0.5 * 8760 / 1000;
   }
+  const cfM = capacityFactor(aepM, S.load.Pmax), cfF = capacityFactor(aepF, S.load.Pmax);
   Plot.draw(cv[2], {
-    title: `年發電量 MPPT ${fmt(aepM, 0)} · 固定D ${fmt(aepF, 0)} kWh`,
+    title: `年發電量 MPPT ${fmt(aepM, 0)} kWh(容量因數 ${fmt(cfM * 100, 0)}%)· 固定D ${fmt(aepF, 0)} kWh(${fmt(cfF * 100, 0)}%)`,
     series: [{ x: Vs, y: wb, color: col('--muted'), axis: 'R', width: 1, fill: col('--grid'), label: '風速機率' },
       { x: Vs, y: Pm, color: col('--c1'), label: 'MPPT 理想(限額定)' }, { x: Vs, y: Pf, color: col('--c2'), dash: [5, 3], label: `固定 D=${fmt(S.load.D * 100, 0)}%` }],
     xlabel: '風速 (m/s)', ylabel: '電功率 (W)', ylabelR: '機率密度', xlim: [0, 25], ylim: [0, 1.15 * Math.max(10, ...Pm.filter(isFinite), ...Pf.filter(isFinite))], ylimR: [0, 1.15 * Math.max(...wb)],

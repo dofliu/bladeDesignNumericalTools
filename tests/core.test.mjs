@@ -11,7 +11,8 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 global.AERO = require('../src/aero.js');
 const core = require('../src/core.js');
-const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep } = core;
+const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
+  gammaFn, weibullPdf, capacityFactor } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -50,4 +51,38 @@ test('VAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () =>
       assert.ok(track >= 0.9, `VAWT ${ctrl} ${V} m/s tracking ${(track * 100).toFixed(1)}%`);
     }
   }
+});
+
+test('gammaFn matches known values (1, 2, 1.5, 0.5)', () => {
+  assert.ok(Math.abs(gammaFn(1) - 1) < 1e-9, `Gamma(1)=${gammaFn(1)}`);
+  assert.ok(Math.abs(gammaFn(2) - 1) < 1e-9, `Gamma(2)=${gammaFn(2)}`);
+  assert.ok(Math.abs(gammaFn(1.5) - Math.sqrt(Math.PI) / 2) < 1e-9, `Gamma(1.5)=${gammaFn(1.5)}`);
+  assert.ok(Math.abs(gammaFn(0.5) - Math.sqrt(Math.PI)) < 1e-9, `Gamma(0.5)=${gammaFn(0.5)}`);
+});
+
+test('weibullPdf at k=2 reproduces the Rayleigh distribution used previously', () => {
+  const Va = 6.3;
+  for (const v of [1, 3, 6, 10, 15]) {
+    const rayleigh = Math.PI / 2 * v / Va ** 2 * Math.exp(-Math.PI / 4 * (v / Va) ** 2);
+    const wb = weibullPdf(v, Va, 2);
+    assert.ok(Math.abs(wb - rayleigh) < 1e-9, `v=${v}: weibull ${wb} vs rayleigh ${rayleigh}`);
+  }
+});
+
+test('weibullPdf integrates to ~1 and its mean matches meanV for several shape parameters', () => {
+  for (const k of [1.5, 2, 2.5, 3]) {
+    const Va = 7;
+    let area = 0, meanNum = 0;
+    for (let v = 0.01; v <= 60; v += 0.02) { const f = weibullPdf(v, Va, k); area += f * 0.02; meanNum += v * f * 0.02; }
+    assert.ok(Math.abs(area - 1) < 5e-3, `k=${k}: pdf integral ${area}`);
+    assert.ok(Math.abs(meanNum - Va) < 5e-2, `k=${k}: pdf mean ${meanNum} vs ${Va}`);
+  }
+});
+
+test('capacityFactor is bounded in [0,1] for a plausible AEP and rated power', () => {
+  const aep = 4000; // kWh/year
+  const cf = capacityFactor(aep, 1000); // 1 kW rated
+  assert.ok(cf > 0 && cf <= 1, `capacity factor ${cf}`);
+  assert.ok(Math.abs(cf - aep / (1000 * 8760 / 1000)) < 1e-9, 'capacityFactor formula');
+  assert.equal(capacityFactor(aep, 0), 0, 'zero-rated-power guard');
 });
