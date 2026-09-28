@@ -45,6 +45,22 @@ test('BEM: 3-blade R1.5 m rotor designed for λ7', () => {
   near(yaw, 0.309, 0.02, 'Cp at 30° yaw');
 });
 
+test('cumulativeMoment/cumulativeOutboard match a cantilever under uniform distributed load', () => {
+  // Discretise a cantilever of length L into n annuli of width dr carrying a uniform transverse
+  // load w per unit length (F_i = w·dr lumped at each station centre). Analytical solution at
+  // distance x from the root: shear V(x) = w·(L-x), moment M(x) = w·(L-x)²/2.
+  const L = 3, n = 400, dr = L / n, w = 150;
+  const r = Array.from({ length: n }, (_, i) => (i + 0.5) * dr);
+  const F = r.map(() => w * dr);
+  const V = A.cumulativeOutboard(r, F), M = A.cumulativeMoment(r, F);
+  near(M[0], w * L * L / 2, w * L * L / 2 * 0.01, 'root moment');
+  near(V[0], w * L, w * L * 0.01, 'root shear');
+  const jMid = Math.floor(n / 2), x = r[jMid];
+  near(M[jMid], w * (L - x) ** 2 / 2, w * (L - x) ** 2 / 2 * 0.02 + 1, 'mid-span moment');
+  near(V[jMid], w * (L - x), w * (L - x) * 0.02 + 1, 'mid-span shear');
+  assert.ok(M[n - 1] < w * dr * dr, 'moment ~0 at the tip');
+});
+
 test('DMST: H-type and Φ-type Darrieus', () => {
   const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('0018')));
   const run = type => A.vawtCurve({ type, R: 1, H: 2, B: 3, c: 0.15, pitch: 0, helix: 120, nz: 10, polar: ps, rho: 1.225, mu: 1.81e-5, struts: 2 }, 8, 7)

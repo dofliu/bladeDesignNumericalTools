@@ -435,6 +435,30 @@
     return pts;
   }
 
+  /* ---------- Blade as a cantilever beam: discrete spanwise load summation ---------- */
+  // r[]: station radii (root->tip); v[]: a lumped quantity at each station (e.g. an annular
+  // segment's axial force). Returns, at each station j, the sum of v[i] over all stations
+  // outboard of it (r[i] > r[j]) — the discrete analogue of a cantilever's internal axial/shear
+  // force carried past that cut.
+  function cumulativeOutboard(r, v) {
+    const n = r.length, out = new Array(n).fill(0);
+    let acc = 0;
+    for (let i = n - 1; i >= 0; i--) { out[i] = acc; acc += v[i]; }
+    return out;
+  }
+  // Bending moment at each station from transverse point loads F[] applied at the outboard
+  // stations' radii: M[j] = Σ_{i>j} F[i]·(r[i]-r[j]), the discrete cantilever moment carried past
+  // that cut by every load further out along the span.
+  function cumulativeMoment(r, F) {
+    const n = r.length, out = new Array(n).fill(0);
+    for (let j = 0; j < n; j++) {
+      let m = 0;
+      for (let i = j + 1; i < n; i++) m += F[i] * (r[i] - r[j]);
+      out[j] = m;
+    }
+    return out;
+  }
+
   /* ---------- VAWT DMST ---------- */
   // cfg: {type:'H'|'helical'|'phi'|'V', R, H, B, c, pitch(deg), helix(deg), nz, polar, rho, mu}
   function vawtSlices(cfg) {
@@ -576,6 +600,7 @@
 
   const API = { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
     panel, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
+    cumulativeOutboard, cumulativeMoment,
     vawtSlices, vawtArea, dmstPoint, vawtCurve, savoniusCurve };
   if (typeof module !== 'undefined') module.exports = API; else G.AERO = API;
 })(this);

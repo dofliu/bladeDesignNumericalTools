@@ -740,6 +740,30 @@ aside .sidehead{display:none}
     return pts;
   }
 
+  /* ---------- Blade as a cantilever beam: discrete spanwise load summation ---------- */
+  // r[]: station radii (root->tip); v[]: a lumped quantity at each station (e.g. an annular
+  // segment's axial force). Returns, at each station j, the sum of v[i] over all stations
+  // outboard of it (r[i] > r[j]) — the discrete analogue of a cantilever's internal axial/shear
+  // force carried past that cut.
+  function cumulativeOutboard(r, v) {
+    const n = r.length, out = new Array(n).fill(0);
+    let acc = 0;
+    for (let i = n - 1; i >= 0; i--) { out[i] = acc; acc += v[i]; }
+    return out;
+  }
+  // Bending moment at each station from transverse point loads F[] applied at the outboard
+  // stations' radii: M[j] = Σ_{i>j} F[i]·(r[i]-r[j]), the discrete cantilever moment carried past
+  // that cut by every load further out along the span.
+  function cumulativeMoment(r, F) {
+    const n = r.length, out = new Array(n).fill(0);
+    for (let j = 0; j < n; j++) {
+      let m = 0;
+      for (let i = j + 1; i < n; i++) m += F[i] * (r[i] - r[j]);
+      out[j] = m;
+    }
+    return out;
+  }
+
   /* ---------- VAWT DMST ---------- */
   // cfg: {type:'H'|'helical'|'phi'|'V', R, H, B, c, pitch(deg), helix(deg), nz, polar, rho, mu}
   function vawtSlices(cfg) {
@@ -881,6 +905,7 @@ aside .sidehead{display:none}
 
   const API = { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
     panel, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
+    cumulativeOutboard, cumulativeMoment,
     vawtSlices, vawtArea, dmstPoint, vawtCurve, savoniusCurve };
   if (typeof module !== 'undefined') module.exports = API; else G.AERO = API;
 })(this);
@@ -1603,7 +1628,7 @@ function blendPS(p1, p2, w) {
 }
 
 /* ---------- geometry + performance ---------- */
-const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0 };
+const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0, loads: null };
 const DLAM = 0.25;
 
 /* ---------- spanwise airfoil stations ---------- */
@@ -1700,12 +1725,30 @@ function designHAWT() {
   // mass & inertia
   const mat = MATERIALS[h.material];
   let m = 0, J = 0;
-  rows.forEach((x, i) => { const dm = mat.rho * mat.fill * A.airfoilArea(afs[i]) * x.c * x.c * x.dr; m += dm; J += dm * x.r * x.r; });
+  rows.forEach((x, i) => { x.dm = mat.rho * mat.fill * A.airfoilArea(afs[i]) * x.c * x.c * x.dr; m += x.dm; J += x.dm * x.r * x.r; });
   const mb = m;
   m *= h.B; J *= h.B;
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  bladeLoads(rows, resD.elems, omD, rho);
+}
+// One-blade spanwise loads at the design point (steady, no gravity/gust): flapwise (out-of-plane,
+// thrust-like) and edgewise (in-plane, torque-like) distributed aero force from the BEM design
+// solution, summed outboard-to-root into bending moments (see AERO.cumulativeMoment), plus the
+// centrifugal axial force from each station's own blade mass (from the mass/inertia loop above)
+// spinning at the design rotor speed. Root values (index 0) are the root bending moments / axial
+// force used for a first structural check; per-row values are exposed for a spanwise plot.
+function bladeLoads(rows, elems, omega, rho) {
+  const r = rows.map(x => x.r);
+  const dFz = rows.map((x, i) => { const el = elems[i], phi = el.phi * A.D2R, q = 0.5 * rho * el.W * el.W * x.c * x.dr;
+    return q * (el.cl * Math.cos(phi) + el.cd * Math.sin(phi)); });
+  const dFy = rows.map((x, i) => { const el = elems[i], phi = el.phi * A.D2R, q = 0.5 * rho * el.W * el.W * x.c * x.dr;
+    return q * (el.cl * Math.sin(phi) - el.cd * Math.cos(phi)); });
+  const Mflap = A.cumulativeMoment(r, dFz), Medge = A.cumulativeMoment(r, dFy);
+  const Fax = A.cumulativeOutboard(r, rows.map(x => x.dm * omega * omega * x.r));
+  rows.forEach((x, i) => { x.dFz = dFz[i]; x.dFy = dFy[i]; x.Mflap = Mflap[i]; x.Medge = Medge[i]; x.Fax = Fax[i]; });
+  G.loads = { omega, MflapRoot: Mflap[0], MedgeRoot: Medge[0], FaxRoot: Fax[0] };
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
@@ -1713,7 +1756,7 @@ function vawtCfg() {
 }
 function designVAWT() {
   const v = S.vawt, cfg = vawtCfg(), mat = MATERIALS[v.material];
-  G.vcfg = cfg; G.R = v.R;
+  G.vcfg = cfg; G.R = v.R; G.loads = null; // spanwise structural loads: HAWT only for now (see ROADMAP 3)
   if (v.type === 'sav') {
     G.A = 2 * v.R * v.H;
     const d = 2 * v.R / (2 - v.overlap), t = Math.max(0.0015, 0.004 * v.R);

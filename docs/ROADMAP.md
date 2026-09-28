@@ -23,7 +23,10 @@
 ## 3. 葉片結構分析
 
 - [x] 截面性質:依翼型外形 + 殼厚計算面積、慣性矩、形心(多邊形積分)。`geo.js` 新增 `polygonMoments`(封閉多邊形面積/一次矩/二次矩,對原點,供組合截面先相加再一次移軸)、`offsetPolygon`(等厚度向內偏移,做薄殼內壁)、`sectionProperties(af, chord, thickness)`(回傳實際單位的面積/形心/Ixx/Iyy/Ixy)。`tests/geo.test.mjs` 以正方形、正多邊形近似圓、圓環解析解與 NACA 0012 實心截面積文獻常數(≈0.6851×t/c)驗證。
-- [ ] 載重:由 BEM 的 dT/dr、dQ/dr 加離心力,算根部彎矩、各截面應力、葉尖撓度;極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況。需要材料參數(E、密度、容許應力)與殼厚沿展長分布,目前 `sectionProperties` 只吃單一厚度,之後要接上每個 `G.rows` 截面各自的厚度/材料設定。
+- [ ] 載重:由 BEM 的 dT/dr、dQ/dr 加離心力,算根部彎矩、各截面應力、葉尖撓度;極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況。
+  - [x] 分布載重與彎矩:`core.js` 新增 `bladeLoads(rows, elems, omega, rho)`,在 `designHAWT()` 設計點 BEM 解(`resD.elems`)算出每站揮舞向(flapwise,thrust-like)與擺振向(edgewise,torque-like)的分布氣動力,呼叫新的 `aero.js` 通用函式 `cumulativeMoment`/`cumulativeOutboard`(離散懸臂梁:外側點力對某站的彎矩/軸力累加,`tests/aero.test.mjs` 用等分布載重解析解 M=w(L-x)²/2 驗證)沿展長累加成揮舞彎矩;離心軸力則用既有質量迴圈已算出的每站質量 `x.dm` × ω²r 累加。結果存回 `G.rows[i].{Mflap,Medge,Fax,dFz,dFy}` 與 `G.loads.{MflapRoot,MedgeRoot,FaxRoot,omega}`(`designVAWT()` 目前設 `G.loads=null`,垂直軸的結構模型留待之後)。
+  - [ ] 應力與撓度:結合 `sectionProperties` 的慣性矩算各站應力、材料安全係數;歐拉-伯努利積分算葉尖撓度。需要先決定殼厚怎麼定(建議:用既有 `MATERIALS[x].fill` 反解等效殼厚,讓 `sectionProperties(af,c,t).area` 對齊質量模型已經在用的 `fill*airfoilArea*c²`,不必新增使用者可調的厚度欄位)。
+  - [ ] 極端風速(IEC Class II Vref)與停機工況的載重。
 - [ ] 疲勞:以紊流測試時間序列做雨流計數,估計根部疲勞壽命(可先簡化)。
 - [ ] 單葉片工作區新增「結構」卡片(面積/Ixx/Iyy 沿展長圖 + 之後的應力/撓度);報告新增一節。
 - 驗收(需上面全部完成):與懸臂梁解析解比對撓度;材料安全係數低於門檻時給出警告。
