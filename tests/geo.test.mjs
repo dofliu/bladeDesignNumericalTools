@@ -71,3 +71,59 @@ test('sectionProperties: thin shell area is close to perimeter * thickness', () 
   assert.ok(s.Ixx > 0 && s.Iyy > 0, 'positive second moments');
   assert.ok(s.cx > 0.2 * chord && s.cx < 0.6 * chord, 'centroid within chord');
 });
+
+test('sectionProperties: extreme-fibre distances bracket a NACA 0012 solid section', () => {
+  const af = A.naca4('0012'), chord = 1;
+  const s = GEO.sectionProperties(af, chord, 1); // thick shell -> solid section
+  // symmetric section: max half-thickness is close to 0.06c (12% t/c), centroid near mid-chord
+  near(s.yMax, 0.06 * chord, 0.02 * chord, 'yMax ~ max half-thickness');
+  assert.ok(s.xMax > 0.3 * chord && s.xMax < 0.7 * chord, 'xMax within a reasonable chordwise range');
+});
+
+test('cumulativeMoment + cantileverDeflection: point load at the tip matches the analytic cantilever', () => {
+  const L = 3, P = 500, EIc = 4e5, n = 100;
+  const r = Array.from({ length: n }, (_, i) => i * L / (n - 1));
+  const w = new Array(n).fill(0); w[n - 1] = P;
+  const M = GEO.cumulativeMoment(r, w);
+  near(M[0], P * L, 1e-9, 'root moment = P*L');
+  assert.ok(M[n - 1] < 1e-6, 'moment ~0 at the free tip');
+  const y = GEO.cantileverDeflection(r, M, new Array(n).fill(EIc));
+  near(y[n - 1], P * L ** 3 / (3 * EIc), 0.01 * (P * L ** 3 / (3 * EIc)), 'tip deflection = P*L^3/(3EI)');
+});
+
+test('cumulativeMoment: uniform distributed load matches w*L^2/2 at the root', () => {
+  const L = 2.5, w0 = 80, n = 400;
+  const r = Array.from({ length: n }, (_, i) => i * L / (n - 1));
+  // midpoint control-volume widths (as core.js builds row.dr) so sum(w) == w0*L exactly
+  const dr = r.map((_, i) => (i === n - 1 ? L : (r[i] + r[i + 1]) / 2) - (i === 0 ? 0 : (r[i - 1] + r[i]) / 2));
+  const load = dr.map(d => w0 * d);
+  const M = GEO.cumulativeMoment(r, load);
+  near(M[0], w0 * L * L / 2, 0.01 * w0 * L * L / 2, 'root moment = w0*L^2/2');
+});
+
+test('cumulativeAxialForce: uniform mass per length matches m*omega^2*L^2/2 at the root', () => {
+  const L = 1.5, m0 = 2, omega = 60, n = 400;
+  const r = Array.from({ length: n }, (_, i) => i * L / (n - 1));
+  const dr = r.map((_, i) => (i === n - 1 ? L : (r[i] + r[i + 1]) / 2) - (i === 0 ? 0 : (r[i - 1] + r[i]) / 2));
+  const mass = dr.map(d => m0 * d);
+  const N = GEO.cumulativeAxialForce(r, mass, omega);
+  near(N[0], m0 * omega * omega * L * L / 2, 0.01 * m0 * omega * omega * L * L / 2, 'root axial force');
+});
+
+test('bladeStructuralLoads: sane on a real BEM-designed HAWT blade', () => {
+  global.AERO = A;
+  const core = require('../src/core.js');
+  const { S, G, designHAWT, computePerf, air } = core;
+  S.mode = 'HAWT';
+  designHAWT(); computePerf();
+  const material = { E: 20e9, rho: 1850, sigmaAllow: 100e6 }; // representative GFRP shell defaults
+  const omega = S.hawt.tsr * S.hawt.Vd / G.R;
+  const res = GEO.bladeStructuralLoads(G.rows, G.afs, G.desElems, { rho: air().rho, omega, thickness: 0.004, material });
+  assert.equal(res.stations.length, G.rows.length);
+  for (const st of res.stations) {
+    assert.ok(isFinite(st.sigma) && st.sigma >= 0, 'finite non-negative stress');
+    assert.ok(isFinite(st.sf) && st.sf > 0, 'finite positive safety factor');
+  }
+  assert.ok(Math.abs(res.stations[0].Mflap) >= Math.abs(res.stations[res.stations.length - 1].Mflap), 'flap moment decreases from root to tip');
+  assert.ok(res.tipDeflection >= 0 && res.tipDeflection < G.R, 'tip deflection is a small fraction of blade radius');
+});
