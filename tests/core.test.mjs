@@ -51,3 +51,36 @@ test('VAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () =>
     }
   }
 });
+
+function primeCutout(V) {
+  S.tun.TI = 0; S.tun.V = V; S.load.ctrl = 'po';
+  S.load.cutout = true; S.load.Vcutout = 22; S.load.Vrestart = 18;
+  SIM.omega = G.lopt * V / G.R * 0.5; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null;
+  SIM.wcap = -1; SIM.pAvg = 0; SIM.latch = false; SIM.cutoutLatch = false; SIM.n = 0; SIM.po.wref = -1; SIM.VslowAvg = V;
+}
+
+test('sustained high wind above the cut-out threshold parks the rotor once and keeps it parked', () => {
+  setMode('HAWT');
+  primeCutout(26); // above Vcutout=22, steady (TI=0) so the slow average tracks it deterministically
+  let latchEvents = 0;
+  for (let t = 0; t < 90; t += 0.004) {
+    const before = SIM.cutoutLatch;
+    simStep(0.004);
+    if (SIM.cutoutLatch && !before) latchEvents++;
+    if (t > 30) assert.ok(SIM.cutoutLatch, `expected to stay parked at t=${t.toFixed(1)}s under sustained 26 m/s wind`);
+  }
+  assert.equal(latchEvents, 1, `cut-out should latch exactly once under steady high wind, got ${latchEvents}`);
+  assert.ok(SIM.omega < 1, `parked rotor should have omega≈0, got ${SIM.omega.toFixed(2)}`);
+});
+
+test('cut-out releases and the rotor restarts once the slow-average wind drops below the restart threshold', () => {
+  setMode('HAWT');
+  primeCutout(26);
+  for (let t = 0; t < 40; t += 0.004) simStep(0.004);
+  assert.ok(SIM.cutoutLatch, 'expected cut-out engaged after 40 s at 26 m/s');
+  S.tun.V = 8; // wind drops well below Vrestart=18
+  for (let t = 0; t < 150; t += 0.004) simStep(0.004);
+  assert.ok(!SIM.cutoutLatch, `cut-out should have released, VslowAvg=${SIM.VslowAvg.toFixed(1)}`);
+  const wStar = G.lopt * 8 / G.R;
+  assert.ok(SIM.omega > 0.3 * wStar, `rotor should have restarted toward ${wStar.toFixed(1)} rad/s, got ${SIM.omega.toFixed(2)}`);
+});

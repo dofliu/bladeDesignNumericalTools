@@ -22,7 +22,7 @@ const S = {
   hawt: { R: 1.5, Rhub: 0.15, B: 3, tsr: 7, Vd: 8, aMode: 'auto', aDes: 5, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChord: 0.12, pitch: 0, material: 'gfrp', ov: {}, twMode: 'bem', twRoot: 20, twTip: 0 },
   vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
-  load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true },
+  load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true, cutout: true, Vcutout: 22, Vrestart: 18 },
   perf: { Vavg: 5.5 }
 };
 
@@ -343,7 +343,7 @@ function frictionT(omega) {
 }
 
 /* ---------- simulation ---------- */
-const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, D: 0.5, brake: false, latch: false,
+const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, VslowAvg: 8, D: 0.5, brake: false, latch: false, cutoutLatch: false,
   po: { acc: 0, cnt: 0, tim: 0, last: 0, dir: 1, wref: -1 }, out: {}, hist: { t: [], V: [], rpm: [], Pa: [], Po: [], D: [], lam: [], cp: [] }, histT: 0, traj: [] };
 function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 // converter with inner current control: find the duty that gives generator current Iref (inverse of electrical())
@@ -389,6 +389,8 @@ function simStep(dt) {
   if (SIM.gustT >= 0) { SIM.gustT += dt; const g = SIM.gustT; SIM.gust = g < 6 ? 0.45 * T.V * Math.sin(Math.PI * g / 6) ** 2 : 0; if (g >= 6) SIM.gustT = -1; }
   const V = Math.max(0, T.V * (1 + T.TI * SIM.n) + SIM.gust);
   SIM.V = V; SIM.Vmeas += (V - SIM.Vmeas) * Math.min(1, dt / 1.0);
+  // slow (~20 s) wind average for the cut-out/restart decision, so short gusts don't park/unpark the rotor
+  SIM.VslowAvg += (V - SIM.VslowAvg) * Math.min(1, dt / 20);
   // yaw
   if (S.mode === 'HAWT') {
     if (T.yawMode === 'auto') {
@@ -407,7 +409,12 @@ function simStep(dt) {
   if (SIM.out && SIM.out.el) SIM.pAvg = (SIM.pAvg || 0) + (SIM.out.el.Pout - (SIM.pAvg || 0)) * Math.min(1, dt / 3);
   if (L.ospd && (SIM.omega > wmax || (SIM.out && SIM.out.el && (SIM.out.el.Pout > 1.6 * L.Pmax || SIM.pAvg > 1.2 * L.Pmax)))) { if (!SIM.latch) SIM.trips = (SIM.trips || 0) + 1; SIM.latch = true; }
   if (SIM.latch && SIM.omega < 0.55 * wmax) SIM.latch = false;
-  const brake = SIM.brake || SIM.latch;
+  // cut-out: park on sustained high wind (slow average, not instantaneous gusts) and stay parked
+  // until the slow average falls back below the (lower) restart threshold — avoids the old
+  // behaviour of repeatedly tripping and reconnecting once the generator can no longer hold rated power
+  if (L.cutout && !SIM.cutoutLatch && SIM.VslowAvg > L.Vcutout) { SIM.cutoutLatch = true; SIM.cutoutTrips = (SIM.cutoutTrips || 0) + 1; }
+  else if (SIM.cutoutLatch && (!L.cutout || SIM.VslowAvg < L.Vrestart)) SIM.cutoutLatch = false;
+  const brake = SIM.brake || SIM.latch || SIM.cutoutLatch;
   const el = electrical(SIM.omega, SIM.D, brake);
   const Tf = frictionT(SIM.omega);
   const Tmb = brake ? 1.5 * (G.Prated || 100) / (G.wRated || 20) : 0;
