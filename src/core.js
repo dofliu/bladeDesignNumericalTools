@@ -7,12 +7,14 @@
 (function (root) {
 'use strict';
 const A = AERO;
+// E: 楊氏模數 (Pa),供結構彎曲/撓度估算; allow: 容許應力 (Pa,已含疲勞/安全係數的保守值),
+// 供結構安全係數估算。兩者皆為典型文獻值的合理預設,尚未做逐站/逐使用者調整。
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, allow: 100e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, allow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, allow: 110e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, allow: 20e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, allow: 250e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -193,7 +195,7 @@ function designHAWT() {
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
-  bladeLoads(rows, resD.elems, omD, rho);
+  bladeLoads(rows, afs, resD.elems, omD, rho, mat);
 }
 // One-blade spanwise loads at the design point (steady, no gravity/gust): flapwise (out-of-plane,
 // thrust-like) and edgewise (in-plane, torque-like) distributed aero force from the BEM design
@@ -201,7 +203,14 @@ function designHAWT() {
 // centrifugal axial force from each station's own blade mass (from the mass/inertia loop above)
 // spinning at the design rotor speed. Root values (index 0) are the root bending moments / axial
 // force used for a first structural check; per-row values are exposed for a spanwise plot.
-function bladeLoads(rows, elems, omega, rho) {
+// Stress/deflection: each station's shell wall thickness is backed out (GEO.equivalentThickness)
+// so its sectionProperties area matches the mass model's own `fill*airfoilArea*c^2`, rather than
+// adding a separate user-facing thickness field. Bending stress uses the extreme-fibre distance
+// (yMax/xMax) for the flapwise/edgewise moment; centrifugal stress is axial force / area; the
+// three are conservatively summed (no phase alignment) into a single combined stress and safety
+// factor (mat.allow / stress). Flapwise deflection integrates curvature Mflap/(mat.E*Ixx) from the
+// fixed root outward (GEO.beamDeflection, Euler-Bernoulli).
+function bladeLoads(rows, afs, elems, omega, rho, mat) {
   const r = rows.map(x => x.r);
   const dFz = rows.map((x, i) => { const el = elems[i], phi = el.phi * A.D2R, q = 0.5 * rho * el.W * el.W * x.c * x.dr;
     return q * (el.cl * Math.cos(phi) + el.cd * Math.sin(phi)); });
@@ -209,8 +218,28 @@ function bladeLoads(rows, elems, omega, rho) {
     return q * (el.cl * Math.sin(phi) - el.cd * Math.cos(phi)); });
   const Mflap = A.cumulativeMoment(r, dFz), Medge = A.cumulativeMoment(r, dFy);
   const Fax = A.cumulativeOutboard(r, rows.map(x => x.dm * omega * omega * x.r));
-  rows.forEach((x, i) => { x.dFz = dFz[i]; x.dFy = dFy[i]; x.Mflap = Mflap[i]; x.Medge = Medge[i]; x.Fax = Fax[i]; });
-  G.loads = { omega, MflapRoot: Mflap[0], MedgeRoot: Medge[0], FaxRoot: Fax[0] };
+  const sec = rows.map((x, i) => {
+    const targetArea = mat.fill * A.airfoilArea(afs[i]) * x.c * x.c;
+    const t = GEO.equivalentThickness(afs[i], x.c, targetArea);
+    return GEO.sectionProperties(afs[i], x.c, t);
+  });
+  const defl = GEO.beamDeflection(rows, Mflap, sec.map(s => mat.E * Math.max(s.Ixx, 1e-12)));
+  const stress = rows.map((x, i) => {
+    const s = sec[i];
+    const sFlap = s.Ixx > 0 ? Mflap[i] * s.yMax / s.Ixx : 0, sEdge = s.Iyy > 0 ? Medge[i] * s.xMax / s.Iyy : 0;
+    const sAxial = s.area > 0 ? Fax[i] / s.area : 0;
+    return Math.abs(sFlap) + Math.abs(sEdge) + sAxial;
+  });
+  rows.forEach((x, i) => {
+    x.dFz = dFz[i]; x.dFy = dFy[i]; x.Mflap = Mflap[i]; x.Medge = Medge[i]; x.Fax = Fax[i];
+    x.secArea = sec[i].area; x.Ixx = sec[i].Ixx; x.Iyy = sec[i].Iyy;
+    x.defl = defl[i]; x.stress = stress[i]; x.safety = stress[i] > 0 ? mat.allow / stress[i] : Infinity;
+  });
+  const minSafety = Math.min(...rows.map(x => x.safety));
+  G.loads = {
+    omega, MflapRoot: Mflap[0], MedgeRoot: Medge[0], FaxRoot: Fax[0],
+    tipDefl: defl[defl.length - 1], minSafety,
+  };
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();

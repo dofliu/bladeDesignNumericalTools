@@ -2,13 +2,22 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-28 — ROADMAP 3:葉片應力與撓度
+
+- 做了什麼:承接上一筆「分布載重與彎矩」(`bladeLoads`/`G.rows.{Mflap,Medge,Fax}`),完成 ROADMAP 3「載重」子項的第二部分——應力與撓度,採用上一筆 PR 內文建議的做法。`src/geo.js` 新增 `equivalentThickness(af, chord, targetArea)`(對 `sectionProperties(af,chord,t).area` 做二分搜尋反解殼厚 `t`,呼叫端傳入 `MATERIALS[x].fill * airfoilArea(af) * c²` 當目標面積,對齊既有質量模型,不新增使用者可調欄位)、`sectionProperties` 補上 `yMax`/`xMax`(形心到外緣的最大距離,彎曲應力算式要用)、`beamDeflection(rows, M, EI)`(彎矩/EI 曲率由固定端(根部)往葉尖梯形積分兩次)。`src/core.js` 的 `bladeLoads` 延伸:對每一站反解等效殼厚 → `sectionProperties` 取得 Ixx/Iyy → 算揮舞彎曲應力(`Mflap·yMax/Ixx`)、擺振彎曲應力(`Medge·xMax/Iyy`)、離心軸向應力(`Fax/area`),三者絕對值保守相加成 `x.stress`,安全係數 `x.safety = mat.allow/x.stress`;揮舞撓度 `x.defl` 用 `beamDeflection` 積分。`MATERIALS` 補上楊氏模數 `E`、容許應力 `allow`(合理文獻預設值:玻纖 20 GPa/100 MPa、木材 11 GPa/40 MPa、鋁 69 GPa/110 MPa、PLA 2.3 GPa/20 MPa、碳纖 70 GPa/250 MPa)。`G.loads` 新增 `tipDefl`、`minSafety`。
+- 中途插曲:排程開始後(已 fetch 最新 main、讀完文件)才發現另一個並行的自動開發工作階段在同一時段也選了 ROADMAP 3「載重」子項,搶先把「分布載重與彎矩」合併成 #4,導致本次原本獨立做的彎矩/離心力實作(放在 `geo.js` 的 `beamMoment`/`axialForce`)與 #4 的 `aero.js` `cumulativeMoment`/`cumulativeOutboard` + `core.js` `bladeLoads` 重複且與新 `main` 衝突。已把那個衝突的 PR(#21)關閉且不合併(留言說明原因),重新從新 `main` 出發,改成本篇「應力與撓度」——正好是 #4 PR 內文本來就留下的下一步建議,避免了重工。
+- 為什麼:「應力與撓度」是 #4 明確列出的下一步,沿用它已經驗證過的 `Mflap/Medge/Fax` 與建議的等效殼厚做法,是風險最小、與既有實作最一致的延伸;不採用先前(已放棄)的獨立幾何函式版本,避免同一件事在 `aero.js`/`geo.js` 兩處各有一套彼此不相容的懸臂梁力學。
+- 驗證:`npm run check`(9 個檔案全過)、`npm test`(21/21,新增 6 個:`tests/geo.test.mjs` 的 `yMax`/`xMax` 外緣距離驗證、`equivalentThickness` 面積回代驗證、均布載重與懸臂梁末端集中力兩個解析解驗證 `beamDeflection`〔w·L⁴/8EI、P·L³/3EI〕;`tests/core.test.mjs` 新增「HAWT 設計點應力/撓度/安全係數沿展長合理性」,檢查撓度根部固定為 0 且單調遞增、應力非負、安全係數處處為正〔葉尖因彎矩/軸力剛好為 0 而安全係數為 Infinity,是預期行為,已排除在「必須有限」的斷言外,只要求根部有限〕)、`npm run build`(257 KB)、離線 `npm run test:e2e`(`THREE_LOCAL`/`CHROME_PATH` 見下方環境備忘,全過,3 種匯出、12 組追蹤率回歸 92–97%)。桌面 1440×900 與手機 390×844 截圖確認排版正常(未改動 UI,預期且實際無畫面差異)。
+- 已知限制:與 #4 相同——只有 HAWT、只在設計風速/設計轉速這一個穩態工況,還沒有極端風速(IEC Class II Vref)與停機工況;應力採三分量絕對值直接相加的保守估計,沒有考慮相位對齊或工況組合係數;殼厚是由 `fill` 反解的單一等效值,不是使用者可調的逐站厚度;還沒有任何 UI 或報告顯示這些數字(單葉片工作區的「結構」卡片留給下一步);VAWT 沒有結構模型。
+- 下一步:ROADMAP 3 —「極端風速(IEC Class II Vref)與停機工況的載重」,或直接跳到「單葉片工作區新增結構卡片」(先把現有 `G.rows.{stress,safety,defl}` 畫成沿展長圖,材料/厚度可調留到之後),兩者皆可獨立驗證,下次執行擇一;之後才是疲勞分析。ROADMAP 1(Vite/ESM 遷移)、2(XFOIL 整合)仍卡在需要使用者決定,見 `docs/ROADMAP.md` 對應項目的「排程踩點」。
+
 ## 2026-09-28 — ROADMAP 4:切出風速與重新啟動邏輯
 
 - 做了什麼:啟動時 main 上還沒有未完成的 `[autopilot]` PR,ROADMAP 3「載重」子項當時看起來需要先決定材料參數(E、密度、容許應力)才能繼續,依 AUTOPILOT.md「何時停下來」跳到下一個不相依項目:ROADMAP 4 額定以上控制與保護狀態機的第一個子步驟——切出風速與重新啟動邏輯。開發期間另一次排程執行已完成並合併了下面「葉片分布載重與彎矩」那一筆(見下),與本次改動的檔案不重疊,合併 main 後未發生程式衝突。`src/core.js` 的 `S.load` 新增 `cutOut`(預設 `false`,不影響既有行為)、`vCutOut`(切出風速,預設 20 m/s)、`vRestart`(重啟風速,預設 15 m/s);`simStep()` 用既有的 1 秒低通平均風速 `SIM.Vmeas` 判斷,超過 `vCutOut` 即設定 `SIM.cutout = true` 並併入既有煞車閂鎖(`brake = SIM.brake || SIM.latch || SIM.cutout`)強制停機,待風速降到 `vRestart` 以下才解除;兩個閾值不同形成遲滯,避免風速在門檻附近擺盪造成反覆停機/重啟。`src/ui.js` 負載面板「保護」群組新增啟用開關與兩個風速滑桿(僅啟用時顯示)、狀態列區分「切出風速停機中」與「超速保護煞車中」,所有既有的模擬重置點(`resetSim`/`spinUp`/`assistStart`/`setMode`/報告測試的 `reset`)都一併清除 `SIM.cutout`。`src/report.js` 在「負載」條件加入切出/重啟風速設定值,並把「多次觸發過速/過功率保護」的結論文字改成依 `S.load.cutOut` 是否啟用給出對應說明。
 - 為什麼:這是 ROADMAP 4 中風險最低、可獨立驗證的第一步,直接對應 `docs/CLAUDE.md`/報告中原本就記錄的已知限制(水平軸 14 m/s 以上發電機壓不住固定槳距轉子、反覆觸發保護),且不需要新的材料參數決策或幾何/偏航模型擴充(變槳、側偏收尾留待後續)。
 - 驗證:`npm run check`(9 個檔案全過)、`npm test`(合併 main 後 17/17,含新增的 `tests/core.test.mjs` 切出/重啟遲滯測試:20 m/s 高風速下確認 `SIM.cutout` 觸發、轉速降到近乎靜止且不再重複觸發超速保護,風速降到 8 m/s 後確認 `SIM.cutout` 解除且轉子重新加速)、`npm run build`、`npm run test:e2e`(全過,3 種匯出、追蹤率回歸維持 94–97%,此功能預設關閉不影響既有回歸)。另外用 Playwright 截圖桌面 1440×900 與手機 390×844 的「負載」設定面板(切出風速選項開啟前後),確認新控制項排版正常、無破版。
 - 已知限制:目前只有「停機 → 等待風速下降 → 重啟」的邏輯,沒有變槳或側偏收尾的物理模型;自動化報告的功率曲線測試仍只到 15 m/s,尚未加入涵蓋切出風速以上區間的專門測試(驗收項「報告功率曲線呈現平台與切出」還沒做到);切出/重啟閾值的預設值(20/15 m/s)是通用設定,未針對特定機型或 IEC 風速等級調整。
-- 下一步:ROADMAP 4 的「變槳選項」或「側偏收尾模型」。ROADMAP 3 的下一步請見下面「葉片分布載重與彎矩」那一筆的「下一步」(應力與撓度,已找到不需要新增使用者決策的做法)。ROADMAP 1、2 的踩點結論仍列在 `docs/ROADMAP.md` 對應項目下,需要使用者選擇方向。
+- 下一步:ROADMAP 4 的「變槳選項」或「側偏收尾模型」。ROADMAP 3 的下一步請見上面「葉片應力與撓度」那一筆的「下一步」。ROADMAP 1、2 的踩點結論仍列在 `docs/ROADMAP.md` 對應項目下,需要使用者選擇方向。
 
 ## 2026-09-28 — ROADMAP 3:葉片分布載重與彎矩
 

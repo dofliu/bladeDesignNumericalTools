@@ -1,15 +1,16 @@
 // Controller / MPPT regression, run directly in Node against src/core.js (no browser needed).
-// core.js references the AERO global the same way the browser build does, so we set it up
-// on `global` before requiring core.js (mirrors how the concatenated <script> loads aero.js
-// before core.js). This mirrors the scenarios tests/e2e.smoke.mjs checks in the built dist,
-// giving fast feedback without spinning up Playwright; the e2e test still covers the same
-// tracking regression against the actual built artifact end-to-end.
+// core.js references the AERO and GEO globals the same way the browser build does, so we set
+// them up on `global` before requiring core.js (mirrors how the concatenated <script> loads
+// aero.js and geo.js before core.js). This mirrors the scenarios tests/e2e.smoke.mjs checks in
+// the built dist, giving fast feedback without spinning up Playwright; the e2e test still covers
+// the same tracking regression against the actual built artifact end-to-end.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 global.AERO = require('../src/aero.js');
+global.GEO = require('../src/geo.js');
 const core = require('../src/core.js');
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep } = core;
 
@@ -56,6 +57,22 @@ test('HAWT design point produces sane spanwise root-to-tip blade loads', () => {
     assert.ok(G.rows[i].Mflap <= G.rows[i - 1].Mflap + 1e-9, 'flapwise moment monotonically decreases outboard');
     assert.ok(G.rows[i].Fax <= G.rows[i - 1].Fax + 1e-9, 'axial force monotonically decreases outboard');
   }
+});
+
+test('HAWT design point produces sane spanwise stress/deflection/safety factor', () => {
+  setMode('HAWT');
+  const n = G.rows.length;
+  assert.ok(isFinite(G.loads.tipDefl) && G.loads.tipDefl >= 0, `tip deflection should be a small positive number: ${G.loads.tipDefl}`);
+  assert.ok(G.loads.minSafety > 0 && isFinite(G.loads.minSafety), `minimum safety factor should be positive and finite: ${G.loads.minSafety}`);
+  assert.equal(G.rows[0].defl, 0, 'deflection is fixed (0) at the root');
+  for (let i = 0; i < n; i++) {
+    assert.ok(G.rows[i].stress >= 0, `combined stress must be non-negative at row ${i}`);
+    // the outermost row carries none of its own annulus past its centre (see cumulativeMoment/
+    // cumulativeOutboard), so it can legitimately see 0 stress -> Infinity safety factor there.
+    assert.ok(G.rows[i].safety > 0, `safety factor must be positive at row ${i}`);
+  }
+  assert.ok(isFinite(G.rows[0].safety), 'root safety factor should be a finite number');
+  for (let i = 1; i < n; i++) assert.ok(G.rows[i].defl >= G.rows[i - 1].defl - 1e-9, 'flapwise deflection grows monotonically outboard');
 });
 
 test('VAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () => {

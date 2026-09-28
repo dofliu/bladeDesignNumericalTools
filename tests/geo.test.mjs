@@ -71,3 +71,39 @@ test('sectionProperties: thin shell area is close to perimeter * thickness', () 
   assert.ok(s.Ixx > 0 && s.Iyy > 0, 'positive second moments');
   assert.ok(s.cx > 0.2 * chord && s.cx < 0.6 * chord, 'centroid within chord');
 });
+
+test('sectionProperties: yMax/xMax bound the profile (flatwise/edgewise extreme fibre)', () => {
+  const af = A.naca4('4412'), chord = 1.3, thickness = 0.006;
+  const s = GEO.sectionProperties(af, chord, thickness);
+  const pts = GEO.loop(af);
+  let yb = 0, xb = 0;
+  for (const [x, y] of pts) { yb = Math.max(yb, Math.abs(y * chord - s.cy)); xb = Math.max(xb, Math.abs(x * chord - s.cx)); }
+  near(s.yMax, yb, 1e-9, 'yMax matches the outer-loop extreme fibre');
+  near(s.xMax, xb, 1e-9, 'xMax matches the outer-loop extreme fibre');
+});
+
+test('equivalentThickness: round-trips through sectionProperties area (fill-based wall thickness)', () => {
+  const af = A.naca4('4412'), chord = 0.9, fill = 0.3;
+  const targetArea = fill * A.airfoilArea(af) * chord * chord;
+  const t = GEO.equivalentThickness(af, chord, targetArea);
+  const area = GEO.sectionProperties(af, chord, t).area;
+  near(area, targetArea, 0.01 * targetArea, 'solved thickness reproduces the target area');
+  assert.ok(t > 0 && t < chord, 'thickness within a sane range');
+});
+
+test('beamDeflection: uniform distributed load matches the analytic cantilever (w L^4/8EI)', () => {
+  const L = 3, n = 400, w0 = 50, EI0 = 1200;
+  const rows = Array.from({ length: n }, (_, i) => ({ r: L * i / (n - 1) }));
+  const M = rows.map(row => w0 * (L - row.r) ** 2 / 2), EI = rows.map(() => EI0);
+  const v = GEO.beamDeflection(rows, M, EI);
+  near(v[0], 0, 1e-9, 'root deflection is fixed at 0');
+  near(v[n - 1], w0 * L ** 4 / (8 * EI0), 0.02 * w0 * L ** 4 / (8 * EI0), 'tip deflection');
+});
+
+test('beamDeflection: tip point load matches the analytic cantilever (P L^3/3EI)', () => {
+  const L = 3, n = 400, P = 20, EI0 = 1200;
+  const rows = Array.from({ length: n }, (_, i) => ({ r: L * i / (n - 1) }));
+  const M = rows.map(row => P * (L - row.r)), EI = rows.map(() => EI0);
+  const v = GEO.beamDeflection(rows, M, EI);
+  near(v[n - 1], P * L ** 3 / (3 * EI0), 0.02 * P * L ** 3 / (3 * EI0), 'tip deflection');
+});
