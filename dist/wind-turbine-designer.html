@@ -1561,7 +1561,8 @@ const S = {
   hawt: { R: 1.5, Rhub: 0.15, B: 3, tsr: 7, Vd: 8, aMode: 'auto', aDes: 5, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChord: 0.12, pitch: 0, material: 'gfrp', ov: {}, twMode: 'bem', twRoot: 20, twTip: 0 },
   vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
-  load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true },
+  load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true,
+    cutOut: false, vCutOut: 20, vRestart: 15 },
   perf: { Vavg: 5.5 }
 };
 
@@ -1900,7 +1901,7 @@ function frictionT(omega) {
 }
 
 /* ---------- simulation ---------- */
-const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, D: 0.5, brake: false, latch: false,
+const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, D: 0.5, brake: false, latch: false, cutout: false,
   po: { acc: 0, cnt: 0, tim: 0, last: 0, dir: 1, wref: -1 }, out: {}, hist: { t: [], V: [], rpm: [], Pa: [], Po: [], D: [], lam: [], cp: [] }, histT: 0, traj: [] };
 function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 // converter with inner current control: find the duty that gives generator current Iref (inverse of electrical())
@@ -1964,7 +1965,12 @@ function simStep(dt) {
   if (SIM.out && SIM.out.el) SIM.pAvg = (SIM.pAvg || 0) + (SIM.out.el.Pout - (SIM.pAvg || 0)) * Math.min(1, dt / 3);
   if (L.ospd && (SIM.omega > wmax || (SIM.out && SIM.out.el && (SIM.out.el.Pout > 1.6 * L.Pmax || SIM.pAvg > 1.2 * L.Pmax)))) { if (!SIM.latch) SIM.trips = (SIM.trips || 0) + 1; SIM.latch = true; }
   if (SIM.latch && SIM.omega < 0.55 * wmax) SIM.latch = false;
-  const brake = SIM.brake || SIM.latch;
+  // cut-out: shut down once the (1 s low-pass) mean wind stays above vCutOut, restart only below vRestart
+  // (hysteresis keeps a gust from cycling the brake on and off near the threshold)
+  if (!L.cutOut) SIM.cutout = false;
+  else if (!SIM.cutout && SIM.Vmeas > L.vCutOut) { SIM.cutout = true; SIM.cutouts = (SIM.cutouts || 0) + 1; }
+  else if (SIM.cutout && SIM.Vmeas < L.vRestart) SIM.cutout = false;
+  const brake = SIM.brake || SIM.latch || SIM.cutout;
   const el = electrical(SIM.omega, SIM.D, brake);
   const Tf = frictionT(SIM.omega);
   const Tmb = brake ? 1.5 * (G.Prated || 100) / (G.wRated || 20) : 0;
@@ -2183,6 +2189,9 @@ function paneLoad() {
     `<p class="note">${{ po: '每個週期擾動轉速參考值(內迴路以占空比追蹤轉速),若平均輸出功率下降就反向;不需風速計與轉子特性,但穩態會在最大功率點附近振盪,擾動週期須長於轉子的機械時間常數,紊流大時也容易誤判方向。', tsr: '量測風速後令 ω* = λ<sub>opt</sub>V/R,以 PI 調整占空比追蹤;反應快,但依賴風速計精度。', ot: '依 Cp<sub>max</sub> 與 λ<sub>opt</sub> 算出 k<sub>opt</sub>,令發電機轉矩追蹤 kω²;不需風速計,穩定但依賴轉子模型正確。', manual: '不做追蹤,直接以固定等效負載運轉,可比較 MPPT 的增益。' }[L.ctrl]}</p>`);
   h += grp('保護', chk('load.ospd', '超速保護(超過上限自動煞車)', { kind: 'live' }) + rng('load.wmaxRpm', '轉速上限', 10, 3000, 5, 'rpm', { kind: 'live' }) + rng('load.Pmax', '發電機額定功率', 10, 50000, 10, 'W', { kind: 'live' }) +
     `<p class="note">轉速超過上限或輸出功率超過額定 125% 時啟動保護煞車,待轉速降到上限的 55% 才解除。</p>` +
+    chk('load.cutOut', '啟用切出風速停機(側偏收尾/停機保護的簡化模型)', { kind: 'pane' }) +
+    (L.cutOut ? rng('load.vCutOut', '切出風速', 5, 40, 0.5, 'm/s', { kind: 'live' }) + rng('load.vRestart', '重啟風速', 3, Math.max(3, L.vCutOut - 0.5), 0.5, 'm/s', { kind: 'live' }) +
+      `<p class="note">1 秒低通平均風速超過切出風速即煞車停機,待風速降到重啟風速以下才恢復運轉(遲滯避免陣風造成反覆停機/重啟)。</p>` : '') +
     `<div class="btns"><button class="btn warn" id="brakeBtn">${SIM.brake ? '放開煞車' : '煞車(短路 + 機械)'}</button></div>`);
   h += grp('電氣即時值', `<div class="kv" id="elecKv"></div>`);
   return h;
@@ -2254,8 +2263,8 @@ function bindPane(p) {
     S.af.st.splice(+b.dataset.stdel, 1); S.af.view = Math.min(+S.af.view || 0, S.af.st.length - 1); renderPane(); scheduleRebuild(true);
   }));
   on('gustBtn', () => { SIM.gustT = 0; toast('陣風來了'); });
-  on('resetSim', () => { SIM.tEst = null; SIM.wcap = -1; SIM.Di = null; SIM.omega = 0; SIM.D = S.load.D; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; });
-  on('spinUp', () => { SIM.omega = G.lopt * S.tun.V / G.R; SIM.latch = false; });
+  on('resetSim', () => { SIM.tEst = null; SIM.wcap = -1; SIM.Di = null; SIM.omega = 0; SIM.D = S.load.D; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; });
+  on('spinUp', () => { SIM.omega = G.lopt * S.tun.V / G.R; SIM.latch = false; SIM.cutout = false; });
   on('matchBtn', () => { autoMatchGen(); renderPane(); toast('已依設計點重新匹配發電機'); });
   on('brakeBtn', e => { SIM.brake = !SIM.brake; e.target.textContent = SIM.brake ? '放開煞車' : '煞車(短路 + 機械)'; });
 }
@@ -2346,7 +2355,7 @@ let rbTimer = null, rbGeo = false, pendingStart = false;
 function assistStart() {
   const darrieus = S.mode === 'VAWT' && S.vawt.type !== 'sav';
   SIM.omega = G.lopt * S.tun.V / G.R * (darrieus ? 0.8 : 0.3);
-  SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.po.wref = -1; SIM.latch = false;
+  SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false;
 }
 function scheduleRebuild(geo) { rbGeo = rbGeo || geo; clearTimeout(rbTimer); rbTimer = setTimeout(() => { const g = rbGeo; rbGeo = false; rebuild(g); }, 140); }
 function rebuild(geo) {
@@ -2716,7 +2725,7 @@ function hud() {
   el.children[2].querySelector('b').classList.toggle('alarm', o.brake);
   const ek = $('#elecKv');
   if (ek) kv(ek, [['反電勢 E', fmt(o.el.E, 1) + ' V'], ['轉換器輸入電壓', fmt(o.el.Vin, 1) + ' V'], ['電流 I', fmt(o.el.I, 2) + ' A'], ['等效負載 Rin', isFinite(o.el.Rin) ? fmt(o.el.Rin, 2) + ' Ω' : '開路'],
-    ['發電機損失', fmtP(o.el.Ploss)], ['系統效率', o.Pa > 1 ? fmt(o.el.Pout / o.Pa * 100, 1) + '%' : '–'], ['狀態', o.brake ? (SIM.latch ? '超速保護煞車中' : '手動煞車') : SIM.omega < 0.01 ? '靜止' : '發電中']]);
+    ['發電機損失', fmtP(o.el.Ploss)], ['系統效率', o.Pa > 1 ? fmt(o.el.Pout / o.Pa * 100, 1) + '%' : '–'], ['狀態', o.brake ? (SIM.latch ? '超速保護煞車中' : SIM.cutout ? '切出風速停機中' : '手動煞車') : SIM.omega < 0.01 ? '靜止' : '發電中']]);
 }
 
 /* ---------- export ---------- */
@@ -2831,7 +2840,7 @@ function afterDesignChange() { // called after rebuild so other workspaces stay 
 function setMode(m) {
   S.mode = m;
   $('#mHAWT').setAttribute('aria-pressed', m === 'HAWT'); $('#mVAWT').setAttribute('aria-pressed', m === 'VAWT');
-  SIM.omega = 0; SIM.D = 0.5; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; opElems = null;
+  SIM.omega = 0; SIM.D = 0.5; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; opElems = null;
   $('#hud').innerHTML = '';
   if (m === 'VAWT' && S.af.view !== 'vawt') S.af.view = 'vawt'; if (m === 'HAWT' && S.af.view === 'vawt') S.af.view = S.af.st.length - 1;
   renderPane(); rebuild(true); chartOpts();
@@ -3626,7 +3635,7 @@ const Report = (function () {
       const c = Math.max(1, acc.cnt);
       return { Pa: acc.Pa / c, Po: acc.Po / c, Pw: acc.Pw / c, rpm: acc.rpm / c, lam: acc.lam / c, D: acc.D / c, std: Math.sqrt(Math.max(0, acc.P2 / c - (acc.Po / c) ** 2)), rpmMax: acc.rpmMax, PoMax: acc.PoMax, latch: acc.latch, trips: (SIM.trips || 0) - trips0, ser };
     }
-    const reset = (V, lamFrac) => { S.tun.V = V; SIM.Vmeas = V; SIM.omega = G.lopt * V / R * lamFrac; SIM.gust = 0; SIM.gustT = -1; SIM.n = 0; SIM.latch = false; SIM.brake = false; SIM.po.wref = -1; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.D = 0.5; SIM.yaw = S.tun.dir; };
+    const reset = (V, lamFrac) => { S.tun.V = V; SIM.Vmeas = V; SIM.omega = G.lopt * V / R * lamFrac; SIM.gust = 0; SIM.gustT = -1; SIM.n = 0; SIM.latch = false; SIM.cutout = false; SIM.brake = false; SIM.po.wref = -1; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.D = 0.5; SIM.yaw = S.tun.dir; };
     try {
       S.tun.TI = 0; S.tun.dir = 0; S.tun.yawMode = 'auto';
       const dur = H ? 30 : 48, avg = H ? 16 : 30;
@@ -3681,7 +3690,7 @@ const Report = (function () {
       const tr = mid.length ? mid.reduce((s, c) => s + c.Po / c.ideal, 0) / mid.length : null;
       if (tr != null) out.push(tr > 0.92 ? `6–10 m/s 區間實測輸出達理想 MPPT 的 ${(tr * 100).toFixed(0)}%,追蹤效果良好。` : `6–10 m/s 區間實測輸出只有理想 MPPT 的 ${(tr * 100).toFixed(0)}%;可嘗試最佳尖速比/最佳轉矩控制,或調整 P&O 擾動步長與週期。`);
       const trip = t.curve.find(c => c.trips > 0);
-      if (trip) out.push(`風速 ${trip.V} m/s 以上,轉子氣動功率超過發電機額定(${fmtP(S.load.Pmax)}),定槳距轉子即使降轉速進入失速仍無法把功率壓在額定內,多次觸發過速/過功率保護。實務上需要加入側偏收尾(furling)、變槳機構,或設定切出風速後停機;若場址常有高風速,也可加大發電機額定。`);
+      if (trip) out.push(`風速 ${trip.V} m/s 以上,轉子氣動功率超過發電機額定(${fmtP(S.load.Pmax)}),定槳距轉子即使降轉速進入失速仍無法把功率壓在額定內,多次觸發過速/過功率保護。${S.load.cutOut ? `目前已啟用切出風速停機(${fmt(S.load.vCutOut, 1)} m/s),可避免在額定風速以上反覆觸發保護,但測試風速範圍(至 15 m/s)未涵蓋切出風速,仍建議依實際場址風況調整切出/重啟風速。` : '可在「負載→保護」啟用切出風速停機來避免反覆觸發,或加入側偏收尾(furling)、變槳機構;若場址常有高風速,也可加大發電機額定。'}`);
       else out.push(`測試風速範圍(至 15 m/s)內未觸發保護,發電機額定 ${fmtP(S.load.Pmax)} 足以涵蓋此轉子。`);
       const cutin = t.curve.find(c => c.Po > 5); if (cutin) out.push(`實測切入風速約 ${cutin.V} m/s(輸出 > 5 W)。`);
       const fail = t.start.filter(s => s.tReach == null); if (fail.length) out.push(`啟動測試中 ${fail.map(s => s.V + ' m/s').join('、')} 無法在 60 秒內自行起轉到 λopt 的一半,需要馬達輔助啟動、增加實度或改用混合 Savonius 啟動器。`);
@@ -3707,6 +3716,7 @@ const Report = (function () {
     const cond = H ? [['型式', `水平軸,${Math.round(S.hawt.B)} 葉`], ['轉子半徑 / 輪轂半徑', `${fmt(S.hawt.R, 2)} m / ${fmt(G.Rhub, 3)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['設計風速 / 設計尖速比', `${fmt(S.hawt.Vd, 1)} m/s / ${fmt(S.hawt.tsr, 1)}`], ['扭角設計方式', { bem: 'BEM 數值最佳化', opt: 'Schmitz 解析解', linear: `線性 ${fmt(S.hawt.twRoot, 1)}° → ${fmt(S.hawt.twTip, 1)}°` }[S.hawt.twMode]], ['槳距角', fmt(S.hawt.pitch, 1) + '°'], ['材料 / 單葉質量', `${MATERIALS[S.hawt.material].name} / ${fmt(G.bladeMass, 2)} kg`]]
       : [['型式', VAWT_TYPES[S.vawt.type]], ['葉片數', Math.round(S.vawt.B)], ['半徑 / 高度', `${fmt(S.vawt.R, 2)} m / ${fmt(S.vawt.H, 2)} m`], ...(sav ? [['重疊比', fmt(S.vawt.overlap, 2)]] : [['弦長 / 翼型', `${fmt(S.vawt.c * 1000, 0)} mm / ${afLabel(S.af.vawt)}`], ['實度 Bc/R', fmt(S.vawt.B * S.vawt.c / S.vawt.R, 3)]]), ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']];
     cond.push(['空氣條件', `${fmt(S.tun.T, 0)} °C,海拔 ${fmt(S.tun.alt, 0)} m,ρ = ${fmt(rho, 3)} kg/m³`], ['負載', S.load.kind === 'bat' ? `電池充電 ${S.load.Vbat} V(升降壓轉換器)` : `電阻負載 ${fmt(S.load.RL, 1)} Ω`], ['MPPT 控制', { po: '擾動觀察法 P&O', tsr: '最佳尖速比控制', ot: '最佳轉矩控制', manual: '固定占空比' }[S.load.ctrl]], ['發電機', `ke ${fmt(S.load.ke, 3)} V·s/rad,Rs ${fmt(S.load.Rs, 3)} Ω,額定 ${fmtP(S.load.Pmax)},轉速上限 ${S.load.wmaxRpm} rpm`]);
+    if (S.load.cutOut) cond.push(['切出/重啟風速', `${fmt(S.load.vCutOut, 1)} m/s / ${fmt(S.load.vRestart, 1)} m/s(1 秒低通平均風速,含遲滯)`]);
     h += `<table class="kvt">${cond.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>`;
     // 2 airfoils
     if (!sav) {
