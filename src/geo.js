@@ -179,7 +179,42 @@ const GEO = (function () {
       Ixx: outer.Ixx - inner.Ixx, Iyy: outer.Iyy - inner.Iyy, Ixy: outer.Ixy - inner.Ixy,
     };
     const c = aboutCentroid(combined);
-    return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
+    // outer-profile bounding extents (from the centroid), for extreme-fibre bending stress
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const yTop = (Math.max(...ys) - c.cy) * chord, yBot = (Math.min(...ys) - c.cy) * chord;
+    const xTop = (Math.max(...xs) - c.cx) * chord, xBot = (Math.min(...xs) - c.cx) * chord;
+    return {
+      area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord,
+      Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4,
+      yTop, yBot, xTop, xBot,
+    };
+  }
+  // Cantilever-beam response of one blade under distributed spanwise loads: rows [{r, dr}]
+  // (root -> tip, row 0 treated as the clamped root), secs [{Ixx, Iyy, area}] from
+  // sectionProperties at each row, load [{qN, qT}] the aerodynamic force per unit span (N/m, one
+  // blade; qN out-of-plane/flapwise, qT in-plane/edgewise), material Young's modulus E (Pa),
+  // density rhoMat (kg/m^3) and rotor speed omega (rad/s) for the centrifugal axial force.
+  // Loads are lumped at each row like the BEM annuli they came from (Fi = q_i * dr_i); bending
+  // moment at a row is the sum of the outboard lumped loads about it, and slope/deflection follow
+  // from two trapezoidal integrations of curvature M/(E*I) starting from the clamped root.
+  // Ignores gravity, presweep/precone and any elastic coupling between flap and edge directions.
+  function beamResponse(rows, secs, E, load, rhoMat, omega) {
+    const n = rows.length;
+    const Fn = rows.map((r, i) => load[i].qN * r.dr);
+    const Ft = rows.map((r, i) => load[i].qT * r.dr);
+    const Fc = rows.map((r, i) => rhoMat * secs[i].area * r.dr * omega * omega * r.r);
+    const Mflap = new Array(n), Medge = new Array(n), Naxial = new Array(n);
+    for (let i = 0; i < n; i++) {
+      let mf = 0, me = 0, na = 0;
+      for (let j = i; j < n; j++) { const arm = rows[j].r - rows[i].r; mf += Fn[j] * arm; me += Ft[j] * arm; na += Fc[j]; }
+      Mflap[i] = mf; Medge[i] = me; Naxial[i] = na;
+    }
+    const kappaF = Mflap.map((m, i) => m / (E * secs[i].Ixx));
+    const kappaE = Medge.map((m, i) => m / (E * secs[i].Iyy));
+    const integrate = f => { const out = new Array(n); out[0] = 0; for (let i = 1; i < n; i++) out[i] = out[i - 1] + 0.5 * (f[i - 1] + f[i]) * (rows[i].r - rows[i - 1].r); return out; };
+    const thetaF = integrate(kappaF), defFlap = integrate(thetaF);
+    const thetaE = integrate(kappaE), defEdge = integrate(thetaE);
+    return { Mflap, Medge, Naxial, defFlap, defEdge, tipFlap: defFlap[n - 1], tipEdge: defEdge[n - 1] };
   }
 
   // store-only ZIP
@@ -207,6 +242,6 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties, beamResponse };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;

@@ -7,12 +7,18 @@
 (function (root) {
 'use strict';
 const A = AERO;
+const GG = GEO;
+// E: Young's modulus (Pa), sigmaAllow: allowable stress incl. safety factor (Pa), tRatio: shell
+// wall thickness as a fraction of local chord fed to GEO.sectionProperties (>=~0.3 collapses to a
+// solid section for a normal airfoil t/c, used here as a stand-in for "solid/near-solid" materials
+// since sectionProperties has no separate solid code path). Placeholder engineering figures, not
+// per-material test data; a later step should let these vary per span station.
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, sigmaAllow: 100e6, tRatio: 0.012 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 10e9, sigmaAllow: 40e6, tRatio: 0.5 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, sigmaAllow: 110e6, tRatio: 0.015 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, sigmaAllow: 25e6, tRatio: 0.5 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, sigmaAllow: 300e6, tRatio: 0.012 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -192,6 +198,32 @@ function designHAWT() {
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  computeBladeStructure(omD);
+}
+// First-cut structural loads for one blade at the BEM design operating point: per-station shell
+// section properties (GEO.sectionProperties, thickness = mat.tRatio * local chord), aerodynamic
+// flap/edge distributed loads read off G.desElems (the same BEM solution used to set the design
+// twist), and the resulting root-to-tip bending-moment / stress / deflection distribution from
+// GEO.beamResponse (cantilever, centrifugal axial force from omega at the design tip-speed ratio).
+// Only covers the steady design point (no extreme-wind/parked case yet) and HAWT only; stored in
+// G.struct for later UI/report use, nothing reads it yet.
+function computeBladeStructure(omega) {
+  const h = S.hawt, mat = MATERIALS[h.material], rows = G.rows, afs = G.afs, elems = G.desElems;
+  if (!elems || elems.length !== rows.length) { G.struct = null; return; }
+  const secs = rows.map((x, i) => GG.sectionProperties(afs[i], x.c, mat.tRatio * x.c));
+  const load = rows.map((x, i) => {
+    const e = elems[i], phi = e.phi * A.D2R, q = 0.5 * air().rho * e.W * e.W * x.c;
+    return { qN: q * (e.cl * Math.cos(phi) + e.cd * Math.sin(phi)), qT: q * (e.cl * Math.sin(phi) - e.cd * Math.cos(phi)) };
+  });
+  const beam = GG.beamResponse(rows, secs, mat.E, load, mat.rho, omega);
+  let sigmaMax = 0;
+  const sigma = rows.map((x, i) => {
+    const s = secs[i], yE = Math.max(Math.abs(s.yTop), Math.abs(s.yBot)), xE = Math.max(Math.abs(s.xTop), Math.abs(s.xBot));
+    const v = Math.abs(beam.Mflap[i]) * yE / s.Ixx + Math.abs(beam.Medge[i]) * xE / s.Iyy + Math.abs(beam.Naxial[i]) / s.area;
+    sigmaMax = Math.max(sigmaMax, v);
+    return v;
+  });
+  G.struct = { secs, load, sigma, sigmaMax, sigmaAllow: mat.sigmaAllow, marginMin: mat.sigmaAllow / Math.max(sigmaMax, 1), ...beam };
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
@@ -489,6 +521,6 @@ function steadyPower(V) {
 
 const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
   stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower };
+  simStep, recordHist, steadyPower, computeBladeStructure };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
 })(this);

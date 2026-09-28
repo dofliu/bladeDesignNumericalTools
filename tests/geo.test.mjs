@@ -71,3 +71,32 @@ test('sectionProperties: thin shell area is close to perimeter * thickness', () 
   assert.ok(s.Ixx > 0 && s.Iyy > 0, 'positive second moments');
   assert.ok(s.cx > 0.2 * chord && s.cx < 0.6 * chord, 'centroid within chord');
 });
+
+test('beamResponse: uniform cantilever under constant distributed load matches the closed-form solution', () => {
+  // Constant EI, constant load per length w over length L: classic cantilever results are
+  // M(root) = w*L^2/2 and tip deflection = w*L^4/(8*EI). Use many equal-width stations so the
+  // discrete lumped-load / trapezoidal-integration scheme converges to the continuous beam.
+  const n = 400, L = 3, dr = L / n, w = 12, E = 20e9, Ixx = 4e-6;
+  const rows = [], secs = [], load = [];
+  for (let i = 0; i < n; i++) {
+    rows.push({ r: (i + 0.5) * dr, dr });
+    secs.push({ Ixx, Iyy: Ixx, area: 1e-3 });
+    load.push({ qN: w, qT: 0 });
+  }
+  const beam = GEO.beamResponse(rows, secs, E, load, 0, 0);
+  const Mroot = w * L * L / 2, tipRef = w * Math.pow(L, 4) / (8 * E * Ixx);
+  near(beam.Mflap[0], Mroot, 0.01 * Mroot, 'root bending moment');
+  near(beam.tipFlap, tipRef, 0.02 * tipRef, 'tip deflection');
+  near(beam.Naxial[0], 0, 1e-9, 'no centrifugal force at omega=0');
+});
+
+test('beamResponse: centrifugal axial force at the root matches the analytic rotating-rod tension', () => {
+  // Constant linear mass mu over [0,L] spun at omega: axial force at the root of a rotating
+  // cantilever rod is N(0) = mu*omega^2*L^2/2 (no aerodynamic loads here).
+  const n = 300, L = 1.5, dr = L / n, area = 2e-3, rhoMat = 1800, omega = 40;
+  const rows = [], secs = [], load = [];
+  for (let i = 0; i < n; i++) { rows.push({ r: (i + 0.5) * dr, dr }); secs.push({ Ixx: 1e-6, Iyy: 1e-6, area }); load.push({ qN: 0, qT: 0 }); }
+  const beam = GEO.beamResponse(rows, secs, 20e9, load, rhoMat, omega);
+  const mu = rhoMat * area, Nroot = mu * omega * omega * L * L / 2;
+  near(beam.Naxial[0], Nroot, 0.01 * Nroot, 'root centrifugal axial force');
+});

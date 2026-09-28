@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 global.AERO = require('../src/aero.js');
+global.GEO = require('../src/geo.js');
 const core = require('../src/core.js');
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep } = core;
 
@@ -50,4 +51,15 @@ test('VAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () =>
       assert.ok(track >= 0.9, `VAWT ${ctrl} ${V} m/s tracking ${(track * 100).toFixed(1)}%`);
     }
   }
+});
+
+test('computeBladeStructure: default 3-blade R1.5 HAWT design gives a sane root-to-tip structural picture', () => {
+  setMode('HAWT');
+  const st = G.struct;
+  assert.ok(st, 'G.struct populated after designHAWT');
+  assert.equal(st.secs.length, G.rows.length);
+  assert.ok(st.secs.every(s => s.Ixx > 0 && s.Iyy > 0 && s.area > 0), 'positive section properties along span');
+  assert.ok(Math.abs(st.Mflap[0]) > 0, 'nonzero root flapwise bending moment');
+  assert.ok(st.tipFlap >= 0 && st.tipFlap < 0.5 * G.R, `tip flap deflection ${st.tipFlap.toFixed(4)} m should be small and positive vs. radius ${G.R} m`);
+  assert.ok(st.sigmaMax > 0 && st.sigmaMax < 1e9, `sigmaMax ${(st.sigmaMax / 1e6).toFixed(1)} MPa should be a physically plausible stress`);
 });
