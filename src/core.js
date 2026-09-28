@@ -7,12 +7,15 @@
 (function (root) {
 'use strict';
 const A = AERO;
+// E: Young's modulus (Pa), sigma: allowable bending stress incl. safety factor (Pa). Typical
+// handbook order-of-magnitude values for a small-turbine blade, not tied to a specific standard —
+// see docs/ROADMAP.md item 3 for what "structural" currently does and doesn't account for.
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, sigma: 150e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, sigma: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, sigma: 110e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, sigma: 15e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, sigma: 400e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -192,6 +195,52 @@ function designHAWT() {
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+}
+// Spanwise structural estimate at the HAWT design point: flapwise/edgewise bending moment and
+// tip deflection (Euler-Bernoulli, thin-shell section, cantilevered at the hub) and centrifugal
+// axial force, from the design-point BEM elements (G.desElems) already computed by designHAWT().
+// Known limitations (see docs/ROADMAP.md item 3): design point only (no extreme-wind/parked
+// case), no spar caps (bare aerofoil shell so flapwise stiffness is likely understated), no
+// fatigue, VAWT not covered yet.
+function bladeStructural() {
+  if (S.mode !== 'HAWT' || !G.desElems || !G.rows) return null;
+  const rows = G.rows, afs = G.afs, n = rows.length, R = G.R, Rhub = G.Rhub;
+  const mat = MATERIALS[S.hawt.material], rho = air().rho;
+  const omega = S.hawt.tsr * S.hawt.Vd / R;
+  const Fn = new Array(n), Ft = new Array(n), Fc = new Array(n);
+  const area = new Array(n), Ixx = new Array(n), Iyy = new Array(n), t = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const el = G.desElems[i], row = rows[i], phi = el.phi * A.D2R;
+    const cn = el.cl * Math.cos(phi) + el.cd * Math.sin(phi), ct = el.cl * Math.sin(phi) - el.cd * Math.cos(phi);
+    const q = 0.5 * rho * el.W * el.W * row.c; // N/m, per blade
+    Fn[i] = q * cn * row.dr; Ft[i] = q * ct * row.dr; // point loads (N) at row.r
+    const targetArea = mat.fill * A.airfoilArea(afs[i]) * row.c * row.c; // consistent with the mass model above
+    t[i] = GEO.solveThicknessForArea(afs[i], row.c, targetArea);
+    const sp = GEO.sectionProperties(afs[i], row.c, t[i]);
+    area[i] = sp.area; Ixx[i] = sp.Ixx; Iyy[i] = sp.Iyy;
+    Fc[i] = mat.rho * area[i] * row.dr * omega * omega * row.r;
+  }
+  const Mflap = rows.map((x, i) => GEO.momentAt(rows, Fn, x.r));
+  const Medge = rows.map((x, i) => GEO.momentAt(rows, Ft, x.r));
+  const Naxial = rows.map((x, i) => GEO.sumAt(rows, Fc, x.r));
+  const MflapRoot = GEO.momentAt(rows, Fn, Rhub), MedgeRoot = GEO.momentAt(rows, Ft, Rhub), NaxialRoot = GEO.sumAt(rows, Fc, Rhub);
+  const EI = Ixx.map(v => mat.E * v);
+  const stations = [{ r: Rhub, M: MflapRoot, EI: EI[0] }, ...rows.map((x, i) => ({ r: x.r, M: Mflap[i], EI: EI[i] }))];
+  const { y: yFlap } = GEO.beamDeflection(stations);
+  const sectionExtreme = rows.map((x, i) => {
+    const sp = GEO.sectionProperties(afs[i], x.c, t[i]);
+    return Math.max(sp.yTop, sp.yBot);
+  });
+  const sigmaMax = rows.map((x, i) => Naxial[i] / area[i] + Math.abs(Mflap[i]) * sectionExtreme[i] / Ixx[i]);
+  return {
+    rows: rows.map((x, i) => ({
+      r: x.r, thickness: t[i], area: area[i], Ixx: Ixx[i], Iyy: Iyy[i],
+      Mflap: Mflap[i], Medge: Medge[i], Naxial: Naxial[i], sigma: sigmaMax[i], yFlap: yFlap[i + 1],
+    })),
+    root: { Mflap: MflapRoot, Medge: MedgeRoot, Naxial: NaxialRoot },
+    tipDeflection: yFlap[yFlap.length - 1],
+    sigmaAllow: mat.sigma, material: S.hawt.material,
+  };
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
@@ -489,6 +538,6 @@ function steadyPower(V) {
 
 const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
   stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower };
+  simStep, recordHist, steadyPower, bladeStructural };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
 })(this);

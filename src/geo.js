@@ -179,7 +179,59 @@ const GEO = (function () {
       Ixx: outer.Ixx - inner.Ixx, Iyy: outer.Iyy - inner.Iyy, Ixy: outer.Ixy - inner.Ixy,
     };
     const c = aboutCentroid(combined);
-    return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
+    // extreme-fibre distances from the centroid to the OUTER surface (governs bending stress
+    // whether the section is a shell or solid): x = chordwise (LE/TE), y = thickness-wise.
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (const [x, y] of pts) { if (x < xMin) xMin = x; if (x > xMax) xMax = x; if (y < yMin) yMin = y; if (y > yMax) yMax = y; }
+    return {
+      area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord,
+      Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4,
+      xLE: (c.cx - xMin) * chord, xTE: (xMax - c.cx) * chord, yTop: (yMax - c.cy) * chord, yBot: (c.cy - yMin) * chord,
+    };
+  }
+  // Bisect the shell thickness so sectionProperties(af,chord,t).area matches targetArea (m^2),
+  // e.g. to make a structural shell consistent with a mass model expressed as a fill fraction of
+  // the solid section (see core.js MATERIALS). area(t) increases monotonically from 0 (t=0) up to
+  // the solid area (t large enough to consume the whole profile). Falls back to a solid section
+  // (t = chord) if targetArea is at or beyond that solid area.
+  function solveThicknessForArea(af, chord, targetArea) {
+    const solidArea = sectionProperties(af, chord, chord).area;
+    if (targetArea >= solidArea) return chord;
+    let lo = 0, hi = chord; // area(lo)=0 <= targetArea <= area(hi)=solidArea
+    for (let it = 0; it < 40; it++) {
+      const mid = 0.5 * (lo + hi);
+      if (sectionProperties(af, chord, mid).area < targetArea) lo = mid; else hi = mid;
+    }
+    return 0.5 * (lo + hi);
+  }
+  /* ---------- Spanwise beam mechanics (cantilever, fixed at the hub/root) ----------
+   * Blade loads are supplied as point loads F[i] (Newtons) acting at each row's radius rows[i].r
+   * — the aerodynamic/centrifugal force integrated over that row's annulus width rows[i].dr — not
+   * as a continuous distributed load, consistent with how the BEM elements themselves are already
+   * per-annulus totals (see core.js bladeStructural). rows: [{r, dr}], root -> tip order. */
+  function sumAt(rows, F, r0) { // sum of F[i] for every row outboard of (>=) radius r0
+    let s = 0;
+    for (let i = 0; i < rows.length; i++) if (rows[i].r >= r0) s += F[i];
+    return s;
+  }
+  function momentAt(rows, F, r0) { // internal bending moment a cut at radius r0 must resist, from all point loads outboard of it
+    let s1 = 0, s2 = 0;
+    for (let i = 0; i < rows.length; i++) if (rows[i].r >= r0) { s1 += F[i]; s2 += F[i] * rows[i].r; }
+    return s2 - r0 * s1;
+  }
+  // Euler-Bernoulli deflection by trapezoidal double integration of curvature M/EI, cantilevered
+  // (y=0, slope=0) at stations[0]. stations: [{r, M, EI}, ...] sorted root -> tip (include a
+  // station AT the fixed root, e.g. {r: Rhub, M: momentAt(rows,F,Rhub), EI: EI of the nearest row}).
+  // Returns {theta, y} arrays parallel to `stations`.
+  function beamDeflection(stations) {
+    const n = stations.length, theta = new Array(n).fill(0), y = new Array(n).fill(0);
+    for (let i = 1; i < n; i++) {
+      const dr = stations[i].r - stations[i - 1].r;
+      const k0 = stations[i - 1].M / stations[i - 1].EI, k1 = stations[i].M / stations[i].EI;
+      theta[i] = theta[i - 1] + 0.5 * (k0 + k1) * dr;
+      y[i] = y[i - 1] + 0.5 * (theta[i - 1] + theta[i]) * dr;
+    }
+    return { theta, y };
   }
 
   // store-only ZIP
@@ -207,6 +259,9 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return {
+    loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties,
+    solveThicknessForArea, sumAt, momentAt, beamDeflection,
+  };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;

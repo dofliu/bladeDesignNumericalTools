@@ -23,7 +23,8 @@
 ## 3. 葉片結構分析
 
 - [x] 截面性質:依翼型外形 + 殼厚計算面積、慣性矩、形心(多邊形積分)。`geo.js` 新增 `polygonMoments`(封閉多邊形面積/一次矩/二次矩,對原點,供組合截面先相加再一次移軸)、`offsetPolygon`(等厚度向內偏移,做薄殼內壁)、`sectionProperties(af, chord, thickness)`(回傳實際單位的面積/形心/Ixx/Iyy/Ixy)。`tests/geo.test.mjs` 以正方形、正多邊形近似圓、圓環解析解與 NACA 0012 實心截面積文獻常數(≈0.6851×t/c)驗證。
-- [ ] 載重:由 BEM 的 dT/dr、dQ/dr 加離心力,算根部彎矩、各截面應力、葉尖撓度;極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況。需要材料參數(E、密度、容許應力)與殼厚沿展長分布,目前 `sectionProperties` 只吃單一厚度,之後要接上每個 `G.rows` 截面各自的厚度/材料設定。
+- [x] 載重(設計點,HAWT):`core.js` 新增 `bladeStructural()`,由 `designHAWT()` 已算好的設計點 BEM 元素(`G.desElems` 的 cl/cd/phi/W)重建每一截面的片向(flapwise,推力方向)與弦向(edgewise,扭矩方向)分布力,加上以既有質量模型(材料密度 × 填充率)反推等效殼厚(`geo.js` 新增 `solveThicknessForArea`,對 `sectionProperties` 面積二分求解,和 `designHAWT` 的質量/慣量計算保持一致)算出的離心拉力分布;`geo.js` 新增懸臂梁彎矩/軸力(`momentAt`、`sumAt`)與 Euler-Bernoulli 撓度(`beamDeflection`,對曲率 M/EI 梯形法雙重積分)。`MATERIALS`(`core.js`)補上楊氏係數 `E` 與容許應力 `sigma`(五種材料的工程手冊量級預設值,非特定標準文獻值)。`tests/geo.test.mjs` 以懸臂梁尖端點載重(PL³/3EI)與均佈載重(wL⁴/8EI)解析解驗證彎矩/撓度積分,`solveThicknessForArea` 以自訂目標面積驗證;`tests/core.test.mjs` 對參考轉子(3 葉 R1.5 m λd 7)驗證 `bladeStructural()` 輸出的正負號、截面性質為正、彎矩沿展長遞減、根部軸力等於全葉片離心力總和。
+  - 已知限制,下一次可接續:(a) 只算設計點單一風速/尖速比,未含 IEC 停機/極端陣風工況;(b) 只支援 HAWT(VAWT 目前回傳 `null`);(c) 純翼型薄殼,沒有翼樑帽(spar cap),片向剛度(Ixx)可能被低估;(d) 未做疲勞;(e) 尚未接 UI(單葉片工作區的「結構」卡片)或報告——這些留給 ROADMAP 3 後續子項。
 - [ ] 疲勞:以紊流測試時間序列做雨流計數,估計根部疲勞壽命(可先簡化)。
 - [ ] 單葉片工作區新增「結構」卡片(面積/Ixx/Iyy 沿展長圖 + 之後的應力/撓度);報告新增一節。
 - 驗收(需上面全部完成):與懸臂梁解析解比對撓度;材料安全係數低於門檻時給出警告。
