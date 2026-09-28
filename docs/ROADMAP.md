@@ -23,7 +23,9 @@
 ## 3. 葉片結構分析
 
 - [x] 截面性質:依翼型外形 + 殼厚計算面積、慣性矩、形心(多邊形積分)。`geo.js` 新增 `polygonMoments`(封閉多邊形面積/一次矩/二次矩,對原點,供組合截面先相加再一次移軸)、`offsetPolygon`(等厚度向內偏移,做薄殼內壁)、`sectionProperties(af, chord, thickness)`(回傳實際單位的面積/形心/Ixx/Iyy/Ixy)。`tests/geo.test.mjs` 以正方形、正多邊形近似圓、圓環解析解與 NACA 0012 實心截面積文獻常數(≈0.6851×t/c)驗證。
-- [ ] 載重:由 BEM 的 dT/dr、dQ/dr 加離心力,算根部彎矩、各截面應力、葉尖撓度;極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況。需要材料參數(E、密度、容許應力)與殼厚沿展長分布,目前 `sectionProperties` 只吃單一厚度,之後要接上每個 `G.rows` 截面各自的厚度/材料設定。
+- [x] 載重(第一版,設計點單一工況):`geo.js` 新增 `beamBending(r, dr, w, EI, r0)`,懸臂梁分布載重的剪力/彎矩(逐站對外側點載重求和,對線性彎矩臂精確)與曲率二次積分求斜率/撓度(梯形法)。`core.js` 新增 `computeStruct()`(HAWT 專用,VAWT 目前設為 `G.struct = null`),在 `designHAWT()` 之後用 BEM 設計點(`G.desElems`,對應 `h.tsr`/`h.Vd`)算每一站的分布氣動負載(片翼法向/切向力,對應揮舞向/擺振向)、用 `sectionProperties` 算每一站 Ixx/Iyy/面積、疊加離心力產生的軸向應力,得到 `G.struct = {r, Ixx, Iyy, area, qFlap, qEdge, Mflap, Medge, axial, sigma, sigmaMax, tipDeflFlap, tipDeflEdge, safetyFactor, shellT}`。材料庫 `MATERIALS` 新增每種材料的楊氏係數 `E` 與容許應力 `allow`(粗略量級預設值,見下方已知限制),新增 `S.hawt.shellT`(預設殼厚 3 mm,尚未接 UI 控制項)。`tests/geo.test.mjs` 新增 `beamBending` 對均布載重懸臂梁解析解(根部彎矩、葉尖撓度 wL⁴/8EI)的驗證;`tests/core.test.mjs` 新增對參考轉子(3 葉 R1.5 m λd 7)`G.struct` 的合理性檢查(有限值、根部彎矩 ≥ 葉尖、撓度遠小於半徑、安全係數 > 1)與 VAWT 模式下 `G.struct` 為 `null` 的檢查。
+  - 已知限制(下一步要處理):只算單一工況(設計點 BEM,非極端風速/停機/陣風);彎矩疊加沒有考慮揮舞/擺振軸夾角;`MATERIALS` 的 `E`/`allow` 是量級估計,不是材料手冊數值;殼厚 `S.hawt.shellT` 全展長均一,還沒有逐站厚度分布,也還沒有 UI 控制項;質量計算(`fill` 填充率模型)與結構分析(`sectionProperties` 薄殼模型)兩者的截面積模型不是同一套,兩者尚未統一。
+- [ ] 載重(第二版):接上極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況;殼厚沿展長分布可調(逐站覆寫,類似現有 `h.ov` 弦長/扭角覆寫);單葉片工作區新增材料/殼厚 UI 控制項。
 - [ ] 疲勞:以紊流測試時間序列做雨流計數,估計根部疲勞壽命(可先簡化)。
 - [ ] 單葉片工作區新增「結構」卡片(面積/Ixx/Iyy 沿展長圖 + 之後的應力/撓度);報告新增一節。
 - 驗收(需上面全部完成):與懸臂梁解析解比對撓度;材料安全係數低於門檻時給出警告。

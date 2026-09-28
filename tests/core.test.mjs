@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 global.AERO = require('../src/aero.js');
+global.GEO = require('../src/geo.js');
 const core = require('../src/core.js');
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep } = core;
 
@@ -40,6 +41,23 @@ test('HAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () =>
       assert.ok(track >= 0.9, `HAWT ${ctrl} ${V} m/s tracking ${(track * 100).toFixed(1)}%`);
     }
   }
+});
+
+test('HAWT computeStruct: reference 3-blade R1.5 rotor gives sane root loads and tip deflection', () => {
+  setMode('HAWT');
+  const st = G.struct;
+  assert.ok(st, 'G.struct populated for HAWT');
+  assert.strictEqual(st.r.length, G.rows.length);
+  for (const v of [...st.sigma, st.sigmaMax, st.tipDeflFlap, st.tipDeflEdge]) assert.ok(isFinite(v) && v >= 0, `finite non-negative: ${v}`);
+  // root (first station) carries the largest flapwise moment for a monotonically loaded blade
+  assert.ok(Math.abs(st.Mflap[0]) >= Math.abs(st.Mflap[st.Mflap.length - 1]), 'root flap moment >= tip');
+  assert.ok(st.tipDeflFlap < 0.15 * S.hawt.R, `tip deflection ${(st.tipDeflFlap * 1000).toFixed(1)} mm stays well under the 1.5 m radius`);
+  assert.ok(st.safetyFactor > 1, `safety factor ${st.safetyFactor.toFixed(2)} > 1 for the default GFRP shell`);
+});
+
+test('VAWT design leaves G.struct null (structural load estimate is HAWT-only for now)', () => {
+  setMode('VAWT');
+  assert.strictEqual(G.struct, null);
 });
 
 test('VAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () => {

@@ -7,19 +7,23 @@
 (function (root) {
 'use strict';
 const A = AERO;
+const Geo = GEO;
+// E: Young's modulus along span (Pa), allow: rough allowable design stress incl. a fatigue/
+// safety margin (Pa) — order-of-magnitude defaults for a first structural estimate, not a
+// substitute for a real material datasheet.
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 18e9, allow: 80e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, allow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, allow: 90e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, allow: 25e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, allow: 250e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
 const S = {
   mode: 'HAWT', step: 'af', ctab: 'airfoil',
   af: { st: [{ f: 0.2, k: 'n4:4421' }, { f: 0.5, k: 'n4:4415' }, { f: 0.8, k: 'n4:4412' }], vawt: 'n4:0018', cdMax: 1.3, custom: [], imported: [], polarImp: {}, view: 2, alphaView: 6, reIdx: 3, full: false },
-  hawt: { R: 1.5, Rhub: 0.15, B: 3, tsr: 7, Vd: 8, aMode: 'auto', aDes: 5, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChord: 0.12, pitch: 0, material: 'gfrp', ov: {}, twMode: 'bem', twRoot: 20, twTip: 0 },
+  hawt: { R: 1.5, Rhub: 0.15, B: 3, tsr: 7, Vd: 8, aMode: 'auto', aDes: 5, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChord: 0.12, pitch: 0, material: 'gfrp', shellT: 0.003, ov: {}, twMode: 'bem', twRoot: 20, twTip: 0 },
   vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true },
@@ -89,7 +93,7 @@ function blendPS(p1, p2, w) {
 }
 
 /* ---------- geometry + performance ---------- */
-const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0 };
+const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0, struct: null };
 const DLAM = 0.25;
 
 /* ---------- spanwise airfoil stations ---------- */
@@ -192,6 +196,50 @@ function designHAWT() {
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  computeStruct();
+}
+/* ---------- blade structure: root loads, section stress, tip deflection ---------- */
+// Single-blade cantilever estimate at the BEM design point (h.tsr, h.Vd): flapwise (out-of-plane,
+// resisted by Ixx) and edgewise (in-plane, resisted by Iyy) bending from the per-station
+// aerodynamic normal/tangential force, plus an axial stress from centrifugal force (straight
+// radial blade, no cone/sweep so centrifugal force does not itself bend the blade). Superposes
+// the two bending stresses at each station's extreme fibre without a combined-axis check — a
+// simplification alongside the single uniform shell thickness/material (see ROADMAP.md item 3).
+function computeStruct() {
+  if (S.mode !== 'HAWT') { G.struct = null; return; }
+  const h = S.hawt, rows = G.rows, afs = G.afs, els = G.desElems;
+  if (!rows || !rows.length || !els) { G.struct = null; return; }
+  const mat = MATERIALS[h.material], shellT = Math.max(0.0005, h.shellT || 0.003);
+  const n = rows.length, omD = h.tsr * h.Vd / h.R, rho = air().rho;
+  const Ixx = new Array(n), Iyy = new Array(n), area = new Array(n), cFlap = new Array(n), cEdge = new Array(n);
+  const qFlap = new Array(n), qEdge = new Array(n), massEl = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const af = afs[i], c = rows[i].c;
+    const sp = Geo.sectionProperties(af, c, shellT);
+    Ixx[i] = sp.Ixx; Iyy[i] = sp.Iyy; area[i] = sp.area;
+    let yMax = -Infinity, yMin = Infinity, xMax = -Infinity, xMin = Infinity;
+    for (let k = 0; k < af.x.length; k++) {
+      yMax = Math.max(yMax, af.yu[k]); yMin = Math.min(yMin, af.yl[k]);
+      xMax = Math.max(xMax, af.x[k]); xMin = Math.min(xMin, af.x[k]);
+    }
+    cFlap[i] = Math.max(yMax * c - sp.cy, sp.cy - yMin * c);
+    cEdge[i] = Math.max(xMax * c - sp.cx, sp.cx - xMin * c);
+    const el = els[i], phi = el.phi * A.D2R, q = 0.5 * rho * el.W * el.W * c;
+    qFlap[i] = q * (el.cl * Math.cos(phi) + el.cd * Math.sin(phi));
+    qEdge[i] = q * (el.cl * Math.sin(phi) - el.cd * Math.cos(phi));
+    massEl[i] = mat.rho * mat.fill * A.airfoilArea(af) * c * c * rows[i].dr;
+  }
+  const r = rows.map(x => x.r), dr = rows.map(x => x.dr);
+  const bf = Geo.beamBending(r, dr, qFlap, Ixx.map(I => mat.E * I), G.Rhub);
+  const be = Geo.beamBending(r, dr, qEdge, Iyy.map(I => mat.E * I), G.Rhub);
+  const axial = new Array(n);
+  for (let i = 0; i < n; i++) { let N = 0; for (let j = i; j < n; j++) N += massEl[j] * omD * omD * r[j]; axial[i] = N; }
+  const sigma = r.map((_, i) => Math.abs(bf.M[i]) * cFlap[i] / Ixx[i] + Math.abs(be.M[i]) * cEdge[i] / Iyy[i] + axial[i] / area[i]);
+  const sigmaMax = Math.max(...sigma);
+  G.struct = {
+    r, Ixx, Iyy, area, qFlap, qEdge, Mflap: bf.M, Medge: be.M, axial, sigma, sigmaMax,
+    tipDeflFlap: bf.tipDefl, tipDeflEdge: be.tipDefl, shellT, safetyFactor: mat.allow / Math.max(1, sigmaMax)
+  };
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
@@ -200,6 +248,7 @@ function vawtCfg() {
 function designVAWT() {
   const v = S.vawt, cfg = vawtCfg(), mat = MATERIALS[v.material];
   G.vcfg = cfg; G.R = v.R;
+  G.struct = null; // structural load estimate is HAWT-only for now (see ROADMAP.md item 3)
   if (v.type === 'sav') {
     G.A = 2 * v.R * v.H;
     const d = 2 * v.R / (2 - v.overlap), t = Math.max(0.0015, 0.004 * v.R);
@@ -489,6 +538,6 @@ function steadyPower(V) {
 
 const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
   stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower };
+  simStep, recordHist, steadyPower, computeStruct };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
 })(this);

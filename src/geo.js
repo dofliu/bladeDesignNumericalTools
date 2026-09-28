@@ -181,6 +181,36 @@ const GEO = (function () {
     const c = aboutCentroid(combined);
     return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
   }
+  // Cantilever beam bending: stations r[i] (fixed end at r0, free tip at r[n-1]) carry a
+  // distributed load w[i] (N/m, lumped to a point load w[i]*dr[i] at r[i]) resisted by bending
+  // stiffness EI[i] (N*m^2). Shear V and moment M at each station are the exact sum of every
+  // outboard point load (matches the closed-form cantilever result for any load distribution,
+  // since each station's own tributary width dr[i] is already folded into its point load).
+  // Slope/deflection integrate curvature M/EI outward from the fixed end (y=y'=0 at r0) with the
+  // trapezoidal rule on the station grid — exact for the M0 root moment, approximate (station-count
+  // dependent) for slope/deflection since curvature is generally nonlinear in r.
+  function beamBending(r, dr, w, EI, r0) {
+    const n = r.length;
+    const P = w.map((wi, i) => wi * dr[i]);
+    const V = new Array(n), M = new Array(n);
+    for (let i = 0; i < n; i++) {
+      let v = 0, m = 0;
+      for (let j = 0; j < n; j++) if (r[j] >= r[i]) { v += P[j]; m += P[j] * (r[j] - r[i]); }
+      V[i] = v; M[i] = m;
+    }
+    let M0 = 0; for (let j = 0; j < n; j++) M0 += P[j] * (r[j] - r0);
+    const curv0 = M0 / EI[0];
+    const slope = new Array(n), defl = new Array(n);
+    let pr = r0, pc = curv0, ps = 0, pd = 0;
+    for (let i = 0; i < n; i++) {
+      const h = r[i] - pr, ci = M[i] / EI[i];
+      const s = ps + 0.5 * (pc + ci) * h;
+      const d = pd + 0.5 * (ps + s) * h;
+      slope[i] = s; defl[i] = d;
+      pr = r[i]; pc = ci; ps = s; pd = d;
+    }
+    return { V, M, M0, slope, defl, tipDefl: defl[n - 1] };
+  }
 
   // store-only ZIP
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -207,6 +237,6 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties, beamBending };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;

@@ -71,3 +71,34 @@ test('sectionProperties: thin shell area is close to perimeter * thickness', () 
   assert.ok(s.Ixx > 0 && s.Iyy > 0, 'positive second moments');
   assert.ok(s.cx > 0.2 * chord && s.cx < 0.6 * chord, 'centroid within chord');
 });
+
+// beamBending: cantilever beam under a UNIFORM distributed load w0 over [0, L] has closed-form
+// root moment M0 = w0*L^2/2 and tip deflection wL^4/(8EI). With station radii at the exact
+// midpoint of each dr slice, the lumped-load moment sum is exact (midpoint rule integrates the
+// linear moment arm exactly), and a fine grid drives the slope/deflection trapezoidal integration
+// error to a small fraction of a percent — this checks the numerical method itself, independent
+// of any aerodynamic load model.
+function uniformLoadStations(L, n) {
+  const r = [], dr = [];
+  for (let i = 0; i < n; i++) { const rl = L * i / n, rh = L * (i + 1) / n; r.push((rl + rh) / 2); dr.push(rh - rl); }
+  return { r, dr };
+}
+test('beamBending: uniform load cantilever matches the closed-form root moment and tip deflection', () => {
+  const L = 1.5, w0 = 40, E = 18e9, I = 2e-8, EI = E * I;
+  const { r, dr } = uniformLoadStations(L, 400);
+  const w = r.map(() => w0), EIarr = r.map(() => EI);
+  const res = GEO.beamBending(r, dr, w, EIarr, 0);
+  near(res.M0, w0 * L * L / 2, 1e-6 * w0 * L * L / 2, 'root moment M0 = w0*L^2/2');
+  const mRef0 = w0 * (L - r[0]) ** 2 / 2;
+  near(res.M[0], mRef0, 1e-3 * mRef0, 'moment at first station = w0*(L-r0)^2/2');
+  const tipRef = w0 * L ** 4 / (8 * EI);
+  near(res.tipDefl, tipRef, 0.01 * tipRef, 'tip deflection = w0*L^4/(8EI)');
+});
+test('beamBending: cantilever tip deflection scales as 1/EI and 1/8 for a coarse (16-station) grid', () => {
+  const L = 1.5, w0 = 40, E = 18e9, I = 2e-8, EI = E * I;
+  const { r, dr } = uniformLoadStations(L, 16);
+  const w = r.map(() => w0), EIarr = r.map(() => EI);
+  const res = GEO.beamBending(r, dr, w, EIarr, 0);
+  const tipRef = w0 * L ** 4 / (8 * EI);
+  near(res.tipDefl, tipRef, 0.05 * tipRef, 'tip deflection within 5% at realistic (16-station) resolution');
+});
