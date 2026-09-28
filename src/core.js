@@ -7,12 +7,15 @@
 (function (root) {
 'use strict';
 const A = AERO;
+// E: Young's modulus (Pa), sigma: allowable working stress (Pa, safety factor already folded
+// in) — engineering-literature order-of-magnitude defaults, not test-coupon data for a specific
+// product; used by structuralHAWT() for bending/axial stress and deflection (ROADMAP 3).
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 15e9, sigma: 90e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, sigma: 30e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, sigma: 110e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 1.8e9, sigma: 18e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 60e9, sigma: 200e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -109,6 +112,63 @@ function viewKey() {
   const i = A.clamp(Math.round(+S.af.view) || 0, 0, S.af.st.length - 1);
   return S.af.st[i].k;
 }
+// Composite skin (shell wall) thickness, as a function of local chord: thin-shell blade
+// construction, no user control yet (ROADMAP 3 "結構" UI card is a later step).
+function shellThickness(c) { return A.clamp(0.012 * c, 0.0008, 0.006); }
+// Steady-state spanwise structural loads at the HAWT design operating point (single blade):
+// flapwise/edgewise bending from the BEM aerodynamic force distribution (resolved from
+// resD.elems, the same design-point solve designHAWT already computes), centrifugal tension
+// from blade mass (rows[i].dm, computed alongside), and bending/axial stress via the thin-shell
+// section properties in GEO.sectionProperties. Known simplifications: ignores the local twist
+// angle's rotation of the section's principal axes (flap force resolved through Ixx/thickness
+// direction, edge force through Iyy/chord direction; the product of inertia Ixy is dropped),
+// gravity, dynamic/extreme-gust and shutdown loads, and fatigue. VAWT blades are not covered
+// (a curved, continuously-rotating blade is a different centrifugal/bending problem) — left for
+// a later ROADMAP 3 step, alongside a UI card and per-station thickness/material overrides.
+function structuralHAWT(rows, afs, mat, resD, om) {
+  const n = rows.length, rho = air().rho;
+  const fT = [], fE = []; // per-blade out-of-plane (flap) / in-plane (edge) force per station, N
+  for (let i = 0; i < n; i++) {
+    const el = resD.elems[i], x = rows[i], phi = el.phi * A.D2R;
+    const cn = el.cl * Math.cos(phi) + el.cd * Math.sin(phi);
+    const ct = el.cl * Math.sin(phi) - el.cd * Math.cos(phi);
+    const q = 0.5 * rho * el.W * el.W * x.c * x.dr;
+    fT.push(q * cn); fE.push(q * ct);
+  }
+  const sec = rows.map((x, i) => {
+    const t = shellThickness(x.c), p = GEO.sectionProperties(afs[i], x.c, t);
+    const yTop = Math.max(...afs[i].yu) * x.c, yBot = Math.min(...afs[i].yl) * x.c;
+    const cFlap = Math.max(yTop - p.cy, p.cy - yBot), cEdge = Math.max(p.cx, x.c - p.cx);
+    return { t, ...p, cFlap, cEdge };
+  });
+  const out = rows.map((x, j) => {
+    let Mf = 0, Me = 0, Ncf = 0;
+    for (let i = j; i < n; i++) {
+      const arm = rows[i].r - x.r;
+      Mf += fT[i] * arm; Me += fE[i] * arm;
+      Ncf += rows[i].dm * om * om * rows[i].r;
+    }
+    const s = sec[j];
+    const sigmaFlap = s.Ixx > 0 ? Mf * s.cFlap / s.Ixx : 0;
+    const sigmaEdge = s.Iyy > 0 ? Me * s.cEdge / s.Iyy : 0;
+    const sigmaAx = s.area > 0 ? Ncf / s.area : 0;
+    const sigma = Math.abs(sigmaFlap) + Math.abs(sigmaEdge) + sigmaAx; // conservative: worst fibre superposed
+    return { r: x.r, Mf, Me, Ncf, area: s.area, Ixx: s.Ixx, Iyy: s.Iyy, t: s.t, sigma, SF: sigma > 0 ? mat.sigma / sigma : Infinity };
+  });
+  // flapwise tip deflection: curvature M/(E*Ixx) double-integrated from the (fixed) root outward
+  let slope = 0, defl = 0;
+  for (let i = 1; i < n; i++) {
+    const dr = rows[i].r - rows[i - 1].r;
+    const k0 = sec[i - 1].Ixx > 0 ? out[i - 1].Mf / (mat.E * sec[i - 1].Ixx) : 0;
+    const k1 = sec[i].Ixx > 0 ? out[i].Mf / (mat.E * sec[i].Ixx) : 0;
+    const slope1 = slope + (k0 + k1) / 2 * dr;
+    defl += (slope + slope1) / 2 * dr;
+    slope = slope1;
+  }
+  let minSF = Infinity, minSFr = rows[0].r;
+  out.forEach(o => { if (o.SF < minSF) { minSF = o.SF; minSFr = o.r; } });
+  return { rows: out, tipDefl: defl, minSF, minSFr, sigmaAllow: mat.sigma, E: mat.E };
+}
 function designHAWT() {
   const h = S.hawt, R = h.R, Rh = Math.min(h.Rhub, 0.45 * R), { rho, mu } = air();
   const n = Math.round(h.nSec);
@@ -186,12 +246,13 @@ function designHAWT() {
   // mass & inertia
   const mat = MATERIALS[h.material];
   let m = 0, J = 0;
-  rows.forEach((x, i) => { const dm = mat.rho * mat.fill * A.airfoilArea(afs[i]) * x.c * x.c * x.dr; m += dm; J += dm * x.r * x.r; });
+  rows.forEach((x, i) => { const dm = mat.rho * mat.fill * A.airfoilArea(afs[i]) * x.c * x.c * x.dr; x.dm = dm; m += dm; J += dm * x.r * x.r; });
   const mb = m;
   m *= h.B; J *= h.B;
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  G.struct = structuralHAWT(rows, afs, mat, resD, omD);
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
