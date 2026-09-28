@@ -2,6 +2,15 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-28 — ROADMAP 3:葉片應力與撓度
+
+- 做了什麼:承接上一筆「分布載重與彎矩」(`bladeLoads`/`G.rows.{Mflap,Medge,Fax}`),完成 ROADMAP 3「載重」子項的第二部分——應力與撓度,採用上一筆 PR 內文建議的做法。`src/geo.js` 新增 `equivalentThickness(af, chord, targetArea)`(對 `sectionProperties(af,chord,t).area` 做二分搜尋反解殼厚 `t`,呼叫端傳入 `MATERIALS[x].fill * airfoilArea(af) * c²` 當目標面積,對齊既有質量模型,不新增使用者可調欄位)、`sectionProperties` 補上 `yMax`/`xMax`(形心到外緣的最大距離,彎曲應力算式要用)、`beamDeflection(rows, M, EI)`(彎矩/EI 曲率由固定端(根部)往葉尖梯形積分兩次)。`src/core.js` 的 `bladeLoads` 延伸:對每一站反解等效殼厚 → `sectionProperties` 取得 Ixx/Iyy → 算揮舞彎曲應力(`Mflap·yMax/Ixx`)、擺振彎曲應力(`Medge·xMax/Iyy`)、離心軸向應力(`Fax/area`),三者絕對值保守相加成 `x.stress`,安全係數 `x.safety = mat.allow/x.stress`;揮舞撓度 `x.defl` 用 `beamDeflection` 積分。`MATERIALS` 補上楊氏模數 `E`、容許應力 `allow`(合理文獻預設值:玻纖 20 GPa/100 MPa、木材 11 GPa/40 MPa、鋁 69 GPa/110 MPa、PLA 2.3 GPa/20 MPa、碳纖 70 GPa/250 MPa)。`G.loads` 新增 `tipDefl`、`minSafety`。
+- 中途插曲:排程開始後(已 fetch 最新 main、讀完文件)才發現另一個並行的自動開發工作階段在同一時段也選了 ROADMAP 3「載重」子項,搶先把「分布載重與彎矩」合併成 #4,導致本次原本獨立做的彎矩/離心力實作(放在 `geo.js` 的 `beamMoment`/`axialForce`)與 #4 的 `aero.js` `cumulativeMoment`/`cumulativeOutboard` + `core.js` `bladeLoads` 重複且與新 `main` 衝突。已把那個衝突的 PR(#21)關閉且不合併(留言說明原因),重新從新 `main` 出發,改成本篇「應力與撓度」——正好是 #4 PR 內文本來就留下的下一步建議,避免了重工。
+- 為什麼:「應力與撓度」是 #4 明確列出的下一步,沿用它已經驗證過的 `Mflap/Medge/Fax` 與建議的等效殼厚做法,是風險最小、與既有實作最一致的延伸;不採用先前(已放棄)的獨立幾何函式版本,避免同一件事在 `aero.js`/`geo.js` 兩處各有一套彼此不相容的懸臂梁力學。
+- 驗證:`npm run check`(9 個檔案全過)、`npm test`(21/21,新增 6 個:`tests/geo.test.mjs` 的 `yMax`/`xMax` 外緣距離驗證、`equivalentThickness` 面積回代驗證、均布載重與懸臂梁末端集中力兩個解析解驗證 `beamDeflection`〔w·L⁴/8EI、P·L³/3EI〕;`tests/core.test.mjs` 新增「HAWT 設計點應力/撓度/安全係數沿展長合理性」,檢查撓度根部固定為 0 且單調遞增、應力非負、安全係數處處為正〔葉尖因彎矩/軸力剛好為 0 而安全係數為 Infinity,是預期行為,已排除在「必須有限」的斷言外,只要求根部有限〕)、`npm run build`(257 KB)、離線 `npm run test:e2e`(`THREE_LOCAL`/`CHROME_PATH` 見下方環境備忘,全過,3 種匯出、12 組追蹤率回歸 92–97%)。桌面 1440×900 與手機 390×844 截圖確認排版正常(未改動 UI,預期且實際無畫面差異)。
+- 已知限制:與 #4 相同——只有 HAWT、只在設計風速/設計轉速這一個穩態工況,還沒有極端風速(IEC Class II Vref)與停機工況;應力採三分量絕對值直接相加的保守估計,沒有考慮相位對齊或工況組合係數;殼厚是由 `fill` 反解的單一等效值,不是使用者可調的逐站厚度;還沒有任何 UI 或報告顯示這些數字(單葉片工作區的「結構」卡片留給下一步);VAWT 沒有結構模型。
+- 下一步:ROADMAP 3 —「極端風速(IEC Class II Vref)與停機工況的載重」,或直接跳到「單葉片工作區新增結構卡片」(先把現有 `G.rows.{stress,safety,defl}` 畫成沿展長圖,材料/厚度可調留到之後),兩者皆可獨立驗證,下次執行擇一;之後才是疲勞分析。ROADMAP 1(Vite/ESM 遷移)、2(XFOIL 整合)仍卡在需要使用者決定,見 `docs/ROADMAP.md` 對應項目的「排程踩點」。
+
 ## 2026-09-28 — ROADMAP 3:葉片分布載重與彎矩
 
 - 做了什麼:承接上一筆的「截面性質」,做 ROADMAP 3「載重」子項的第一部分——分布載重與彎矩(應力/撓度留給下一步,見下方「已知限制」)。`src/aero.js` 新增兩個通用的離散懸臂梁求和函式:`cumulativeOutboard(r, v)`(每站外側各集中量的和,離散版剪力/軸力)、`cumulativeMoment(r, F)`(每站外側各集中力對該站的彎矩和,離散版懸臂彎矩)。`src/core.js` 的 `designHAWT()` 新增 `bladeLoads(rows, elems, omega, rho)`:用設計點 BEM 解(`resD.elems` 的 `phi/cl/cd/W`)算出每一站揮舞向(flapwise,升力沿來流法向分量,類似推力)與擺振向(edgewise,切向分量,類似扭矩)的分布氣動力,呼叫上面的通用函式沿展長累加成揮舞/擺振彎矩;離心軸力則重用質量/慣量迴圈已經算出的每站質量(新存成 `x.dm`)乘上 ω²r 後累加。結果寫回 `G.rows[i].{dFz,dFy,Mflap,Medge,Fax}` 與 `G.loads = {omega,MflapRoot,MedgeRoot,FaxRoot}`;`designVAWT()` 設 `G.loads=null`(垂直軸的結構模型是之後的事,先不要讓畫面誤用上一次 HAWT 算出的殘留值)。

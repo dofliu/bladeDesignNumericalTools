@@ -179,7 +179,36 @@ const GEO = (function () {
       Ixx: outer.Ixx - inner.Ixx, Iyy: outer.Iyy - inner.Iyy, Ixy: outer.Ixy - inner.Ixy,
     };
     const c = aboutCentroid(combined);
-    return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
+    let yMax = 0, xMax = 0;
+    for (const [x, y] of pts) { yMax = Math.max(yMax, Math.abs(y - c.cy)); xMax = Math.max(xMax, Math.abs(x - c.cx)); }
+    return {
+      area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord,
+      Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4,
+      yMax: yMax * chord, xMax: xMax * chord, // extreme-fibre distance from centroid, flatwise/edgewise
+    };
+  }
+  // Shell thickness (metres) whose sectionProperties area matches targetArea (m^2), by bisection.
+  // Used to back out an equivalent wall thickness from the mass model's `fill` fraction (see
+  // core.js bladeLoads) instead of adding a separate user-facing thickness field.
+  function equivalentThickness(af, chord, targetArea) {
+    let lo = 1e-6 * chord, hi = chord;
+    for (let it = 0; it < 24; it++) {
+      const mid = 0.5 * (lo + hi);
+      if (sectionProperties(af, chord, mid).area < targetArea) lo = mid; else hi = mid;
+    }
+    return 0.5 * (lo + hi);
+  }
+  // Euler-Bernoulli deflection v(r) from curvature M/EI, integrated from the fixed root
+  // (v=0, slope=0) outward by the trapezoidal rule. rows: [{r}], root->tip order.
+  function beamDeflection(rows, M, EI) {
+    const n = rows.length, slope = new Array(n).fill(0), v = new Array(n).fill(0);
+    for (let i = 1; i < n; i++) {
+      const dr = rows[i].r - rows[i - 1].r;
+      const k0 = M[i - 1] / EI[i - 1], k1 = M[i] / EI[i];
+      slope[i] = slope[i - 1] + 0.5 * (k0 + k1) * dr;
+      v[i] = v[i - 1] + 0.5 * (slope[i - 1] + slope[i]) * dr;
+    }
+    return v;
   }
 
   // store-only ZIP
@@ -207,6 +236,9 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return {
+    loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties,
+    equivalentThickness, beamDeflection,
+  };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;
