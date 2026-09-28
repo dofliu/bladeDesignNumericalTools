@@ -2,13 +2,21 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
-## 2026-09-27 — ROADMAP 4:切出風速與重新啟動邏輯
+## 2026-09-28 — ROADMAP 4:切出風速與重新啟動邏輯
 
-- 做了什麼:沒有未完成的 `[autopilot]` PR。ROADMAP 3「載重」子項需要先決定材料參數(E、密度、容許應力)怎麼設定,屬於需要使用者決定的項目,依 AUTOPILOT.md「何時停下來」跳到下一個不相依項目:ROADMAP 4 額定以上控制與保護狀態機的第一個子步驟——切出風速與重新啟動邏輯。`src/core.js` 的 `S.load` 新增 `cutOut`(預設 `false`,不影響既有行為)、`vCutOut`(切出風速,預設 20 m/s)、`vRestart`(重啟風速,預設 15 m/s);`simStep()` 用既有的 1 秒低通平均風速 `SIM.Vmeas` 判斷,超過 `vCutOut` 即設定 `SIM.cutout = true` 並併入既有煞車閂鎖(`brake = SIM.brake || SIM.latch || SIM.cutout`)強制停機,待風速降到 `vRestart` 以下才解除;兩個閾值不同形成遲滯,避免風速在門檻附近擺盪造成反覆停機/重啟。`src/ui.js` 負載面板「保護」群組新增啟用開關與兩個風速滑桿(僅啟用時顯示)、狀態列區分「切出風速停機中」與「超速保護煞車中」,所有既有的模擬重置點(`resetSim`/`spinUp`/`assistStart`/`setMode`/報告測試的 `reset`)都一併清除 `SIM.cutout`。`src/report.js` 在「負載」條件加入切出/重啟風速設定值,並把「多次觸發過速/過功率保護」的結論文字改成依 `S.load.cutOut` 是否啟用給出對應說明。
+- 做了什麼:啟動時 main 上還沒有未完成的 `[autopilot]` PR,ROADMAP 3「載重」子項當時看起來需要先決定材料參數(E、密度、容許應力)才能繼續,依 AUTOPILOT.md「何時停下來」跳到下一個不相依項目:ROADMAP 4 額定以上控制與保護狀態機的第一個子步驟——切出風速與重新啟動邏輯。開發期間另一次排程執行已完成並合併了下面「葉片分布載重與彎矩」那一筆(見下),與本次改動的檔案不重疊,合併 main 後未發生程式衝突。`src/core.js` 的 `S.load` 新增 `cutOut`(預設 `false`,不影響既有行為)、`vCutOut`(切出風速,預設 20 m/s)、`vRestart`(重啟風速,預設 15 m/s);`simStep()` 用既有的 1 秒低通平均風速 `SIM.Vmeas` 判斷,超過 `vCutOut` 即設定 `SIM.cutout = true` 並併入既有煞車閂鎖(`brake = SIM.brake || SIM.latch || SIM.cutout`)強制停機,待風速降到 `vRestart` 以下才解除;兩個閾值不同形成遲滯,避免風速在門檻附近擺盪造成反覆停機/重啟。`src/ui.js` 負載面板「保護」群組新增啟用開關與兩個風速滑桿(僅啟用時顯示)、狀態列區分「切出風速停機中」與「超速保護煞車中」,所有既有的模擬重置點(`resetSim`/`spinUp`/`assistStart`/`setMode`/報告測試的 `reset`)都一併清除 `SIM.cutout`。`src/report.js` 在「負載」條件加入切出/重啟風速設定值,並把「多次觸發過速/過功率保護」的結論文字改成依 `S.load.cutOut` 是否啟用給出對應說明。
 - 為什麼:這是 ROADMAP 4 中風險最低、可獨立驗證的第一步,直接對應 `docs/CLAUDE.md`/報告中原本就記錄的已知限制(水平軸 14 m/s 以上發電機壓不住固定槳距轉子、反覆觸發保護),且不需要新的材料參數決策或幾何/偏航模型擴充(變槳、側偏收尾留待後續)。
-- 驗證:`npm run check`(9 個檔案全過)、`npm test`(15/15,新增 `tests/core.test.mjs` 的切出/重啟遲滯測試:20 m/s 高風速下確認 `SIM.cutout` 觸發、轉速降到近乎靜止且不再重複觸發超速保護,風速降到 8 m/s 後確認 `SIM.cutout` 解除且轉子重新加速)、`npm run build`(252 KB)、`npm run test:e2e`(全過,3 種匯出、12 組追蹤率回歸 94–97%,此功能預設關閉不影響既有回歸)。另外用 Playwright 截圖桌面 1440×900 與手機 390×844 的「負載」設定面板(切出風速選項開啟前後),確認新控制項排版正常、無破版。
+- 驗證:`npm run check`(9 個檔案全過)、`npm test`(合併 main 後 17/17,含新增的 `tests/core.test.mjs` 切出/重啟遲滯測試:20 m/s 高風速下確認 `SIM.cutout` 觸發、轉速降到近乎靜止且不再重複觸發超速保護,風速降到 8 m/s 後確認 `SIM.cutout` 解除且轉子重新加速)、`npm run build`、`npm run test:e2e`(全過,3 種匯出、追蹤率回歸維持 94–97%,此功能預設關閉不影響既有回歸)。另外用 Playwright 截圖桌面 1440×900 與手機 390×844 的「負載」設定面板(切出風速選項開啟前後),確認新控制項排版正常、無破版。
 - 已知限制:目前只有「停機 → 等待風速下降 → 重啟」的邏輯,沒有變槳或側偏收尾的物理模型;自動化報告的功率曲線測試仍只到 15 m/s,尚未加入涵蓋切出風速以上區間的專門測試(驗收項「報告功率曲線呈現平台與切出」還沒做到);切出/重啟閾值的預設值(20/15 m/s)是通用設定,未針對特定機型或 IEC 風速等級調整。
-- 下一步:ROADMAP 4 的「變槳選項」或「側偏收尾模型」;ROADMAP 3 的「載重」子項仍需要使用者對材料參數(E、密度、容許應力,逐站可調或先給合理預設)做一次決定才能繼續。ROADMAP 1、2 的踩點結論仍列在 `docs/ROADMAP.md` 對應項目下,同樣需要使用者選擇方向。
+- 下一步:ROADMAP 4 的「變槳選項」或「側偏收尾模型」。ROADMAP 3 的下一步請見下面「葉片分布載重與彎矩」那一筆的「下一步」(應力與撓度,已找到不需要新增使用者決策的做法)。ROADMAP 1、2 的踩點結論仍列在 `docs/ROADMAP.md` 對應項目下,需要使用者選擇方向。
+
+## 2026-09-28 — ROADMAP 3:葉片分布載重與彎矩
+
+- 做了什麼:承接上一筆的「截面性質」,做 ROADMAP 3「載重」子項的第一部分——分布載重與彎矩(應力/撓度留給下一步,見下方「已知限制」)。`src/aero.js` 新增兩個通用的離散懸臂梁求和函式:`cumulativeOutboard(r, v)`(每站外側各集中量的和,離散版剪力/軸力)、`cumulativeMoment(r, F)`(每站外側各集中力對該站的彎矩和,離散版懸臂彎矩)。`src/core.js` 的 `designHAWT()` 新增 `bladeLoads(rows, elems, omega, rho)`:用設計點 BEM 解(`resD.elems` 的 `phi/cl/cd/W`)算出每一站揮舞向(flapwise,升力沿來流法向分量,類似推力)與擺振向(edgewise,切向分量,類似扭矩)的分布氣動力,呼叫上面的通用函式沿展長累加成揮舞/擺振彎矩;離心軸力則重用質量/慣量迴圈已經算出的每站質量(新存成 `x.dm`)乘上 ω²r 後累加。結果寫回 `G.rows[i].{dFz,dFy,Mflap,Medge,Fax}` 與 `G.loads = {omega,MflapRoot,MedgeRoot,FaxRoot}`;`designVAWT()` 設 `G.loads=null`(垂直軸的結構模型是之後的事,先不要讓畫面誤用上一次 HAWT 算出的殘留值)。
+- 為什麼:「截面性質」(面積/Ixx/Iyy)與「載重」(彎矩/軸力)是彼此獨立、都可以單獨驗證的子步驟,先把載重算對、用解析解驗證離散求和的邏輯,下一步才把兩者接起來算應力(M×c/I)與撓度(∫∫M/EI),這樣每一步的 diff 都小,且出錯時容易定位是幾何積分還是載重積分的問題。
+- 驗證:`npm run check`(9 個檔案全過)、`npm test`(16/16,新增 2 個:`tests/aero.test.mjs` 用等分布載重的懸臂梁解析解 V(x)=w(L-x)、M(x)=w(L-x)²/2 驗證 `cumulativeOutboard`/`cumulativeMoment`〔400 站離散化,根部誤差 <1%〕;`tests/core.test.mjs` 驗證 `designHAWT()` 之後 `G.loads` 存在、揮舞根部彎矩與離心根部軸力為正、且沿展長單調遞減到接近 0)、`npm run build`(254 KB)、`npm run test:e2e`(全過,3 種匯出、12 組追蹤率回歸 95–97%)。桌面 1440×900 與手機 390×844 截圖確認排版正常(這次未改動 UI,預期無畫面差異,截圖僅作回歸確認)。
+- 已知限制:目前只有 HAWT、只在設計風速/設計轉速這一個穩態工況;還沒有應力(需要接上 `sectionProperties` 的 Ixx/Iyy 與一個殼厚決定方式,建議見 `docs/ROADMAP.md`)、撓度、極端風速/停機工況,也還沒有任何 UI 或報告顯示(和上一步「截面性質」一樣,先把算法做對並用測試釘住)。
+- 下一步:ROADMAP 3 —「應力與撓度」:結合 `sectionProperties(af, chord, thickness)` 算各站應力(彎矩×截面外緣距形心距離/Ixx,加上離心軸力/面積)與材料安全係數,厚度建議用 `MATERIALS[x].fill` 反解等效殼厚(讓 `sectionProperties` 算出的面積對齊質量模型已經在用的 `fill*airfoilArea*c²`,不必新增使用者可調欄位);再用 M/EI 做歐拉-伯努利二次積分算葉尖撓度,與懸臂梁解析解比對。之後才是疲勞與 UI「結構」卡片。ROADMAP 1(Vite/ESM 遷移)、2(XFOIL 整合)的踩點結論仍列在 `docs/ROADMAP.md`,需要使用者對其中選項做一次決定。
 
 ## 2026-09-27 — ROADMAP 3:葉片截面性質(多邊形積分)
 

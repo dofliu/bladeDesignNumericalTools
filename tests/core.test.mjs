@@ -42,6 +42,22 @@ test('HAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () =>
   }
 });
 
+test('HAWT design point produces sane spanwise root-to-tip blade loads', () => {
+  setMode('HAWT');
+  assert.ok(G.loads, 'G.loads populated after designHAWT');
+  const n = G.rows.length;
+  // root carries the moment/force of every outboard station; tip carries ~none of its own annulus
+  assert.equal(G.loads.MflapRoot, G.rows[0].Mflap);
+  assert.ok(G.loads.MflapRoot > 0, `flapwise root moment should be positive (thrust bends the blade downwind): ${G.loads.MflapRoot}`);
+  assert.ok(G.loads.FaxRoot > 0, `centrifugal root axial force should be positive: ${G.loads.FaxRoot}`);
+  assert.ok(G.rows[n - 1].Mflap < G.loads.MflapRoot * 0.05, 'flapwise moment should fall off towards the tip');
+  assert.ok(G.rows[n - 1].Fax < G.loads.FaxRoot * 0.05, 'axial force should fall off towards the tip');
+  for (let i = 1; i < n; i++) {
+    assert.ok(G.rows[i].Mflap <= G.rows[i - 1].Mflap + 1e-9, 'flapwise moment monotonically decreases outboard');
+    assert.ok(G.rows[i].Fax <= G.rows[i - 1].Fax + 1e-9, 'axial force monotonically decreases outboard');
+  }
+});
+
 test('VAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () => {
   setMode('VAWT');
   for (const ctrl of ['po', 'tsr', 'ot']) {
