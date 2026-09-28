@@ -7,13 +7,18 @@
 (function (root) {
 'use strict';
 const A = AERO;
+// E: elastic modulus (Pa), allow: allowable working stress incl. safety/fatigue margin (Pa).
+// Typical literature values for the material class, not a specific certified laminate/alloy spec.
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, allow: 150e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, allow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, allow: 140e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 3.5e9, allow: 30e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, allow: 300e6 }
 };
+// Default spar-shell thickness / local chord for the structural stress model, applied uniformly
+// along the span for now (see ROADMAP 3 "載重": per-station shell thickness is future work).
+const STRUCT_TOC = 0.02;
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
 const S = {
@@ -109,6 +114,45 @@ function viewKey() {
   const i = A.clamp(Math.round(+S.af.view) || 0, 0, S.af.st.length - 1);
   return S.af.st[i].k;
 }
+// Per-blade spanwise structural loads at one operating point (rotation speed omega, air density
+// rhoAir, using the BEM `elems` already computed for that point). Combines the aerodynamic normal/
+// tangential distributed load (from cl/cd/phi/W, point-load approximation per station) with the
+// centrifugal tension from blade mass, via cantilever beam theory (GEO.beamInternalLoads/
+// beamDeflection). Flapwise deflection only (edgewise deflection is a known simplification, folded
+// into the combined stress but not integrated for deflection). A single root marker station at
+// r=Rhub (using the innermost design station's section) anchors the cantilever boundary condition.
+function bladeSpanwiseLoads(rows, afs, mat, elems, omega, rhoAir, Rhub) {
+  const secAt = i => {
+    const c = rows[i].c, thickness = mat.fill >= 0.9 ? c : STRUCT_TOC * c;
+    const sp = GEO.sectionProperties(afs[i], c, thickness);
+    const pts = GEO.loop(afs[i]);
+    let yMax = -Infinity, yMin = Infinity, xMax = -Infinity, xMin = Infinity;
+    for (const [px, py] of pts) {
+      const X = px * c, Y = py * c;
+      if (X > xMax) xMax = X; if (X < xMin) xMin = X;
+      if (Y > yMax) yMax = Y; if (Y < yMin) yMin = Y;
+    }
+    return { area: sp.area, Ixx: sp.Ixx, Iyy: sp.Iyy, yExtreme: Math.max(yMax - sp.cy, sp.cy - yMin), xExtreme: Math.max(xMax - sp.cx, sp.cx - xMin) };
+  };
+  const stations = rows.map((x, i) => {
+    const el = elems[i], phi = el.phi * A.D2R, q = 0.5 * rhoAir * el.W * el.W * x.c;
+    const cn = el.cl * Math.cos(phi) + el.cd * Math.sin(phi), ct = el.cl * Math.sin(phi) - el.cd * Math.cos(phi);
+    const lambda = mat.rho * mat.fill * A.airfoilArea(afs[i]) * x.c * x.c; // blade mass / unit length
+    return Object.assign({ r: x.r, WN: q * cn * x.dr, WT: q * ct * x.dr, Wcf: lambda * omega * omega * x.r * x.dr }, secAt(i));
+  });
+  const root = Object.assign({ r: Rhub, WN: 0, WT: 0, Wcf: 0 }, secAt(0));
+  const all = [root, ...stations];
+  const flap = GEO.beamInternalLoads(all.map(s => ({ r: s.r, W: s.WN })));
+  const edge = GEO.beamInternalLoads(all.map(s => ({ r: s.r, W: s.WT })));
+  const axial = GEO.beamInternalLoads(all.map(s => ({ r: s.r, W: s.Wcf })));
+  const defl = GEO.beamDeflection(all.map((s, i) => ({ r: s.r, M: flap[i].M, EI: mat.E * s.Ixx })));
+  const out = all.map((s, i) => {
+    const sigmaFlap = Math.abs(flap[i].M * s.yExtreme / s.Ixx), sigmaEdge = Math.abs(edge[i].M * s.xExtreme / s.Iyy);
+    const sigmaAxial = Math.abs(axial[i].V / s.area), sigma = sigmaAxial + sigmaFlap + sigmaEdge; // conservative sum
+    return { r: s.r, Mflap: flap[i].M, Medge: edge[i].M, Fcf: axial[i].V, sigma, sf: mat.allow / Math.max(sigma, 1), defl: defl[i].defl };
+  });
+  return { stations: out, rootMflap: out[0].Mflap, rootMedge: out[0].Medge, tipDefl: out[out.length - 1].defl, minSF: out.reduce((m, s) => Math.min(m, s.sf), Infinity) };
+}
 function designHAWT() {
   const h = S.hawt, R = h.R, Rh = Math.min(h.Rhub, 0.45 * R), { rho, mu } = air();
   const n = Math.round(h.nSec);
@@ -192,6 +236,7 @@ function designHAWT() {
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  G.struct = bladeSpanwiseLoads(rows, afs, mat, resD.elems, omD, rho, Rh);
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
@@ -489,6 +534,6 @@ function steadyPower(V) {
 
 const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
   stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower };
+  simStep, recordHist, steadyPower, bladeSpanwiseLoads };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
 })(this);

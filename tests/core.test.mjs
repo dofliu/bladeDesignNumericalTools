@@ -10,8 +10,9 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 global.AERO = require('../src/aero.js');
+global.GEO = require('../src/geo.js');
 const core = require('../src/core.js');
-const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep } = core;
+const { S, G, SIM, MATERIALS, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -50,4 +51,25 @@ test('VAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () =>
       assert.ok(track >= 0.9, `VAWT ${ctrl} ${V} m/s tracking ${(track * 100).toFixed(1)}%`);
     }
   }
+});
+
+test('designHAWT: G.struct gives sane spanwise loads (root moment, safety factor, tip deflection)', () => {
+  S.hawt.material = 'gfrp';
+  setMode('HAWT');
+  const st = G.struct;
+  assert.equal(st.stations.length, S.hawt.nSec + 1, 'one root marker + nSec design stations');
+  assert.ok(st.rootMflap > 0, `root flapwise moment should be positive thrust-driven bending: ${st.rootMflap}`);
+  assert.ok(isFinite(st.minSF) && st.minSF > 0, `safety factor should be a positive finite number: ${st.minSF}`);
+  assert.ok(st.tipDefl > 0 && st.tipDefl < 0.3 * S.hawt.R, `tip deflection should be positive and small vs radius: ${st.tipDefl} (R=${S.hawt.R})`);
+  // moment should decrease monotonically from root towards the tip (cantilever with outboard loads only)
+  for (let i = 1; i < st.stations.length; i++) assert.ok(st.stations[i].Mflap <= st.stations[i - 1].Mflap + 1e-9, 'flapwise moment should decrease towards the tip');
+});
+
+test('designHAWT: a stiffer material (CFRP) gives a smaller tip deflection than a softer one (PLA)', () => {
+  S.hawt.material = 'pla'; setMode('HAWT');
+  const softDefl = G.struct.tipDefl;
+  S.hawt.material = 'cfrp'; setMode('HAWT');
+  const stiffDefl = G.struct.tipDefl;
+  assert.ok(stiffDefl < softDefl, `CFRP (E=${MATERIALS.cfrp.E}) tip deflection ${stiffDefl} should be less than PLA (E=${MATERIALS.pla.E}) ${softDefl}`);
+  S.hawt.material = 'gfrp'; // restore default for any later test in this file
 });

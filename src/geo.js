@@ -181,6 +181,39 @@ const GEO = (function () {
     const c = aboutCentroid(combined);
     return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
   }
+  /* ---------- Cantilever beam internal loads / deflection (blade spanwise structural checks) ---------- */
+  // stations: [{r, W}] sorted root(0) -> tip(N-1), r in metres, W = point-load approximation
+  // (N) of the distributed load carried by that station (e.g. dF/dr * dr). Returns [{r,V,M}]
+  // in the same root->tip order: V(r) is the shear (sum of outboard point loads), M(r) the
+  // bending moment at r from those same outboard loads (cantilever fixed at r=0, free at tip).
+  function beamInternalLoads(stations) {
+    const n = stations.length, out = new Array(n);
+    let V = 0, M = 0, rPrev = null;
+    for (let i = n - 1; i >= 0; i--) {
+      const r = stations[i].r;
+      if (rPrev !== null) M += V * (rPrev - r);
+      V += stations[i].W;
+      out[i] = { r, V, M };
+      rPrev = r;
+    }
+    return out;
+  }
+  // stations: [{r, M, EI}] sorted root(0) -> tip(N-1); integrates curvature M/EI twice from the
+  // fixed root (theta=0, defl=0 at r=0) to give slope and deflection at every station (trapezoidal
+  // rule). Returns [{r, theta, defl}]; tip deflection is the last entry's `defl`.
+  function beamDeflection(stations) {
+    const n = stations.length, out = new Array(n);
+    let theta = 0, defl = 0, rPrev = stations[0].r, kPrev = stations[0].M / stations[0].EI, thPrev = 0;
+    out[0] = { r: rPrev, theta: 0, defl: 0 };
+    for (let i = 1; i < n; i++) {
+      const r = stations[i].r, k = stations[i].M / stations[i].EI, dr = r - rPrev;
+      theta += 0.5 * (kPrev + k) * dr;
+      defl += 0.5 * (thPrev + theta) * dr;
+      out[i] = { r, theta, defl };
+      rPrev = r; kPrev = k; thPrev = theta;
+    }
+    return out;
+  }
 
   // store-only ZIP
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -207,6 +240,6 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties, beamInternalLoads, beamDeflection };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;

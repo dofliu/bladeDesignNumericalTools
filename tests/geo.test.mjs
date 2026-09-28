@@ -71,3 +71,30 @@ test('sectionProperties: thin shell area is close to perimeter * thickness', () 
   assert.ok(s.Ixx > 0 && s.Iyy > 0, 'positive second moments');
   assert.ok(s.cx > 0.2 * chord && s.cx < 0.6 * chord, 'centroid within chord');
 });
+
+// N interior midpoints of [0,L] (e.g. one blade station per segment), with an explicit r=0
+// entry so beamInternalLoads/beamDeflection see the exact cantilever root position.
+function rootedSpan(N, L) { const st = [0]; for (let i = 0; i < N; i++) st.push((i + 0.5) / N * L); return st; }
+
+test('beamInternalLoads + beamDeflection: point load at the tip matches the cantilever analytic solution', () => {
+  const L = 3, P = 120, EI = 4.2e5, N = 40;
+  const rs = rootedSpan(N, L).concat([L]); // exact tip station carries the point load
+  const stations = rs.map((r, i) => ({ r, W: i === rs.length - 1 ? P : 0 }));
+  const loads = GEO.beamInternalLoads(stations);
+  near(loads[0].M, P * L, 1e-9 * P * L, 'root moment = P*L (exact, single point load)');
+  near(loads[0].V, P, 1e-9 * P, 'root shear = P');
+  const defl = GEO.beamDeflection(loads.map(s => ({ r: s.r, M: s.M, EI })));
+  const tip = defl[defl.length - 1].defl, ref = P * L ** 3 / (3 * EI);
+  near(tip, ref, 0.01 * ref, 'tip deflection = P L^3/(3 EI)');
+});
+
+test('beamInternalLoads + beamDeflection: uniformly distributed load matches the cantilever analytic solution', () => {
+  const L = 2.5, w = 80, EI = 6.5e5, N = 200, dr = L / N;
+  const stations = rootedSpan(N, L).map(r => ({ r, W: r === 0 ? 0 : w * dr }));
+  const loads = GEO.beamInternalLoads(stations);
+  near(loads[0].M, w * L * L / 2, 0.01 * w * L * L / 2, 'root moment = w L^2/2');
+  near(loads[0].V, w * L, 0.01 * w * L, 'root shear = w L');
+  const defl = GEO.beamDeflection(loads.map(s => ({ r: s.r, M: s.M, EI })));
+  const tip = defl[defl.length - 1].defl, ref = w * L ** 4 / (8 * EI);
+  near(tip, ref, 0.02 * ref, 'tip deflection = w L^4/(8 EI)');
+});

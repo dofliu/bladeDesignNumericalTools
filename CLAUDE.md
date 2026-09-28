@@ -41,7 +41,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 2 | `charts.js` | 輕量 canvas 繪圖 `Plot.draw(canvas, opts)`;`Plot.draw.force = {W,H,dpr}` 用於離屏擷取 | `Plot` |
 | 3 | `geo.js` | 葉片幾何放樣、STL(mm)、store-only ZIP | `GEO` |
 | 4 | `scene.js` | Three.js r128 場景(自製軌道控制、煙流粒子、偏航) | `Scene3D` |
-| 5 | `core.js` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep`;與 `aero.js` 相同,包成可在 Node 執行的模組(`require` 前需先設定全域 `AERO`,見 `tests/core.test.mjs`) | `S` `G` `SIM` |
+| 5 | `core.js` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep`、葉片結構載重 `bladeSpanwiseLoads`(存於 `G.struct`);與 `aero.js` 相同,包成可在 Node 執行的模組(`require` 前需先設定全域 `AERO` 與 `GEO`,見 `tests/core.test.mjs`) | `S` `G` `SIM` |
 | 6 | `ui.js` | 左側設定面板、圖表分頁、方案比較、匯出、工作區切換、主迴圈 `init()` | 多數 UI 函式 |
 | 7 | `bench.js` | 單葉片工作區;共用繪圖工具 `fitCv` `arrow` `interp1` `card` | `Bench` |
 | 8 | `flow.js` | 流場工作區 | `Flow` |
