@@ -415,6 +415,10 @@
         if (k === 0) detail = { r, a, ap, alpha: alpha * R2D, phi: phi * R2D, cl, cd, W, F };
       }
       Q += qS / nPsi; T += tS / nPsi;
+      // dT/dQ: this annulus's share of total rotor thrust/torque (N, N·m; summed over all B
+      // blades, azimuth-averaged when yawed) -- for structural loads, divide by B for the
+      // per-blade point load carried by this station.
+      detail.dT = tS / nPsi; detail.dQ = qS / nPsi;
       out.push(detail);
     }
     const A = Math.PI * R * R;

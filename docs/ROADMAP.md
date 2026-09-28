@@ -23,7 +23,8 @@
 ## 3. 葉片結構分析
 
 - [x] 截面性質:依翼型外形 + 殼厚計算面積、慣性矩、形心(多邊形積分)。`geo.js` 新增 `polygonMoments`(封閉多邊形面積/一次矩/二次矩,對原點,供組合截面先相加再一次移軸)、`offsetPolygon`(等厚度向內偏移,做薄殼內壁)、`sectionProperties(af, chord, thickness)`(回傳實際單位的面積/形心/Ixx/Iyy/Ixy)。`tests/geo.test.mjs` 以正方形、正多邊形近似圓、圓環解析解與 NACA 0012 實心截面積文獻常數(≈0.6851×t/c)驗證。
-- [ ] 載重:由 BEM 的 dT/dr、dQ/dr 加離心力,算根部彎矩、各截面應力、葉尖撓度;極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況。需要材料參數(E、密度、容許應力)與殼厚沿展長分布,目前 `sectionProperties` 只吃單一厚度,之後要接上每個 `G.rows` 截面各自的厚度/材料設定。
+- [x] 載重(一)樑靜力學工具 + BEM 逐站出力:`aero.js` 的 `bemPoint` 每一站的 `elems[i]` 新增 `dT`/`dQ`(該環帶對全部 B 支葉片合計的推力/扭矩貢獻,N/N·m),供結構分析取用。`geo.js` 新增三個與材料/翼型無關的純樑靜力學函式:`beamMoment(stations)`(懸臂樑由外側集中力算彎矩,`M(r_i)=Σ_{j>i} F_j·(r_j-r_i)`)、`centrifugalForce(stations, omega)`(外側集中質量在轉速 omega 下的離心軸向拉力)、`beamDeflection(stations)`(給定 M、EI 後,梯形法對曲率 M/EI 做二次數值積分,配合懸臂邊界條件求撓度)。`tests/geo.test.mjs` 用尖端集中載重與均佈載重兩種懸臂樑解析解(彎矩、撓度公式 PL³/3EI、wL⁴/8EI)與離心力解析解(均質量懸臂 mω²L²/2)驗證;`tests/aero.test.mjs` 驗證各站 dT/dQ 加總等於轉子總推力/扭矩。
+- [ ] 載重(二)串接實際設計:把 (一) 的樑靜力學工具接到 `G.rows`/`G.desElems`(每站的 dT/dQ、翼型、弦長 → 用 `sectionProperties` 算各站 Ixx/Iyy,搭配材料密度/楊氏係數算彎矩/應力/撓度沿展長分布),還要決定材料參數怎麼給(單一預設材料 vs. 讓使用者選,`docs/ROADMAP.md` 這裡先列選項待使用者決定:(a) 先給一組合理預設如 E-glass/epoxy 積層板等效值 E≈20 GPa、密度≈1800 kg/m³、容許應力≈100 MPa,使用者之後可調;(b) 提供材料下拉選單含 2–3 種常見材料;(c) 先不做預設,等使用者指定)、極端風速(IEC 小型風機 Class II 的 Vref)與停機工況、以及是否/如何在單葉片工作區新增「結構」卡片顯示。
 - [ ] 疲勞:以紊流測試時間序列做雨流計數,估計根部疲勞壽命(可先簡化)。
 - [ ] 單葉片工作區新增「結構」卡片(面積/Ixx/Iyy 沿展長圖 + 之後的應力/撓度);報告新增一節。
 - 驗收(需上面全部完成):與懸臂梁解析解比對撓度;材料安全係數低於門檻時給出警告。

@@ -43,6 +43,12 @@ test('BEM: 3-blade R1.5 m rotor designed for λ7', () => {
   assert.ok(best.Cp < 16 / 27, 'must stay below the Betz limit');
   const yaw = Math.max(...A.hawtCurve(cfg, 8, 30 * A.D2R, 0, 12).map(p => p.Cp));
   near(yaw, 0.309, 0.02, 'Cp at 30° yaw');
+
+  const res = A.bemPoint(cfg, 8, 7 * 8 / 1.5, 0, 0, null);
+  const dTsum = res.elems.reduce((s, e) => s + e.dT, 0), dQsum = res.elems.reduce((s, e) => s + e.dQ, 0);
+  near(dTsum, res.T, 1e-6 * Math.abs(res.T), 'sum of per-station dT matches rotor thrust');
+  near(dQsum, res.Q, 1e-6 * Math.abs(res.Q), 'sum of per-station dQ matches rotor torque');
+  assert.ok(res.elems.every(e => e.dT >= 0), 'each station contributes non-negative thrust at design point');
 });
 
 test('DMST: H-type and Φ-type Darrieus', () => {

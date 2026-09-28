@@ -182,6 +182,49 @@ const GEO = (function () {
     return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
   }
 
+  // ---- Straight-blade cantilever beam statics (loads from BEM dT/dr, dQ/dr + centrifugal) ----
+  // `stations` is ascending in r, stations[0] the fixed root. All three helpers are pure statics/
+  // beam-bending utilities: they take whatever point loads/masses the caller lumps at each
+  // station (e.g. a BEM annulus's per-blade thrust or tangential force) and know nothing about
+  // aerodynamics or material choice, so they're reused for flapwise or edgewise bending alike.
+
+  // Cantilever bending moment from transverse point loads F (N) applied at each station:
+  // M(r_i) = sum over stations outboard of i of F_j * (r_j - r_i). Root has the largest moment.
+  function beamMoment(stations) {
+    const n = stations.length;
+    return stations.map((s, i) => {
+      let M = 0;
+      for (let j = i + 1; j < n; j++) M += stations[j].F * (stations[j].r - s.r);
+      return { ...s, M };
+    });
+  }
+
+  // Axial tension from centrifugal loading: point masses m (kg) spinning at omega (rad/s) about
+  // r=0 pull outward, so the internal axial force at station i is the total centrifugal force of
+  // every station outboard of it: N(r_i) = sum_{j>i} m_j * omega^2 * r_j.
+  function centrifugalForce(stations, omega) {
+    const n = stations.length;
+    return stations.map((s, i) => {
+      let N = 0;
+      for (let j = i + 1; j < n; j++) N += stations[j].m * omega * omega * stations[j].r;
+      return { ...s, N };
+    });
+  }
+
+  // Cantilever deflection (fixed slope=0, deflection=0 at stations[0]) from a bending-moment
+  // distribution M (N·m) and flexural rigidity EI (N·m^2) already attached to each station, by
+  // trapezoidal double integration of curvature kappa = M/EI along the span.
+  function beamDeflection(stations) {
+    const out = [{ ...stations[0], slope: 0, y: 0 }];
+    for (let i = 1; i < stations.length; i++) {
+      const prev = stations[i - 1], cur = stations[i], dr = cur.r - prev.r;
+      const slope = out[i - 1].slope + 0.5 * (prev.M / prev.EI + cur.M / cur.EI) * dr;
+      const y = out[i - 1].y + 0.5 * (out[i - 1].slope + slope) * dr;
+      out.push({ ...cur, slope, y });
+    }
+    return out;
+  }
+
   // store-only ZIP
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
   function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
@@ -207,6 +250,7 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties,
+    beamMoment, centrifugalForce, beamDeflection };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;
