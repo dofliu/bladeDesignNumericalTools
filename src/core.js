@@ -7,12 +7,15 @@
 (function (root) {
 'use strict';
 const A = AERO;
+// E (楊氏係數,Pa) 與 sigmaAllow(容許應力,Pa,已含保守安全係數,非材料極限值)為常見文獻量級的
+// 預設值,非特定產品實測;之後可視需要開放 UI 覆寫。用於結構分析(見 designHAWT 尾端的
+// GEO.bladeStructural 呼叫),對質量/慣量估計(fill 欄位)沒有影響。
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, sigmaAllow: 80e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 10e9, sigmaAllow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, sigmaAllow: 110e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 1.0e9, sigmaAllow: 15e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 60e9, sigmaAllow: 200e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -191,6 +194,7 @@ function designHAWT() {
   m *= h.B; J *= h.B;
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
+  G.struct = GEO.bladeStructural(rows, afs, resD.elems, mat, omD, rho, Rh);
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
 }
 function vawtCfg() {
@@ -200,6 +204,7 @@ function vawtCfg() {
 function designVAWT() {
   const v = S.vawt, cfg = vawtCfg(), mat = MATERIALS[v.material];
   G.vcfg = cfg; G.R = v.R;
+  G.struct = null; // flapwise beam model in GEO.bladeStructural assumes a straight HAWT blade; VAWT loads (mainly centrifugal, radially outward) need a different treatment, not done yet
   if (v.type === 'sav') {
     G.A = 2 * v.R * v.H;
     const d = 2 * v.R / (2 - v.overlap), t = Math.max(0.0015, 0.004 * v.R);

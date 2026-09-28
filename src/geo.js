@@ -182,6 +182,57 @@ const GEO = (function () {
     return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
   }
 
+  // Flapwise bending + centrifugal axial loads along a HAWT blade, from the BEM design-point
+  // result (desElems, aligned index-for-index with rows/afs). Single blade (no B multiplier):
+  // this is the load one blade root actually carries, not the rotor total.
+  // rows: [{r, dr, c}] (metres); afs: matching airfoil shapes ({t}=max thickness/chord);
+  // desElems: BEM detail per row ({phi (deg), cl, cd, W}); mat: {rho, fill, E, sigmaAllow}
+  // (same fill-scaled solid-section approximation as the mass/inertia estimate in designHAWT,
+  // so section stiffness stays consistent with section mass; not a true shell-thickness model —
+  // see sectionProperties for that, not yet wired to a per-station wall thickness); omega
+  // (rad/s, design tip-speed-ratio rotor speed); rhoAir (kg/m^3).
+  // Returns per-station bending/axial stress + safety factor, root bending moment/axial force,
+  // and flapwise tip deflection (Euler-Bernoulli, root fixed, trapezoidal double integration).
+  function bladeStructural(rows, afs, desElems, mat, omega, rhoAir, Rhub) {
+    const D2R = Math.PI / 180;
+    const n = rows.length;
+    const st = rows.map((row, i) => {
+      const el = desElems[i], phi = el.phi * D2R;
+      const cn = el.cl * Math.cos(phi) + el.cd * Math.sin(phi);
+      const fN = 0.5 * rhoAir * el.W * el.W * row.c * cn; // N/m, flapwise (thrust-direction) load
+      const sec = aboutCentroid(polygonMoments(loop(afs[i])));
+      const areaEff = mat.fill * sec.area * row.c * row.c;
+      const IxxEff = mat.fill * sec.Ixx * row.c ** 4;
+      const dm = mat.rho * areaEff * row.dr; // matches designHAWT's mass-per-station formula
+      const yMax = 0.5 * (afs[i].t || 0.12) * row.c;
+      return { r: row.r, dr: row.dr, fN, dm, areaEff, IxxEff, yMax };
+    });
+    const momentAxialFrom = r0 => {
+      let M = 0, N = 0;
+      for (let j = 0; j < n; j++) if (st[j].r > r0) { M += st[j].fN * st[j].dr * (st[j].r - r0); N += st[j].dm * omega * omega * st[j].r; }
+      return { M, N };
+    };
+    const out = st.map(s => {
+      const { M, N } = momentAxialFrom(s.r);
+      const sigmaBend = s.IxxEff > 0 ? M * s.yMax / s.IxxEff : 0;
+      const sigmaAxial = s.areaEff > 0 ? N / s.areaEff : 0;
+      const sigma = sigmaAxial + Math.abs(sigmaBend); // conservative: worst case both tensile on the same fibre
+      return { r: s.r, M, N, area: s.areaEff, Ixx: s.IxxEff, sigmaBend, sigmaAxial, sigma, sf: sigma > 1 ? mat.sigmaAllow / sigma : Infinity };
+    });
+    const root = momentAxialFrom(Rhub);
+    // Euler-Bernoulli double integration, trapezoidal along [Rhub, r_0..r_{n-1}]; root curvature
+    // uses the innermost station's section stiffness as a stand-in for the (unmodelled) hub joint.
+    const radii = [Rhub, ...st.map(s => s.r)];
+    const curv = [root.M / Math.max(mat.E * st[0].IxxEff, 1e-12), ...out.map(o => o.M / Math.max(mat.E * o.Ixx, 1e-12))];
+    let slope = 0, defl = 0;
+    for (let i = 1; i < radii.length; i++) {
+      const dr = radii[i] - radii[i - 1], slopeNext = slope + 0.5 * (curv[i - 1] + curv[i]) * dr;
+      defl += 0.5 * (slope + slopeNext) * dr; slope = slopeNext;
+    }
+    const minSafetyFactor = out.reduce((m, o) => Math.min(m, o.sf), Infinity);
+    return { rows: out, rootM: root.M, rootN: root.N, tipDeflection: defl, minSafetyFactor };
+  }
+
   // store-only ZIP
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
   function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
@@ -207,6 +258,6 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties, bladeStructural };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;
