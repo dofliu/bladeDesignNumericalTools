@@ -53,3 +53,37 @@ test('DMST: H-type and Φ-type Darrieus', () => {
   near(h.Cp, 0.368, 0.015, 'H Cp'); near(h.l, 3, 0.5, 'H λopt');
   near(phi.Cp, 0.385, 0.015, 'Φ Cp');
 });
+
+// ---- Thin-shell cross-section structural properties (ROADMAP 3: 截面性質) ----
+// Validated against the closed-form thin circular ring (I = πR³t) rather than a single
+// hand-computed airfoil number, so the segment-integration algorithm itself is what's
+// under test, independent of the airfoil geometry generator.
+test('shellSectionProps: thin circular ring matches closed form', () => {
+  const R = 0.12, t = 0.0015, n = 400, pts = [];
+  for (let i = 0; i < n; i++) { const th = 2 * Math.PI * i / n; pts.push([R * Math.cos(th), R * Math.sin(th)]); }
+  const s = A.shellSectionProps(pts, t);
+  near(s.area, 2 * Math.PI * R * t, 1e-6, 'area');
+  near(s.xc, 0, 1e-9, 'xc'); near(s.yc, 0, 1e-9, 'yc');
+  near(s.Ixx, Math.PI * R ** 3 * t, 1e-8, 'Ixx');
+  near(s.Iyy, Math.PI * R ** 3 * t, 1e-8, 'Iyy');
+  near(s.Ixy, 0, 1e-9, 'Ixy');
+});
+
+test('sectionProps: NACA 0012 skin is symmetric and much stiffer edgewise than flapwise', () => {
+  const af = A.naca4('0012'), c = 1, t = 0.002;
+  const s = A.sectionProps(af, c, t);
+  near(s.yc, 0, 1e-6, 'yc of a symmetric airfoil'); // no camber -> centroid on the chord line
+  assert.ok(s.xc > 0.3 * c && s.xc < 0.7 * c, `xc should sit near mid-chord, got ${s.xc}`);
+  assert.ok(s.Iyy > 10 * s.Ixx, `chordwise Iyy (${s.Iyy}) should dwarf thickness-wise Ixx (${s.Ixx}) for a thin airfoil`);
+});
+
+test('sectionProps: scales as expected with chord and shell thickness', () => {
+  const af = A.naca4('4412'), t = 0.002;
+  const s1 = A.sectionProps(af, 1, t), s2 = A.sectionProps(af, 2, t);
+  near(s2.area / s1.area, 2, 0.02, 'area doubles with chord (thickness fixed -> linear, not quadratic)');
+  near(s2.Ixx / s1.Ixx, 8, 0.1, 'Ixx scales as chord^3');
+  near(s2.Iyy / s1.Iyy, 8, 0.1, 'Iyy scales as chord^3');
+  const s3 = A.sectionProps(af, 1, 2 * t);
+  near(s3.area / s1.area, 2, 1e-6, 'area is linear in shell thickness');
+  near(s3.Ixx / s1.Ixx, 2, 1e-6, 'Ixx is linear in shell thickness');
+});

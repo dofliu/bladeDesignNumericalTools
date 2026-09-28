@@ -409,6 +409,34 @@ aside .sidehead{display:none}
     return s;
   }
 
+  /* ---------- Thin-shell cross-section structural properties ---------- */
+  // pts: closed polygon [[x,y],...] in physical units (m); t: uniform shell thickness (m).
+  // Segment method (as used for thin composite blade skins): each edge is a thin
+  // rectangle of length L and width t; self inertia + parallel-axis term, summed
+  // about the origin then shifted to the centroid.
+  function shellSectionProps(pts, t) {
+    const n = pts.length;
+    let A = 0, Mx = 0, My = 0, Ixx0 = 0, Iyy0 = 0, Ixy0 = 0;
+    for (let i = 0; i < n; i++) {
+      const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % n];
+      const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy);
+      if (L < 1e-12) continue;
+      const dA = t * L, xm = (x1 + x2) / 2, ym = (y1 + y2) / 2;
+      A += dA; Mx += dA * ym; My += dA * xm;
+      Ixx0 += t * L * dy * dy / 12 + dA * ym * ym;
+      Iyy0 += t * L * dx * dx / 12 + dA * xm * xm;
+      Ixy0 += t * L * dx * dy / 12 + dA * xm * ym;
+    }
+    const xc = A > 0 ? My / A : 0, yc = A > 0 ? Mx / A : 0;
+    return { area: A, xc, yc, Ixx: Ixx0 - A * yc * yc, Iyy: Iyy0 - A * xc * xc, Ixy: Ixy0 - A * xc * yc };
+  }
+  function sectionProps(af, chord, tShell) { // airfoil skin -> physical thin-shell section properties
+    const n = af.x.length, pts = [];
+    for (let i = n - 1; i >= 0; i--) pts.push([af.x[i] * chord, af.yu[i] * chord]);
+    for (let i = 1; i < n; i++) pts.push([af.x[i] * chord, af.yl[i] * chord]);
+    return shellSectionProps(pts, tShell);
+  }
+
   /* ---------- Hess-Smith panel method (inviscid) ---------- */
   function panel(af) {
     // nodes: TE lower -> LE -> TE upper (clockwise)
@@ -880,6 +908,7 @@ aside .sidehead{display:none}
   }
 
   const API = { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
+    shellSectionProps, sectionProps,
     panel, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
     vawtSlices, vawtArea, dmstPoint, vawtCurve, savoniusCurve };
   if (typeof module !== 'undefined') module.exports = API; else G.AERO = API;
