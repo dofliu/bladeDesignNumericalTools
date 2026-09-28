@@ -151,6 +151,12 @@ const Report = (function () {
       const u3 = capture(cv => { Bench.state.q = 'ld'; Bench.drawSpan(cv, res, rr); }, 520, 300), u4 = capture(cv => { Bench.state.q = 'ind'; Bench.drawSpan(cv, res, rr); }, 520, 300);
       Bench.state.q = keep;
       h += `<div class="two">${fig(u1, '圖:攻角分布(實際 vs 最佳升阻比)')}${fig(u3, '圖:升阻比分布')}${fig(u2, '圖:推力與轉矩分布')}${fig(u4, '圖:誘導因子與葉尖損失')}</div>`;
+      if (G.struct) {
+        const st = G.struct;
+        h += hN('結構概估(設計點,水平軸限定)');
+        h += `<p>以設計點(λd ${fmt(S.hawt.tsr, 1)}、V ${fmt(S.hawt.Vd, 1)} m/s)的 BEM 載重分布(推力/轉矩)加離心力,估計單一葉片的揮舞/擺振彎矩、合成應力與葉尖撓度;材料 ${MATERIALS[S.hawt.material].name},楊氏模數與容許應力為概估量級值(見文末限制),非資料表數值。根部彎矩(揮舞 / 擺振)${fmt(st.root.Mflap, 1)} / ${fmt(st.root.Medge, 1)} N·m,根部離心軸向力 ${fmt(st.root.Nax, 0)} N,最大合成應力 ${fmt(st.maxSigma / 1e6, 2)} MPa(容許 ${fmt(st.sigAllow / 1e6, 0)} MPa,最小安全係數 ${fmt(st.minSF, 2)}),估計葉尖撓度(揮舞 / 擺振)${fmt(st.tipDeflFlap * 1000, 1)} / ${fmt(st.tipDeflEdge * 1000, 2)} mm。</p>`;
+        h += fig(capture(cv => Bench.drawStruct(cv), 760, 300), '圖:沿展長合成應力與容許應力');
+      }
     } else if (!sav) {
       const res = Bench.vawtAt(G.lopt), n2 = res.alAz.length, az = Array.from({ length: n2 }, (_, i) => (i + 0.5) * 360 / n2);
       const qb = Array.from(res.qAz), tot = qb.map((_, i) => { let s = 0; for (let k = 0; k < G.vcfg.B; k++) s += qb[(i + Math.round(k * n2 / G.vcfg.B)) % n2]; return s; });
@@ -204,7 +210,7 @@ const Report = (function () {
     h += hN('結論與建議');
     h += `<ul>${conclusions(t).map(x => `<li>${x}</li>`).join('')}</ul>`;
     h += hN('模型說明與限制');
-    h += `<ul class="muted"><li>翼型極曲線:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依摩擦阻力、失速估算與 Viterna 失速後外推;精度低於 XFOIL 或風洞實測,可在工具中匯入實測極曲線取代。</li><li>水平軸:葉片元素動量理論(BEM),含 Prandtl 葉尖/輪轂損失與 Buhl 高誘導修正;偏航以分區方位角計算。</li><li>垂直軸:雙重多流管法(DMST),含展弦比修正與支撐臂阻力,未含動態失速與流線彎曲,高尖速比結果偏樂觀。Savonius 為經驗曲線。</li><li>電氣系統:永磁發電機 + 整流 + 升降壓轉換器的準穩態模型;虛擬風洞測試為時域模擬,不含結構振動、塔影與地面邊界層。</li><li>本報告數值適合概念設計與方案比較;製造前建議以 CFD 或實體風洞驗證。</li></ul>`;
+    h += `<ul class="muted"><li>翼型極曲線:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依摩擦阻力、失速估算與 Viterna 失速後外推;精度低於 XFOIL 或風洞實測,可在工具中匯入實測極曲線取代。</li><li>水平軸:葉片元素動量理論(BEM),含 Prandtl 葉尖/輪轂損失與 Buhl 高誘導修正;偏航以分區方位角計算。</li><li>垂直軸:雙重多流管法(DMST),含展弦比修正與支撐臂阻力,未含動態失速與流線彎曲,高尖速比結果偏樂觀。Savonius 為經驗曲線。</li><li>電氣系統:永磁發電機 + 整流 + 升降壓轉換器的準穩態模型;虛擬風洞測試為時域模擬,不含結構振動、塔影與地面邊界層。</li><li>結構概估(水平軸):僅取設計點穩態氣動 + 離心力,忽略扭轉造成的主軸旋轉(以翼型弦向/厚度方向近似揮舞/擺振軸)、疊加取絕對值(保守但非精確相位疊加),未涵蓋極端風速停機工況與疲勞;材料楊氏模數與容許應力為概估量級值,非特定材料資料表數值。垂直軸尚未提供結構估算。</li><li>本報告數值適合概念設計與方案比較;製造前建議以 CFD 或實體風洞驗證,結構數值須由專業結構分析與材料試驗確認後才能用於實際製造。</li></ul>`;
     return { title, body: h, date: dateS };
   }
   const CSS = `.rpt{font:14px/1.6 "IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#15242C;background:#fff;max-width:960px;margin:0 auto;padding:28px 32px;font-variant-numeric:tabular-nums}

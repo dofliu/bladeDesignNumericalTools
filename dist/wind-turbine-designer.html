@@ -1212,6 +1212,36 @@ const GEO = (function () {
     const c = aboutCentroid(combined);
     return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
   }
+  // Binary-searches the shell thickness (metres) whose sectionProperties(af, chord, t).area matches
+  // targetArea (m^2). Used to back out a structural thickness from a target cross-section area (e.g.
+  // one already implied by a blade's mass model) so mass and section properties stay consistent.
+  // area(t) rises monotonically (and Ixx/Iyy stay positive) from 0 only up to a point where
+  // offsetPolygon's inner wall first self-intersects near the thinnest part of the profile, well
+  // short of t = chord; beyond that area can dip and Ixx/Iyy can even go slightly negative from the
+  // self-intersecting polygon's shoelace sums, before sectionProperties' own fallback eventually
+  // snaps everything back to the solid section at t = chord. A coarse scan walks up from t = 0 and
+  // stops at the last thickness where area/Ixx/Iyy are all still valid, confining the search to that
+  // safe region so the binary search never samples the unreliable part. targetArea at or above the
+  // solid area (within float tolerance) returns the solid section's thickness; at or above what the
+  // scan reached but below solid returns that bound as the closest reachable approximation.
+  function solveShellThickness(af, chord, targetArea) {
+    const solidArea = sectionProperties(af, chord, chord).area;
+    if (targetArea >= solidArea * (1 - 1e-9)) return chord;
+    const N = 200;
+    let hi = 0, hiArea = 0;
+    for (let k = 1; k <= N; k++) {
+      const t = chord * k / N, s = sectionProperties(af, chord, t);
+      if (s.area <= hiArea || s.Ixx <= 0 || s.Iyy <= 0) break;
+      hi = t; hiArea = s.area;
+    }
+    if (targetArea >= hiArea) return hi;
+    let lo = 0, top = hi;
+    for (let it = 0; it < 40; it++) {
+      const mid = (lo + top) / 2;
+      if (sectionProperties(af, chord, mid).area < targetArea) lo = mid; else top = mid;
+    }
+    return (lo + top) / 2;
+  }
 
   // store-only ZIP
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -1238,7 +1268,7 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties, solveShellThickness };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;
 
@@ -1521,12 +1551,15 @@ const Scene3D = (function () {
 (function (root) {
 'use strict';
 const A = AERO;
+const Geo = GEO;
+// E: 概估楊氏模數(Pa);sigAllow: 概估容許應力(Pa,已含安全係數,非材料極限值)。
+// 未對應特定資料表,供結構概估的量級比較用,非設計依據。
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, sigAllow: 100e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, sigAllow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, sigAllow: 90e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, sigAllow: 15e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, sigAllow: 250e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -1603,7 +1636,7 @@ function blendPS(p1, p2, w) {
 }
 
 /* ---------- geometry + performance ---------- */
-const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0 };
+const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0, struct: null };
 const DLAM = 0.25;
 
 /* ---------- spanwise airfoil stations ---------- */
@@ -1706,6 +1739,62 @@ function designHAWT() {
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  computeBladeLoads();
+}
+// Static structural estimate at the BEM design point (h.Vd, h.tsr), one blade, cantilevered
+// at the hub: distributed thrust/tangential load from G.desElems -> flap/edge bending moment by
+// integrating outboard-to-root; centrifugal force -> axial tension. Shell thickness per station is
+// solved so its area matches the same rho*fill mass model designHAWT() already uses, so the
+// structural mass stays consistent with G.bladeMass. HAWT only (VAWT load paths - struts, blade
+// orientation - differ and aren't modelled); doesn't cover extreme/parked wind or fatigue (see ROADMAP).
+function computeBladeLoads() {
+  const h = S.hawt, rows = G.rows, afs = G.afs, elems = G.desElems;
+  if (S.mode !== 'HAWT' || !elems || !rows || !rows.length) { G.struct = null; return; }
+  const { rho } = air();
+  const mat = MATERIALS[h.material];
+  const n = rows.length, Rh = G.Rhub;
+  const omD = h.tsr * h.Vd / G.R;
+  const rs = rows.map(x => x.r);
+  const area = new Array(n), Ixx = new Array(n), Iyy = new Array(n), tExt = new Array(n), cExt = new Array(n);
+  const Fn = new Array(n), Ft = new Array(n), dM = new Array(n); // lumped per-row loads/mass, one blade
+  for (let i = 0; i < n; i++) {
+    const row = rows[i], e = elems[i], af = afs[i], c = row.c, p = e.phi * A.D2R;
+    const q = 0.5 * rho * e.W * e.W;
+    Fn[i] = q * c * (e.cl * Math.cos(p) + e.cd * Math.sin(p)) * row.dr; // out-of-rotor-plane (flapwise), N
+    Ft[i] = q * c * (e.cl * Math.sin(p) - e.cd * Math.cos(p)) * row.dr; // in-rotor-plane (edgewise), N
+    const targetArea = mat.fill * A.airfoilArea(af) * c * c; // same structural-area model as the blade mass above
+    dM[i] = mat.rho * targetArea * row.dr;
+    const t = Geo.solveShellThickness(af, c, targetArea);
+    const sp = Geo.sectionProperties(af, c, t);
+    area[i] = sp.area; Ixx[i] = sp.Ixx; Iyy[i] = sp.Iyy;
+    const yuMax = Math.max(...af.yu) * c, ylMin = Math.min(...af.yl) * c;
+    tExt[i] = Math.max(yuMax - sp.cy, sp.cy - ylMin); // extreme fibre distance, thickness direction
+    cExt[i] = Math.max(c - sp.cx, sp.cx); // extreme fibre distance, chordwise direction
+  }
+  const Mflap = new Array(n), Medge = new Array(n), Nax = new Array(n), sigma = new Array(n), SF = new Array(n);
+  for (let i = 0; i < n; i++) {
+    let mf = 0, me = 0, nx = 0;
+    for (let j = i; j < n; j++) { mf += Fn[j] * (rs[j] - rs[i]); me += Ft[j] * (rs[j] - rs[i]); nx += dM[j] * omD * omD * rs[j]; }
+    Mflap[i] = mf; Medge[i] = me; Nax[i] = nx;
+    const sb = Math.abs(mf) * tExt[i] / Math.max(1e-12, Ixx[i]) + Math.abs(me) * cExt[i] / Math.max(1e-12, Iyy[i]);
+    const sa = nx / Math.max(1e-9, area[i]);
+    sigma[i] = sb + sa; SF[i] = mat.sigAllow / Math.max(1, sigma[i]);
+  }
+  let mfRoot = 0, meRoot = 0, nxRoot = 0; // extrapolated to the hub face r = Rh
+  for (let j = 0; j < n; j++) { mfRoot += Fn[j] * (rs[j] - Rh); meRoot += Ft[j] * (rs[j] - Rh); nxRoot += dM[j] * omD * omD * rs[j]; }
+  const rFull = [Rh, ...rs];
+  const curvFlap = [mfRoot / (mat.E * Ixx[0]), ...Mflap.map((m, i) => m / (mat.E * Ixx[i]))];
+  const curvEdge = [meRoot / (mat.E * Iyy[0]), ...Medge.map((m, i) => m / (mat.E * Iyy[i]))];
+  const beam = curv => { const slope = [0], defl = [0]; for (let k = 1; k < rFull.length; k++) { const dr = rFull[k] - rFull[k - 1]; slope.push(slope[k - 1] + 0.5 * (curv[k - 1] + curv[k]) * dr); defl.push(defl[k - 1] + 0.5 * (slope[k - 1] + slope[k]) * dr); } return { slope, defl }; };
+  const bF = beam(curvFlap), bE = beam(curvEdge);
+  let minSF = Infinity, minSFIdx = 0;
+  SF.forEach((v, i) => { if (v < minSF) { minSF = v; minSFIdx = i; } });
+  G.struct = {
+    r: rs, area, Ixx, Iyy, Mflap, Medge, Nax, sigma, SF,
+    root: { Mflap: mfRoot, Medge: meRoot, Nax: nxRoot },
+    tipDeflFlap: bF.defl[bF.defl.length - 1], tipDeflEdge: bE.defl[bE.defl.length - 1],
+    maxSigma: Math.max(...sigma), minSF, minSFIdx, sigAllow: mat.sigAllow, E: mat.E, omega: omD,
+  };
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
@@ -1713,7 +1802,7 @@ function vawtCfg() {
 }
 function designVAWT() {
   const v = S.vawt, cfg = vawtCfg(), mat = MATERIALS[v.material];
-  G.vcfg = cfg; G.R = v.R;
+  G.vcfg = cfg; G.R = v.R; G.struct = null; // structural estimate is HAWT-only (see computeBladeLoads)
   if (v.type === 'sav') {
     G.A = 2 * v.R * v.H;
     const d = 2 * v.R / (2 - v.overlap), t = Math.max(0.0015, 0.004 * v.R);
@@ -2003,7 +2092,7 @@ function steadyPower(V) {
 
 const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
   stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower };
+  simStep, recordHist, steadyPower, computeBladeLoads };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
 })(this);
 
@@ -2946,6 +3035,7 @@ const Bench = (function () {
         ${card('此剖面的極曲線', '<canvas id="bPol" style="height:320px"></canvas>')}
         ${card('剖面疊圖(由葉尖往輪轂看)', '<canvas id="bStack" style="height:300px"></canvas>')}
         ${card('沿展長的氣動特性變化', `<div class="ctrlbar" style="padding:0 0 8px"><label>顯示 <select id="bQ">${[['alpha', '攻角 α(實際 vs 最佳升阻比)'], ['clcd', '升力係數 Cl / 阻力係數 Cd'], ['ld', '升阻比 L/D'], ['re', '雷諾數 Re'], ['load', '推力與轉矩分布 dT/dr、dQ/dr'], ['ind', '誘導因子 a、a′ 與葉尖損失 F'], ['geom', '弦長 c/R 與扭角 θ'], ['phi', '入流角 φ 與扭角 θ'], ['tc', '相對厚度 t/c']].map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label></div><canvas id="bSpan" style="height:252px"></canvas>`, 'span2')}
+        ${card('結構概估(設計點,水平軸限定)', '<div class="kv" id="bStKv"></div><canvas id="bStSpan" style="height:220px"></canvas>', 'span2')}
       </div>`;
     } else {
       h += `<div class="bgrid">
@@ -3130,6 +3220,22 @@ const Bench = (function () {
     }
     Plot.draw(cv, { ...o, xlim: [0, 1], xlabel: 'r/R', vlines: [{ x: rr, color: col('--signal') }, ...stSorted().map(s => ({ x: s.f, color: col('--grid') }))] });
   }
+  function drawStruct(cv, kvEl) {
+    const st = G.struct;
+    if (!st) return;
+    const R = G.R, x = st.r.map(r => r / R), col = n => Plot.css(n);
+    Plot.draw(cv, { title: '合成應力 σ 與容許應力(材料估計值)', series: [
+        { x, y: st.sigma.map(v => v / 1e6), color: col('--c2'), label: 'σ 合成應力', dots: 2 },
+        { x, y: st.r.map(() => st.sigAllow / 1e6), color: col('--warn'), dash: [4, 3], label: '容許應力' },
+      ], xlim: [0, 1], xlabel: 'r/R', ylabel: 'MPa', vlines: [{ x: st.r[st.minSFIdx] / R, color: col('--signal') }] });
+    if (kvEl) kv(kvEl, [
+      ['根部彎矩(揮舞 / 擺振)', `${fmt(st.root.Mflap, 1)} / ${fmt(st.root.Medge, 1)} N·m`],
+      ['根部離心軸向力', fmt(st.root.Nax, 0) + ' N'],
+      ['最大合成應力', fmt(st.maxSigma / 1e6, 2) + ' MPa @ r/R ' + (st.r[st.minSFIdx] / R).toFixed(2)],
+      ['安全係數(最小)', fmt(st.minSF, 2) + '(容許 ' + fmt(st.sigAllow / 1e6, 0) + ' MPa)'],
+      ['葉尖撓度(揮舞 / 擺振)', `${fmt(st.tipDeflFlap * 1000, 1)} / ${fmt(st.tipDeflEdge * 1000, 2)} mm`],
+    ]);
+  }
   function renderHAWT(lam) {
     const res = hawtAt(lam);
     B.rr = A.clamp(B.rr, G.Rhub / G.R + 0.01, 0.995);
@@ -3143,6 +3249,7 @@ const Bench = (function () {
     Plot.draw($b('bPol'), { title: `Re ${(sec.Re / 1e5).toFixed(2)}×10⁵ · t/c ${(sec.af.t * 100).toFixed(1)}%`, series: [{ x: al, y: cls, color: Plot.css('--c1'), label: 'Cl' }, { x: al, y: cds, color: Plot.css('--c2'), axis: 'R', label: 'Cd' }],
       markers: [{ x: sec.alpha, y: sec.cl, color: Plot.css('--signal'), label: `α ${sec.alpha.toFixed(1)}°` }], xlabel: '攻角 α (°)', ylabel: 'Cl', ylabelR: 'Cd', vlines: [{ x: 0, color: Plot.css('--grid') }] });
     drawSpan($b('bSpan'), res, B.rr);
+    drawStruct($b('bStSpan'), $b('bStKv'));
     const Om = lam * S.hawt.Vd / G.R;
     kv($b('bKv'), [['位置 r', `${fmt(sec.r, 3)} m(r/R ${sec.rr.toFixed(3)})`], ['翼型組合', stationBlendLabel(sec.rr)], ['相對厚度 t/c', (sec.af.t * 100).toFixed(1) + '%'],
       ['弦長 c', fmt(sec.c * 1000, 1) + ' mm'], ['扭角 + 槳距 θ', fmt(sec.th, 2) + '°'], ['入流角 φ', fmt(sec.phi, 2) + '°'], ['攻角 α', fmt(sec.alpha, 2) + '°'],
@@ -3240,7 +3347,7 @@ const Bench = (function () {
     if (S.mode === 'HAWT') renderHAWT(lam); else renderVAWT(lam);
   }
   function tick() { if (S.mode === 'VAWT' && S.vawt.type === 'sav') renderSav(); }
-  return { render, tick, state: B, sectionAt, secWorld, hawtAt, vawtAt, drawPlan, drawSec, drawStack, drawSpan, reset() { built = ''; } };
+  return { render, tick, state: B, sectionAt, secWorld, hawtAt, vawtAt, drawPlan, drawSec, drawStack, drawSpan, drawStruct, reset() { built = ''; } };
 })();
 
 /* ==== flow.js ==== */
@@ -3690,6 +3797,12 @@ const Report = (function () {
       const u3 = capture(cv => { Bench.state.q = 'ld'; Bench.drawSpan(cv, res, rr); }, 520, 300), u4 = capture(cv => { Bench.state.q = 'ind'; Bench.drawSpan(cv, res, rr); }, 520, 300);
       Bench.state.q = keep;
       h += `<div class="two">${fig(u1, '圖:攻角分布(實際 vs 最佳升阻比)')}${fig(u3, '圖:升阻比分布')}${fig(u2, '圖:推力與轉矩分布')}${fig(u4, '圖:誘導因子與葉尖損失')}</div>`;
+      if (G.struct) {
+        const st = G.struct;
+        h += hN('結構概估(設計點,水平軸限定)');
+        h += `<p>以設計點(λd ${fmt(S.hawt.tsr, 1)}、V ${fmt(S.hawt.Vd, 1)} m/s)的 BEM 載重分布(推力/轉矩)加離心力,估計單一葉片的揮舞/擺振彎矩、合成應力與葉尖撓度;材料 ${MATERIALS[S.hawt.material].name},楊氏模數與容許應力為概估量級值(見文末限制),非資料表數值。根部彎矩(揮舞 / 擺振)${fmt(st.root.Mflap, 1)} / ${fmt(st.root.Medge, 1)} N·m,根部離心軸向力 ${fmt(st.root.Nax, 0)} N,最大合成應力 ${fmt(st.maxSigma / 1e6, 2)} MPa(容許 ${fmt(st.sigAllow / 1e6, 0)} MPa,最小安全係數 ${fmt(st.minSF, 2)}),估計葉尖撓度(揮舞 / 擺振)${fmt(st.tipDeflFlap * 1000, 1)} / ${fmt(st.tipDeflEdge * 1000, 2)} mm。</p>`;
+        h += fig(capture(cv => Bench.drawStruct(cv), 760, 300), '圖:沿展長合成應力與容許應力');
+      }
     } else if (!sav) {
       const res = Bench.vawtAt(G.lopt), n2 = res.alAz.length, az = Array.from({ length: n2 }, (_, i) => (i + 0.5) * 360 / n2);
       const qb = Array.from(res.qAz), tot = qb.map((_, i) => { let s = 0; for (let k = 0; k < G.vcfg.B; k++) s += qb[(i + Math.round(k * n2 / G.vcfg.B)) % n2]; return s; });
@@ -3743,7 +3856,7 @@ const Report = (function () {
     h += hN('結論與建議');
     h += `<ul>${conclusions(t).map(x => `<li>${x}</li>`).join('')}</ul>`;
     h += hN('模型說明與限制');
-    h += `<ul class="muted"><li>翼型極曲線:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依摩擦阻力、失速估算與 Viterna 失速後外推;精度低於 XFOIL 或風洞實測,可在工具中匯入實測極曲線取代。</li><li>水平軸:葉片元素動量理論(BEM),含 Prandtl 葉尖/輪轂損失與 Buhl 高誘導修正;偏航以分區方位角計算。</li><li>垂直軸:雙重多流管法(DMST),含展弦比修正與支撐臂阻力,未含動態失速與流線彎曲,高尖速比結果偏樂觀。Savonius 為經驗曲線。</li><li>電氣系統:永磁發電機 + 整流 + 升降壓轉換器的準穩態模型;虛擬風洞測試為時域模擬,不含結構振動、塔影與地面邊界層。</li><li>本報告數值適合概念設計與方案比較;製造前建議以 CFD 或實體風洞驗證。</li></ul>`;
+    h += `<ul class="muted"><li>翼型極曲線:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依摩擦阻力、失速估算與 Viterna 失速後外推;精度低於 XFOIL 或風洞實測,可在工具中匯入實測極曲線取代。</li><li>水平軸:葉片元素動量理論(BEM),含 Prandtl 葉尖/輪轂損失與 Buhl 高誘導修正;偏航以分區方位角計算。</li><li>垂直軸:雙重多流管法(DMST),含展弦比修正與支撐臂阻力,未含動態失速與流線彎曲,高尖速比結果偏樂觀。Savonius 為經驗曲線。</li><li>電氣系統:永磁發電機 + 整流 + 升降壓轉換器的準穩態模型;虛擬風洞測試為時域模擬,不含結構振動、塔影與地面邊界層。</li><li>結構概估(水平軸):僅取設計點穩態氣動 + 離心力,忽略扭轉造成的主軸旋轉(以翼型弦向/厚度方向近似揮舞/擺振軸)、疊加取絕對值(保守但非精確相位疊加),未涵蓋極端風速停機工況與疲勞;材料楊氏模數與容許應力為概估量級值,非特定材料資料表數值。垂直軸尚未提供結構估算。</li><li>本報告數值適合概念設計與方案比較;製造前建議以 CFD 或實體風洞驗證,結構數值須由專業結構分析與材料試驗確認後才能用於實際製造。</li></ul>`;
     return { title, body: h, date: dateS };
   }
   const CSS = `.rpt{font:14px/1.6 "IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#15242C;background:#fff;max-width:960px;margin:0 auto;padding:28px 32px;font-variant-numeric:tabular-nums}

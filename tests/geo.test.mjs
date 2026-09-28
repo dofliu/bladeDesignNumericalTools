@@ -71,3 +71,16 @@ test('sectionProperties: thin shell area is close to perimeter * thickness', () 
   assert.ok(s.Ixx > 0 && s.Iyy > 0, 'positive second moments');
   assert.ok(s.cx > 0.2 * chord && s.cx < 0.6 * chord, 'centroid within chord');
 });
+
+test('solveShellThickness: round-trips through sectionProperties.area', () => {
+  const af = A.naca4('0012'), chord = 0.3;
+  const solidArea = GEO.sectionProperties(af, chord, chord).area;
+  for (const frac of [0.05, 0.3, 0.7]) {
+    const targetArea = solidArea * frac;
+    const t = GEO.solveShellThickness(af, chord, targetArea);
+    const got = GEO.sectionProperties(af, chord, t).area;
+    near(got, targetArea, 1e-6 * targetArea, `area at frac ${frac}`);
+    assert.ok(t > 0 && t < chord, 'thickness within (0, chord)');
+  }
+  near(GEO.solveShellThickness(af, chord, solidArea * 1.5), chord, 1e-12, 'target above solid area collapses to solid thickness');
+});

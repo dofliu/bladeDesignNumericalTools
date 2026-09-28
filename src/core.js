@@ -7,12 +7,15 @@
 (function (root) {
 'use strict';
 const A = AERO;
+const Geo = GEO;
+// E: 概估楊氏模數(Pa);sigAllow: 概估容許應力(Pa,已含安全係數,非材料極限值)。
+// 未對應特定資料表,供結構概估的量級比較用,非設計依據。
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, sigAllow: 100e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, sigAllow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, sigAllow: 90e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, sigAllow: 15e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, sigAllow: 250e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -89,7 +92,7 @@ function blendPS(p1, p2, w) {
 }
 
 /* ---------- geometry + performance ---------- */
-const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0 };
+const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0, struct: null };
 const DLAM = 0.25;
 
 /* ---------- spanwise airfoil stations ---------- */
@@ -192,6 +195,62 @@ function designHAWT() {
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  computeBladeLoads();
+}
+// Static structural estimate at the BEM design point (h.Vd, h.tsr), one blade, cantilevered
+// at the hub: distributed thrust/tangential load from G.desElems -> flap/edge bending moment by
+// integrating outboard-to-root; centrifugal force -> axial tension. Shell thickness per station is
+// solved so its area matches the same rho*fill mass model designHAWT() already uses, so the
+// structural mass stays consistent with G.bladeMass. HAWT only (VAWT load paths - struts, blade
+// orientation - differ and aren't modelled); doesn't cover extreme/parked wind or fatigue (see ROADMAP).
+function computeBladeLoads() {
+  const h = S.hawt, rows = G.rows, afs = G.afs, elems = G.desElems;
+  if (S.mode !== 'HAWT' || !elems || !rows || !rows.length) { G.struct = null; return; }
+  const { rho } = air();
+  const mat = MATERIALS[h.material];
+  const n = rows.length, Rh = G.Rhub;
+  const omD = h.tsr * h.Vd / G.R;
+  const rs = rows.map(x => x.r);
+  const area = new Array(n), Ixx = new Array(n), Iyy = new Array(n), tExt = new Array(n), cExt = new Array(n);
+  const Fn = new Array(n), Ft = new Array(n), dM = new Array(n); // lumped per-row loads/mass, one blade
+  for (let i = 0; i < n; i++) {
+    const row = rows[i], e = elems[i], af = afs[i], c = row.c, p = e.phi * A.D2R;
+    const q = 0.5 * rho * e.W * e.W;
+    Fn[i] = q * c * (e.cl * Math.cos(p) + e.cd * Math.sin(p)) * row.dr; // out-of-rotor-plane (flapwise), N
+    Ft[i] = q * c * (e.cl * Math.sin(p) - e.cd * Math.cos(p)) * row.dr; // in-rotor-plane (edgewise), N
+    const targetArea = mat.fill * A.airfoilArea(af) * c * c; // same structural-area model as the blade mass above
+    dM[i] = mat.rho * targetArea * row.dr;
+    const t = Geo.solveShellThickness(af, c, targetArea);
+    const sp = Geo.sectionProperties(af, c, t);
+    area[i] = sp.area; Ixx[i] = sp.Ixx; Iyy[i] = sp.Iyy;
+    const yuMax = Math.max(...af.yu) * c, ylMin = Math.min(...af.yl) * c;
+    tExt[i] = Math.max(yuMax - sp.cy, sp.cy - ylMin); // extreme fibre distance, thickness direction
+    cExt[i] = Math.max(c - sp.cx, sp.cx); // extreme fibre distance, chordwise direction
+  }
+  const Mflap = new Array(n), Medge = new Array(n), Nax = new Array(n), sigma = new Array(n), SF = new Array(n);
+  for (let i = 0; i < n; i++) {
+    let mf = 0, me = 0, nx = 0;
+    for (let j = i; j < n; j++) { mf += Fn[j] * (rs[j] - rs[i]); me += Ft[j] * (rs[j] - rs[i]); nx += dM[j] * omD * omD * rs[j]; }
+    Mflap[i] = mf; Medge[i] = me; Nax[i] = nx;
+    const sb = Math.abs(mf) * tExt[i] / Math.max(1e-12, Ixx[i]) + Math.abs(me) * cExt[i] / Math.max(1e-12, Iyy[i]);
+    const sa = nx / Math.max(1e-9, area[i]);
+    sigma[i] = sb + sa; SF[i] = mat.sigAllow / Math.max(1, sigma[i]);
+  }
+  let mfRoot = 0, meRoot = 0, nxRoot = 0; // extrapolated to the hub face r = Rh
+  for (let j = 0; j < n; j++) { mfRoot += Fn[j] * (rs[j] - Rh); meRoot += Ft[j] * (rs[j] - Rh); nxRoot += dM[j] * omD * omD * rs[j]; }
+  const rFull = [Rh, ...rs];
+  const curvFlap = [mfRoot / (mat.E * Ixx[0]), ...Mflap.map((m, i) => m / (mat.E * Ixx[i]))];
+  const curvEdge = [meRoot / (mat.E * Iyy[0]), ...Medge.map((m, i) => m / (mat.E * Iyy[i]))];
+  const beam = curv => { const slope = [0], defl = [0]; for (let k = 1; k < rFull.length; k++) { const dr = rFull[k] - rFull[k - 1]; slope.push(slope[k - 1] + 0.5 * (curv[k - 1] + curv[k]) * dr); defl.push(defl[k - 1] + 0.5 * (slope[k - 1] + slope[k]) * dr); } return { slope, defl }; };
+  const bF = beam(curvFlap), bE = beam(curvEdge);
+  let minSF = Infinity, minSFIdx = 0;
+  SF.forEach((v, i) => { if (v < minSF) { minSF = v; minSFIdx = i; } });
+  G.struct = {
+    r: rs, area, Ixx, Iyy, Mflap, Medge, Nax, sigma, SF,
+    root: { Mflap: mfRoot, Medge: meRoot, Nax: nxRoot },
+    tipDeflFlap: bF.defl[bF.defl.length - 1], tipDeflEdge: bE.defl[bE.defl.length - 1],
+    maxSigma: Math.max(...sigma), minSF, minSFIdx, sigAllow: mat.sigAllow, E: mat.E, omega: omD,
+  };
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
@@ -199,7 +258,7 @@ function vawtCfg() {
 }
 function designVAWT() {
   const v = S.vawt, cfg = vawtCfg(), mat = MATERIALS[v.material];
-  G.vcfg = cfg; G.R = v.R;
+  G.vcfg = cfg; G.R = v.R; G.struct = null; // structural estimate is HAWT-only (see computeBladeLoads)
   if (v.type === 'sav') {
     G.A = 2 * v.R * v.H;
     const d = 2 * v.R / (2 - v.overlap), t = Math.max(0.0015, 0.004 * v.R);
@@ -489,6 +548,6 @@ function steadyPower(V) {
 
 const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
   stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower };
+  simStep, recordHist, steadyPower, computeBladeLoads };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
 })(this);

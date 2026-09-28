@@ -181,6 +181,36 @@ const GEO = (function () {
     const c = aboutCentroid(combined);
     return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
   }
+  // Binary-searches the shell thickness (metres) whose sectionProperties(af, chord, t).area matches
+  // targetArea (m^2). Used to back out a structural thickness from a target cross-section area (e.g.
+  // one already implied by a blade's mass model) so mass and section properties stay consistent.
+  // area(t) rises monotonically (and Ixx/Iyy stay positive) from 0 only up to a point where
+  // offsetPolygon's inner wall first self-intersects near the thinnest part of the profile, well
+  // short of t = chord; beyond that area can dip and Ixx/Iyy can even go slightly negative from the
+  // self-intersecting polygon's shoelace sums, before sectionProperties' own fallback eventually
+  // snaps everything back to the solid section at t = chord. A coarse scan walks up from t = 0 and
+  // stops at the last thickness where area/Ixx/Iyy are all still valid, confining the search to that
+  // safe region so the binary search never samples the unreliable part. targetArea at or above the
+  // solid area (within float tolerance) returns the solid section's thickness; at or above what the
+  // scan reached but below solid returns that bound as the closest reachable approximation.
+  function solveShellThickness(af, chord, targetArea) {
+    const solidArea = sectionProperties(af, chord, chord).area;
+    if (targetArea >= solidArea * (1 - 1e-9)) return chord;
+    const N = 200;
+    let hi = 0, hiArea = 0;
+    for (let k = 1; k <= N; k++) {
+      const t = chord * k / N, s = sectionProperties(af, chord, t);
+      if (s.area <= hiArea || s.Ixx <= 0 || s.Iyy <= 0) break;
+      hi = t; hiArea = s.area;
+    }
+    if (targetArea >= hiArea) return hi;
+    let lo = 0, top = hi;
+    for (let it = 0; it < 40; it++) {
+      const mid = (lo + top) / 2;
+      if (sectionProperties(af, chord, mid).area < targetArea) lo = mid; else top = mid;
+    }
+    return (lo + top) / 2;
+  }
 
   // store-only ZIP
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -207,6 +237,6 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties, solveShellThickness };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;

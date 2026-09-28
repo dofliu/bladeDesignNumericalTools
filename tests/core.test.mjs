@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 global.AERO = require('../src/aero.js');
+global.GEO = require('../src/geo.js');
 const core = require('../src/core.js');
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep } = core;
 

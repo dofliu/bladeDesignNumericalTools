@@ -83,6 +83,7 @@ const Bench = (function () {
         ${card('此剖面的極曲線', '<canvas id="bPol" style="height:320px"></canvas>')}
         ${card('剖面疊圖(由葉尖往輪轂看)', '<canvas id="bStack" style="height:300px"></canvas>')}
         ${card('沿展長的氣動特性變化', `<div class="ctrlbar" style="padding:0 0 8px"><label>顯示 <select id="bQ">${[['alpha', '攻角 α(實際 vs 最佳升阻比)'], ['clcd', '升力係數 Cl / 阻力係數 Cd'], ['ld', '升阻比 L/D'], ['re', '雷諾數 Re'], ['load', '推力與轉矩分布 dT/dr、dQ/dr'], ['ind', '誘導因子 a、a′ 與葉尖損失 F'], ['geom', '弦長 c/R 與扭角 θ'], ['phi', '入流角 φ 與扭角 θ'], ['tc', '相對厚度 t/c']].map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label></div><canvas id="bSpan" style="height:252px"></canvas>`, 'span2')}
+        ${card('結構概估(設計點,水平軸限定)', '<div class="kv" id="bStKv"></div><canvas id="bStSpan" style="height:220px"></canvas>', 'span2')}
       </div>`;
     } else {
       h += `<div class="bgrid">
@@ -267,6 +268,22 @@ const Bench = (function () {
     }
     Plot.draw(cv, { ...o, xlim: [0, 1], xlabel: 'r/R', vlines: [{ x: rr, color: col('--signal') }, ...stSorted().map(s => ({ x: s.f, color: col('--grid') }))] });
   }
+  function drawStruct(cv, kvEl) {
+    const st = G.struct;
+    if (!st) return;
+    const R = G.R, x = st.r.map(r => r / R), col = n => Plot.css(n);
+    Plot.draw(cv, { title: '合成應力 σ 與容許應力(材料估計值)', series: [
+        { x, y: st.sigma.map(v => v / 1e6), color: col('--c2'), label: 'σ 合成應力', dots: 2 },
+        { x, y: st.r.map(() => st.sigAllow / 1e6), color: col('--warn'), dash: [4, 3], label: '容許應力' },
+      ], xlim: [0, 1], xlabel: 'r/R', ylabel: 'MPa', vlines: [{ x: st.r[st.minSFIdx] / R, color: col('--signal') }] });
+    if (kvEl) kv(kvEl, [
+      ['根部彎矩(揮舞 / 擺振)', `${fmt(st.root.Mflap, 1)} / ${fmt(st.root.Medge, 1)} N·m`],
+      ['根部離心軸向力', fmt(st.root.Nax, 0) + ' N'],
+      ['最大合成應力', fmt(st.maxSigma / 1e6, 2) + ' MPa @ r/R ' + (st.r[st.minSFIdx] / R).toFixed(2)],
+      ['安全係數(最小)', fmt(st.minSF, 2) + '(容許 ' + fmt(st.sigAllow / 1e6, 0) + ' MPa)'],
+      ['葉尖撓度(揮舞 / 擺振)', `${fmt(st.tipDeflFlap * 1000, 1)} / ${fmt(st.tipDeflEdge * 1000, 2)} mm`],
+    ]);
+  }
   function renderHAWT(lam) {
     const res = hawtAt(lam);
     B.rr = A.clamp(B.rr, G.Rhub / G.R + 0.01, 0.995);
@@ -280,6 +297,7 @@ const Bench = (function () {
     Plot.draw($b('bPol'), { title: `Re ${(sec.Re / 1e5).toFixed(2)}×10⁵ · t/c ${(sec.af.t * 100).toFixed(1)}%`, series: [{ x: al, y: cls, color: Plot.css('--c1'), label: 'Cl' }, { x: al, y: cds, color: Plot.css('--c2'), axis: 'R', label: 'Cd' }],
       markers: [{ x: sec.alpha, y: sec.cl, color: Plot.css('--signal'), label: `α ${sec.alpha.toFixed(1)}°` }], xlabel: '攻角 α (°)', ylabel: 'Cl', ylabelR: 'Cd', vlines: [{ x: 0, color: Plot.css('--grid') }] });
     drawSpan($b('bSpan'), res, B.rr);
+    drawStruct($b('bStSpan'), $b('bStKv'));
     const Om = lam * S.hawt.Vd / G.R;
     kv($b('bKv'), [['位置 r', `${fmt(sec.r, 3)} m(r/R ${sec.rr.toFixed(3)})`], ['翼型組合', stationBlendLabel(sec.rr)], ['相對厚度 t/c', (sec.af.t * 100).toFixed(1) + '%'],
       ['弦長 c', fmt(sec.c * 1000, 1) + ' mm'], ['扭角 + 槳距 θ', fmt(sec.th, 2) + '°'], ['入流角 φ', fmt(sec.phi, 2) + '°'], ['攻角 α', fmt(sec.alpha, 2) + '°'],
@@ -377,5 +395,5 @@ const Bench = (function () {
     if (S.mode === 'HAWT') renderHAWT(lam); else renderVAWT(lam);
   }
   function tick() { if (S.mode === 'VAWT' && S.vawt.type === 'sav') renderSav(); }
-  return { render, tick, state: B, sectionAt, secWorld, hawtAt, vawtAt, drawPlan, drawSec, drawStack, drawSpan, reset() { built = ''; } };
+  return { render, tick, state: B, sectionAt, secWorld, hawtAt, vawtAt, drawPlan, drawSec, drawStack, drawSpan, drawStruct, reset() { built = ''; } };
 })();
