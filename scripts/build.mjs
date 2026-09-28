@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-export const ORDER = ['aero', 'charts', 'geo', 'scene', 'core', 'ui', 'bench', 'flow', 'report'];
+export const ORDER = ['aero', 'struct', 'charts', 'geo', 'scene', 'core', 'ui', 'bench', 'flow', 'report'];
 
 const shell = readFileSync(join(root, 'src/shell.html'), 'utf8');
 const js = ORDER.map(n => `/* ==== ${n}.js ==== */\n` + readFileSync(join(root, `src/${n}.js`), 'utf8')).join('\n');
