@@ -179,7 +179,91 @@ const GEO = (function () {
       Ixx: outer.Ixx - inner.Ixx, Iyy: outer.Iyy - inner.Iyy, Ixy: outer.Ixy - inner.Ixy,
     };
     const c = aboutCentroid(combined);
-    return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
+    // Extreme-fibre distances from the centroid, taken over the OUTER profile (the worst case
+    // for bending stress in a thin shell is always the outer skin, inner wall included or not).
+    let yExtent = 0, xExtent = 0;
+    for (const [x, y] of pts) { yExtent = Math.max(yExtent, Math.abs(y - c.cy)); xExtent = Math.max(xExtent, Math.abs(x - c.cx)); }
+    return {
+      area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord,
+      Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4,
+      yExtent: yExtent * chord, xExtent: xExtent * chord,
+    };
+  }
+  function perimeter(af, chord) {
+    const pts = loop(af);
+    let per = 0;
+    for (let i = 0; i < pts.length; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length]; per += Math.hypot(x1 - x0, y1 - y0); }
+    return per * chord;
+  }
+  // Closed thin-walled section approximation (standard for a uniform-thickness shell whose
+  // thickness is small next to the profile's own size, exactly the case for a composite/metal
+  // blade skin): area = t * perimeter, and Ixx/Iyy/centroid from integrating along the mid-line
+  // contour weighted by arc length, instead of the exact outer-minus-inner polygon difference
+  // `sectionProperties` uses. Deliberately avoids `offsetPolygon` here: its vertex-normal miter
+  // join self-intersects once thickness approaches a profile's local half-thickness (no
+  // protection against that, see its own comment), which happens for realistic blade shell
+  // fill ratios (not just pathologically thick ones) and made that offset path numerically
+  // unstable for this use. This closed-form thin-wall formula has no such instability.
+  function thinWallSection(af, chord, thickness) {
+    const pts = loop(af), n = pts.length;
+    const segs = pts.map((p, i) => { const [x0, y0] = p, [x1, y1] = pts[(i + 1) % n]; return { ds: Math.hypot(x1 - x0, y1 - y0), xm: (x0 + x1) / 2, ym: (y0 + y1) / 2 }; });
+    let per = 0, sx = 0, sy = 0;
+    for (const s of segs) { per += s.ds; sx += s.ds * s.xm; sy += s.ds * s.ym; }
+    const cx = sx / per, cy = sy / per;
+    let Ixx = 0, Iyy = 0, Ixy = 0;
+    for (const s of segs) { Ixx += s.ds * (s.ym - cy) ** 2; Iyy += s.ds * (s.xm - cx) ** 2; Ixy += s.ds * (s.xm - cx) * (s.ym - cy); }
+    let yExtent = 0, xExtent = 0;
+    for (const [x, y] of pts) { yExtent = Math.max(yExtent, Math.abs(y - cy)); xExtent = Math.max(xExtent, Math.abs(x - cx)); }
+    return {
+      area: thickness * per * chord, cx: cx * chord, cy: cy * chord,
+      Ixx: thickness * chord ** 3 * Ixx, Iyy: thickness * chord ** 3 * Iyy, Ixy: thickness * chord ** 3 * Ixy,
+      yExtent: yExtent * chord, xExtent: xExtent * chord,
+    };
+  }
+  // Blade cross-section structural properties from a material {fill} ratio (the same one already
+  // used for the mass/inertia estimate elsewhere: dm = rho*fill*airfoilArea(af)*c^2*dr), without
+  // adding a separate shell-thickness parameter. fill>=1 (e.g. a solid-wood blade) uses the exact
+  // solid section; otherwise the thickness solving `thickness * perimeter(chord) = fill *
+  // airfoilArea(af) * chord^2` is closed-form (no root-finding) and fed to `thinWallSection`.
+  function sectionForFill(af, chord, fill) {
+    if (fill >= 0.999) return sectionProperties(af, chord, chord);
+    const solidArea = polygonMoments(loop(af)).area * chord * chord;
+    const thickness = (fill * solidArea) / perimeter(af, chord);
+    return thinWallSection(af, chord, thickness);
+  }
+  // Cantilever beam idealisation of one blade: distributed span load is lumped as a point load
+  // at each row's midpoint (rows: [{r, dr}], root -> tip; matches the resolution of the BEM row
+  // discretisation it is fed from). Returns the shear/moment carried at every row's midpoint,
+  // and at the clamped hub (r = hubR), from summing the outboard point loads' force/arm --
+  // standard for a beam this coarsely discretised, no assumption of a particular load shape.
+  function cantileverMoment(rows, load, hubR) {
+    const n = rows.length, V = new Array(n), M = new Array(n);
+    const f = rows.map((row, i) => load[i] * row.dr);
+    for (let i = 0; i < n; i++) {
+      let v = 0, m = 0;
+      for (let k = i; k < n; k++) { v += f[k]; m += f[k] * (rows[k].r - rows[i].r); }
+      V[i] = v; M[i] = m;
+    }
+    let vHub = 0, mHub = 0;
+    for (let k = 0; k < n; k++) { vHub += f[k]; mHub += f[k] * (rows[k].r - hubR); }
+    return { V, M, Vhub: vHub, Mhub: mHub };
+  }
+  // Cantilever slope/deflection: trapezoidal double-integration of curvature = M/EI outward from
+  // the clamped hub (slope = deflection = 0 there), Euler-Bernoulli, no shear deformation.
+  // M and EI are per-row arrays (root -> tip, same rows as cantileverMoment); the hub's own
+  // curvature is approximated by the first row's (M is continuous through the root, and EI is
+  // assumed ~constant over the short hub-to-first-row gap).
+  function cantileverDeflection(rows, M, EI, hubR) {
+    const n = rows.length, theta = new Array(n), w = new Array(n);
+    let rPrev = hubR, curvPrev = M[0] / EI[0], thetaPrev = 0, wPrev = 0;
+    for (let i = 0; i < n; i++) {
+      const r = rows[i].r, curv = M[i] / EI[i], dr = r - rPrev;
+      const th = thetaPrev + (curv + curvPrev) / 2 * dr;
+      const ww = wPrev + (thetaPrev + th) / 2 * dr;
+      theta[i] = th; w[i] = ww;
+      rPrev = r; curvPrev = curv; thetaPrev = th; wPrev = ww;
+    }
+    return { theta, w, tip: w[n - 1] };
   }
 
   // store-only ZIP
@@ -207,6 +291,9 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return {
+    loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties,
+    perimeter, thinWallSection, sectionForFill, cantileverMoment, cantileverDeflection,
+  };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;

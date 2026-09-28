@@ -7,12 +7,17 @@
 (function (root) {
 'use strict';
 const A = AERO;
+const GO = GEO;
+// E: Young's modulus (Pa), allow: allowable design stress (Pa, already includes a working
+// safety factor against each material's typical ultimate/yield strength -- not the ultimate
+// strength itself). Typical textbook values for the material class named, not a specific
+// product's datasheet; see computeStructure()'s known-limitations note.
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, allow: 100e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, allow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, allow: 110e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 1.5e9, allow: 15e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, allow: 250e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -192,6 +197,42 @@ function designHAWT() {
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  G.struct = computeStructure(rows, afs, mat, rho, omD, Rh);
+}
+// Simplified steady-state structural check for one HAWT blade at its aerodynamic design point:
+// a cantilever beam clamped at the hub. Flapwise (out-of-plane) bending comes from the BEM
+// design-point normal force per span, edgewise (in-plane) from its tangential force per span;
+// centrifugal force is treated as pure axial tension (straight radial blade, no sweep/coning to
+// convert it into bending). Cross-sections reuse the same rho*fill*airfoilArea(af)*c^2 area
+// already used for the mass estimate above (GEO.sectionForFill), so this needs no new geometry
+// parameter. Known limitations (see docs/ROADMAP.md #3): steady design-point load only, no gust/
+// extreme-wind or parked/idling case yet; no gravity or torsional (twist-bend) coupling; and the
+// material E/allowable-stress figures (MATERIALS above) are typical values for the material
+// class, not a specific product's datasheet.
+function computeStructure(rows, afs, mat, rho, omega, Rh) {
+  const n = rows.length;
+  const sec = rows.map((x, i) => GO.sectionForFill(afs[i], x.c, mat.fill));
+  const load = (cn) => rows.map((x, i) => {
+    const el = G.desElems[i], p = el.phi * A.D2R;
+    return 0.5 * rho * el.W * el.W * x.c * cn(el, p);
+  });
+  const Fn = load((el, p) => el.cl * Math.cos(p) + el.cd * Math.sin(p)); // out-of-plane (flap)
+  const Ft = load((el, p) => el.cl * Math.sin(p) - el.cd * Math.cos(p)); // in-plane (edge)
+  const massLin = sec.map(s => mat.rho * s.area); // kg/m, consistent with the mass estimate above
+  const cfLoad = rows.map((x, i) => massLin[i] * omega * omega * x.r); // N/m equivalent so that load*dr = centrifugal point force
+  const flap = GO.cantileverMoment(rows, Fn, Rh), edge = GO.cantileverMoment(rows, Ft, Rh), axial = GO.cantileverMoment(rows, cfLoad, Rh);
+  const EIflap = sec.map(s => mat.E * s.Ixx), EIedge = sec.map(s => mat.E * s.Iyy);
+  const flapDefl = GO.cantileverDeflection(rows, flap.M, EIflap, Rh), edgeDefl = GO.cantileverDeflection(rows, edge.M, EIedge, Rh);
+  const stress = rows.map((x, i) => {
+    const sAxial = axial.V[i] / sec[i].area, sFlap = flap.M[i] * sec[i].yExtent / sec[i].Ixx, sEdge = edge.M[i] * sec[i].xExtent / sec[i].Iyy;
+    return { axial: sAxial, flap: sFlap, edge: sEdge, total: sAxial + sFlap + sEdge }; // conservative: peaks summed even though not exactly co-located
+  });
+  let sf = Infinity, sfAt = Rh;
+  stress.forEach((s, i) => { const f = mat.allow / Math.max(s.total, 1e-6); if (f < sf) { sf = f; sfAt = rows[i].r; } });
+  return {
+    stress, sf, sfAt, Mhub: { flap: flap.Mhub, edge: edge.Mhub }, Nhub: axial.Vhub,
+    tipDefl: { flap: flapDefl.tip, edge: edgeDefl.tip, total: Math.hypot(flapDefl.tip, edgeDefl.tip) },
+  };
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
@@ -489,6 +530,6 @@ function steadyPower(V) {
 
 const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
   stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower };
+  simStep, recordHist, steadyPower, computeStructure };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
 })(this);

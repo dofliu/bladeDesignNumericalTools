@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 global.AERO = require('../src/aero.js');
+global.GEO = require('../src/geo.js');
 const core = require('../src/core.js');
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep } = core;
 
@@ -50,4 +51,19 @@ test('VAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () =>
       assert.ok(track >= 0.9, `VAWT ${ctrl} ${V} m/s tracking ${(track * 100).toFixed(1)}%`);
     }
   }
+});
+
+test('HAWT blade structural check (G.struct) is finite and physically sane for every material', () => {
+  const { MATERIALS } = core;
+  for (const key of Object.keys(MATERIALS)) {
+    S.mode = 'HAWT'; S.hawt.material = key;
+    designHAWT();
+    const s = G.struct;
+    assert.ok(s.stress.every(r => isFinite(r.total) && r.total >= 0), `${key}: all-row stress finite & non-negative`);
+    assert.ok(isFinite(s.sf) && s.sf > 0, `${key}: safety factor finite & positive`);
+    assert.ok(isFinite(s.Mhub.flap) && s.Mhub.flap > 0, `${key}: root flapwise moment positive`);
+    assert.ok(isFinite(s.Nhub) && s.Nhub > 0, `${key}: root centrifugal tension positive`);
+    assert.ok(isFinite(s.tipDefl.total) && s.tipDefl.total >= 0 && s.tipDefl.total < 0.3 * G.R, `${key}: tip deflection finite & well under the blade radius`);
+  }
+  S.hawt.material = 'gfrp';
 });

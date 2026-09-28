@@ -23,7 +23,7 @@
 ## 3. 葉片結構分析
 
 - [x] 截面性質:依翼型外形 + 殼厚計算面積、慣性矩、形心(多邊形積分)。`geo.js` 新增 `polygonMoments`(封閉多邊形面積/一次矩/二次矩,對原點,供組合截面先相加再一次移軸)、`offsetPolygon`(等厚度向內偏移,做薄殼內壁)、`sectionProperties(af, chord, thickness)`(回傳實際單位的面積/形心/Ixx/Iyy/Ixy)。`tests/geo.test.mjs` 以正方形、正多邊形近似圓、圓環解析解與 NACA 0012 實心截面積文獻常數(≈0.6851×t/c)驗證。
-- [ ] 載重:由 BEM 的 dT/dr、dQ/dr 加離心力,算根部彎矩、各截面應力、葉尖撓度;極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況。需要材料參數(E、密度、容許應力)與殼厚沿展長分布,目前 `sectionProperties` 只吃單一厚度,之後要接上每個 `G.rows` 截面各自的厚度/材料設定。
+- [x] 載重(穩態設計點,水平軸):由 BEM 設計點(`G.desElems`)的升阻力算沿展長法向/切向分布力,加離心力(視為純軸向拉力,假設葉片無後掠/錐角),用簡化懸臂樑模型算根部彎矩、各截面應力、葉尖撓度。材料參數用既有 `MATERIALS` 表新增 `E`(楊氏係數)與 `allow`(容許應力,已含安全係數的典型值,非特定產品實測值),殼厚不需要新的可調參數:發現 `sectionProperties`/`offsetPolygon` 的頂點法線偏移在殼厚接近局部最大半厚度時(常見材料的 fill 比例,如 PLA 0.42,就落在這個區間)會自相交而數值不穩定(這是既有函式已知限制,非本次改動造成),因此改用標準薄殼理論(沿翼型中線弧長積分,面積=殼厚×周長,`Ixx=t∮(y-cy)²ds`)算殼截面性質:`geo.js` 新增 `perimeter`、`thinWallSection`、`sectionForFill(af, chord, fill)`(fill=1 solid 材料仍用原本的實心 `sectionProperties`)。`core.js` 新增 `computeStructure()`,`designHAWT()` 算完設計點後呼叫,結果存在 `G.struct`(`stress` 逐站應力、`sf` 最小安全係數、`Mhub` 根部彎矩、`tipDefl` 葉尖撓度)。`tests/geo.test.mjs` 新增薄殼公式對照解析解(圓環)、與既有精確偏移公式在安全的薄殼區間互相印證、`sectionForFill` 對 fill=1 精確退化為實心解;`tests/core.test.mjs` 新增對 5 種材料跑 `designHAWT()` 檢查 `G.struct` 全部有限、非負、安全係數與撓度落在合理範圍。尚未做:垂直軸(VAWT)結構分析、極端風速(IEC Vref)/停機工況、單葉片工作區「結構」卡片與報告新增一節(下一步)、疲勞。已知限制:只有穩態設計點單一工況,無重力與扭轉-彎曲耦合,材料 E/容許應力是材料類別的典型值。
 - [ ] 疲勞:以紊流測試時間序列做雨流計數,估計根部疲勞壽命(可先簡化)。
 - [ ] 單葉片工作區新增「結構」卡片(面積/Ixx/Iyy 沿展長圖 + 之後的應力/撓度);報告新增一節。
 - 驗收(需上面全部完成):與懸臂梁解析解比對撓度;材料安全係數低於門檻時給出警告。
