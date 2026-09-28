@@ -7,12 +7,14 @@
 (function (root) {
 'use strict';
 const A = AERO;
+// E: 楊氏模數 (Pa),供結構彎曲/撓度估算; allow: 容許應力 (Pa,已含疲勞/安全係數的保守值),
+// 供結構安全係數估算。兩者皆為典型文獻值的合理預設,尚未做逐站/逐使用者調整。
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, allow: 100e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, allow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, allow: 110e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, allow: 20e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, allow: 250e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 

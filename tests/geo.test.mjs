@@ -71,3 +71,57 @@ test('sectionProperties: thin shell area is close to perimeter * thickness', () 
   assert.ok(s.Ixx > 0 && s.Iyy > 0, 'positive second moments');
   assert.ok(s.cx > 0.2 * chord && s.cx < 0.6 * chord, 'centroid within chord');
 });
+
+// ---- Spanwise structural loads: cantilever beam mechanics + a BEM-driven sanity check ----
+
+test('beamMoment/beamDeflection: uniform distributed load matches the analytic cantilever (w L^2/2, w L^4/8EI)', () => {
+  const L = 3, n = 400, w0 = 50, EI0 = 1200;
+  const rows = Array.from({ length: n }, (_, i) => ({ r: L * i / (n - 1), dr: L / (n - 1) }));
+  const w = rows.map(() => w0), EI = rows.map(() => EI0);
+  const M = GEO.beamMoment(rows, w);
+  near(M[0], w0 * L * L / 2, 0.01 * w0 * L * L / 2, 'root moment');
+  near(M[n - 1], 0, 1e-6, 'tip moment');
+  const v = GEO.beamDeflection(rows, M, EI);
+  near(v[n - 1], w0 * L ** 4 / (8 * EI0), 0.02 * w0 * L ** 4 / (8 * EI0), 'tip deflection');
+});
+
+test('beamMoment/beamDeflection: tip point load matches the analytic cantilever (P L, P L^3/3EI)', () => {
+  const L = 3, n = 400, P = 20, EI0 = 1200;
+  const rows = Array.from({ length: n }, (_, i) => ({ r: L * i / (n - 1), dr: L / (n - 1) }));
+  const w = rows.map((row, i) => (i === n - 1 ? P / row.dr : 0));
+  const EI = rows.map(() => EI0);
+  const M = GEO.beamMoment(rows, w);
+  near(M[0], P * L, 0.02 * P * L, 'root moment');
+  const v = GEO.beamDeflection(rows, M, EI);
+  near(v[n - 1], P * L ** 3 / (3 * EI0), 0.03 * P * L ** 3 / (3 * EI0), 'tip deflection');
+});
+
+test('axialForce: uniform mass/length spinning at omega matches the analytic centrifugal tension mu*omega^2*(R^2-r^2)/2', () => {
+  // Each row is a lumped annulus of width dr, so the outermost row still carries its own
+  // dr's worth of load past its own centre; F only tends to exactly 0 there as dr -> 0.
+  const R = 1.5, n = 300, mu0 = 0.4, omega = 60;
+  const rows = Array.from({ length: n }, (_, i) => ({ r: R * i / (n - 1), dr: R / (n - 1) }));
+  const massPerLen = rows.map(() => mu0);
+  const F = GEO.axialForce(rows, massPerLen, omega);
+  near(F[0], mu0 * omega * omega * R * R / 2, 0.01 * mu0 * omega * omega * R * R / 2, 'root axial force');
+  assert.ok(F[n - 1] < 0.02 * F[0], 'tip axial force is a small residual of the root value');
+  for (let i = 1; i < n; i++) assert.ok(F[i] <= F[i - 1] + 1e-9, 'axial force decreases monotonically outboard');
+});
+
+test('bladeStructuralLoads: BEM-driven flatwise loads give a sane spanwise structural picture', () => {
+  const af = A.naca4('4412'), ps = A.buildPolarSet(A.buildAeroModel(af));
+  const rows = A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr: 7, aDes: 3.5, clDes: 0.9, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChordRatio: 0.2 });
+  const cfg = { R: 1.5, Rhub: 0.15, B: 3, rows, rho: 1.225, mu: 1.81e-5, polarFor: () => ps };
+  const omega = 7 * 8 / 1.5; // tsr * V / R at the design point
+  const res = A.bemPoint(cfg, 8, omega, 0, 0, null);
+  const afs = rows.map(() => af);
+  const mat = { rho: 1850, fill: 0.28, E: 20e9, allow: 100e6 }; // gfrp-like
+  const st = GEO.bladeStructuralLoads(rows, afs, res.elems, 1.225, omega, mat);
+  const last = st.length - 1;
+  assert.ok(st[0].Mflap > st[last].Mflap, 'flatwise moment is largest at the root');
+  near(st[last].Mflap, 0, 0.05 * Math.abs(st[0].Mflap), 'flatwise moment ~ 0 at the tip');
+  for (let i = 1; i <= last; i++) assert.ok(st[i].defl >= st[i - 1].defl - 1e-9, 'deflection grows monotonically outboard');
+  assert.ok(st[0].Fax > st[last].Fax, 'centrifugal tension is largest at the root');
+  assert.ok(st[last].Fax < 0.1 * st[0].Fax, 'axial force falls to a small residual at the tip');
+  assert.ok(st.every(s => s.safety > 0 && isFinite(s.safety)), 'finite positive safety factor at every station');
+});

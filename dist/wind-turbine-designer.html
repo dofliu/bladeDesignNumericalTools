@@ -1210,7 +1210,91 @@ const GEO = (function () {
       Ixx: outer.Ixx - inner.Ixx, Iyy: outer.Iyy - inner.Iyy, Ixy: outer.Ixy - inner.Ixy,
     };
     const c = aboutCentroid(combined);
-    return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
+    let yMax = 0, xMax = 0;
+    for (const [x, y] of pts) { yMax = Math.max(yMax, Math.abs(y - c.cy)); xMax = Math.max(xMax, Math.abs(x - c.cx)); }
+    return {
+      area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord,
+      Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4,
+      yMax: yMax * chord, xMax: xMax * chord, // extreme-fibre distance from centroid, flatwise/edgewise
+    };
+  }
+  // Default shell thickness for a section of the given chord (metres), used until per-station
+  // thickness/material becomes an adjustable field: 2% of chord, clamped to a sane build range.
+  function defaultShellThickness(chord) { return Math.min(Math.max(0.02 * chord, 0.0015), 0.01); }
+
+  /* ---------- Spanwise structural loads (flatwise/edgewise bending, centrifugal tension) ----------
+   * Blade treated as a cantilever fixed at the root. Distributed loads are given per row (one
+   * BEM annulus each); a row's own segment (r, dr) supplies both its load and its integration
+   * weight, so the same `rows` array used to design/analyse the blade also drives the beam. */
+  // Cantilever bending moment M(r) from a spanwise distributed load w (N/m, root->tip order),
+  // by summing every station's lumped load (w_j*dr_j) about the arm to station i.
+  function beamMoment(rows, w) {
+    const n = rows.length, M = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) {
+      let m = 0;
+      for (let j = i; j < n; j++) m += Math.max(rows[j].r - rows[i].r, 0) * w[j] * rows[j].dr;
+      M[i] = m;
+    }
+    return M;
+  }
+  // Cumulative axial (centrifugal) tension F(r) from a spanwise mass-per-length distribution.
+  function axialForce(rows, massPerLen, omega) {
+    const n = rows.length, F = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) {
+      let f = 0;
+      for (let j = i; j < n; j++) f += massPerLen[j] * omega * omega * rows[j].r * rows[j].dr;
+      F[i] = f;
+    }
+    return F;
+  }
+  // Euler-Bernoulli deflection v(r) from curvature M/EI, integrated from the fixed root
+  // (v=0, slope=0) outward by the trapezoidal rule.
+  function beamDeflection(rows, M, EI) {
+    const n = rows.length, slope = new Array(n).fill(0), v = new Array(n).fill(0);
+    for (let i = 1; i < n; i++) {
+      const dr = rows[i].r - rows[i - 1].r;
+      const k0 = M[i - 1] / EI[i - 1], k1 = M[i] / EI[i];
+      slope[i] = slope[i - 1] + 0.5 * (k0 + k1) * dr;
+      v[i] = v[i - 1] + 0.5 * (slope[i - 1] + slope[i]) * dr;
+    }
+    return v;
+  }
+  // Full spanwise structural pass for one blade: flatwise + edgewise bending moment, centrifugal
+  // tension, deflection and combined stress at every row, from a BEM design-point solution.
+  //   rows: [{r, c, dr}], afs: airfoil per row, elems: BEM `detail` per row {phi, cl, cd, W} (deg),
+  //   rhoAir, omega (rad/s), mat: {rho, fill, E, allow}, thicknessFn(chord)->m (defaults above).
+  function bladeStructuralLoads(rows, afs, elems, rhoAir, omega, mat, thicknessFn) {
+    thicknessFn = thicknessFn || defaultShellThickness;
+    const n = rows.length;
+    const sec = rows.map((row, i) => sectionProperties(afs[i], row.c, thicknessFn(row.c)));
+    const massPerLen = sec.map(s => mat.rho * s.area);
+    const wFlap = rows.map((row, i) => {
+      const phi = elems[i].phi * Math.PI / 180, q = 0.5 * rhoAir * elems[i].W * elems[i].W;
+      const cn = elems[i].cl * Math.cos(phi) + elems[i].cd * Math.sin(phi);
+      return q * row.c * cn;
+    });
+    const wEdge = rows.map((row, i) => {
+      const phi = elems[i].phi * Math.PI / 180, q = 0.5 * rhoAir * elems[i].W * elems[i].W;
+      const ct = elems[i].cl * Math.sin(phi) - elems[i].cd * Math.cos(phi);
+      return q * row.c * ct;
+    });
+    const Mflap = beamMoment(rows, wFlap), Medge = beamMoment(rows, wEdge);
+    const Fax = axialForce(rows, massPerLen, omega);
+    const EIflap = sec.map(s => mat.E * s.Ixx);
+    const defl = beamDeflection(rows, Mflap, EIflap);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const sFlap = sec[i].Ixx > 0 ? Mflap[i] * sec[i].yMax / sec[i].Ixx : 0;
+      const sEdge = sec[i].Iyy > 0 ? Medge[i] * sec[i].xMax / sec[i].Iyy : 0;
+      const sAxial = sec[i].area > 0 ? Fax[i] / sec[i].area : 0;
+      const sigma = Math.abs(sFlap) + Math.abs(sEdge) + sAxial; // conservative superposition
+      out.push({
+        r: rows[i].r, area: sec[i].area, Mflap: Mflap[i], Medge: Medge[i], Fax: Fax[i],
+        defl: defl[i], stressFlap: sFlap, stressEdge: sEdge, stressAxial: sAxial, stress: sigma,
+        safety: sigma > 0 ? mat.allow / sigma : Infinity,
+      });
+    }
+    return out;
   }
 
   // store-only ZIP
@@ -1238,7 +1322,10 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return {
+    loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties,
+    defaultShellThickness, beamMoment, axialForce, beamDeflection, bladeStructuralLoads,
+  };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;
 
@@ -1521,12 +1608,14 @@ const Scene3D = (function () {
 (function (root) {
 'use strict';
 const A = AERO;
+// E: 楊氏模數 (Pa),供結構彎曲/撓度估算; allow: 容許應力 (Pa,已含疲勞/安全係數的保守值),
+// 供結構安全係數估算。兩者皆為典型文獻值的合理預設,尚未做逐站/逐使用者調整。
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, allow: 100e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, allow: 40e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, allow: 110e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, allow: 20e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, allow: 250e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 

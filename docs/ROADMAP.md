@@ -23,7 +23,9 @@
 ## 3. 葉片結構分析
 
 - [x] 截面性質:依翼型外形 + 殼厚計算面積、慣性矩、形心(多邊形積分)。`geo.js` 新增 `polygonMoments`(封閉多邊形面積/一次矩/二次矩,對原點,供組合截面先相加再一次移軸)、`offsetPolygon`(等厚度向內偏移,做薄殼內壁)、`sectionProperties(af, chord, thickness)`(回傳實際單位的面積/形心/Ixx/Iyy/Ixy)。`tests/geo.test.mjs` 以正方形、正多邊形近似圓、圓環解析解與 NACA 0012 實心截面積文獻常數(≈0.6851×t/c)驗證。
-- [ ] 載重:由 BEM 的 dT/dr、dQ/dr 加離心力,算根部彎矩、各截面應力、葉尖撓度;極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況。需要材料參數(E、密度、容許應力)與殼厚沿展長分布,目前 `sectionProperties` 只吃單一厚度,之後要接上每個 `G.rows` 截面各自的厚度/材料設定。
+- [x] 載重(第一版,葉片本體,尚無 UI):`geo.js` 新增 `beamMoment`(懸臂梁彎矩,由展長分布力逐站累加力臂)、`axialForce`(離心張力,同法累加)、`beamDeflection`(Euler-Bernoulli 曲率由根部往葉尖梯形積分兩次)、`bladeStructuralLoads(rows, afs, elems, rhoAir, omega, mat, thicknessFn)`(串接以上三者 + `sectionProperties`,回傳每一站的揮舞/擺振彎矩、離心軸力、揮舞撓度、三個應力分量與安全係數)。`sectionProperties` 新增回傳 `yMax`/`xMax`(形心到外緣的最大距離,供彎曲應力用)。`MATERIALS`(`core.js`)補上 `E`(楊氏模數)與 `allow`(容許應力,已含保守安全係數)的合理文獻預設值(玻纖 20 GPa/100 MPa、木材 11 GPa/40 MPa、鋁 69 GPa/110 MPa、PLA 2.3 GPa/20 MPa、碳纖 70 GPa/250 MPa),尚未做逐站或使用者可調。殼厚沿展長暫用 `defaultShellThickness(chord)`(2% 弦長,夾在 1.5–10 mm)這個合理預設,還沒有接到 `G.rows` 逐站可調的厚度/材料設定(留給下一步)。`tests/geo.test.mjs` 新增 4 個測試:均布載重/懸臂梁末端集中力兩個解析解驗證彎矩與撓度公式、旋轉均勻質量分布的離心張力解析解、一組真實 BEM 設計點結果餵進 `bladeStructuralLoads` 檢查彎矩/撓度/軸力沿展長的物理合理性(彎矩根部最大且往葉尖遞減、撓度單調遞增、安全係數為正有限值)。
+  - [ ] 極端風速(IEC 小型風機 Class II 的 Vref)與停機工況的載重工況組合。
+  - [ ] 殼厚/材料改成每個 `G.rows` 截面各自可調(目前是全展長單一材料 + 公式化厚度)。
 - [ ] 疲勞:以紊流測試時間序列做雨流計數,估計根部疲勞壽命(可先簡化)。
 - [ ] 單葉片工作區新增「結構」卡片(面積/Ixx/Iyy 沿展長圖 + 之後的應力/撓度);報告新增一節。
 - 驗收(需上面全部完成):與懸臂梁解析解比對撓度;材料安全係數低於門檻時給出警告。
