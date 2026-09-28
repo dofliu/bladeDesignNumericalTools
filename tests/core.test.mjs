@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 global.AERO = require('../src/aero.js');
+global.GEO = require('../src/geo.js');
 const core = require('../src/core.js');
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep } = core;
 
@@ -40,6 +41,17 @@ test('HAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () =>
       assert.ok(track >= 0.9, `HAWT ${ctrl} ${V} m/s tracking ${(track * 100).toFixed(1)}%`);
     }
   }
+});
+
+test('HAWT structural loads: root bending moment/stress reasonable, tip deflection small vs R', () => {
+  setMode('HAWT'); // default S.hawt is the 3-blade R1.5m tsr7 reference design
+  const st = G.struct;
+  const n = st.r.length;
+  assert.ok(st.Mflap[0] > 0, 'flapwise root moment positive (thrust bends blade downwind)');
+  assert.ok(Math.abs(st.Mflap[n - 1]) < 1e-6, 'flapwise moment ~0 at the free tip');
+  assert.ok(st.N[0] > 0, 'root axial force positive (centrifugal tension)');
+  assert.ok(st.sfMin > 1, `min safety factor should clear 1x for this reference design (got ${st.sfMin.toFixed(2)})`);
+  assert.ok(st.tipDefl > 0 && st.tipDefl < 0.3 * S.hawt.R, `tip deflection should be small vs blade radius (got ${st.tipDefl.toFixed(4)} m vs R=${S.hawt.R})`);
 });
 
 test('VAWT MPPT tracking stays >= 90% of ideal for po/tsr/ot controllers', () => {

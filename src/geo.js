@@ -167,19 +167,63 @@ const GEO = (function () {
   }
   // Section properties of a thin shell (thickness `thickness`, uniform, both in metres) over an
   // airfoil profile af:{x,yu,yl} (unit chord, LE->TE), for a section of the given chord (metres).
-  // Returns area (m^2), centroid cx/cy (m from LE, chord-axis/thickness-axis) and second moments
-  // of area Ixx/Iyy/Ixy about the centroid (m^4). Falls back to the solid section if the shell
-  // thickness would consume (near-)the whole profile.
+  // Returns area (m^2), centroid cx/cy (m from LE, chord-axis/thickness-axis), second moments
+  // of area Ixx/Iyy/Ixy about the centroid (m^4), and yMax/xMax (m): the largest distance from the
+  // centroid to the OUTER surface along each axis, i.e. the extreme-fibre distance used for a
+  // first-order bending stress estimate (sigma = M*y/I). Falls back to the solid section if the
+  // shell thickness would consume (near-)the whole profile, INCLUDING the case where offsetPolygon
+  // self-intersects near the thin leading/trailing edge (thickness large relative to LOCAL airfoil
+  // thickness there, even if small relative to chord) and yields a non-physical (non-positive)
+  // second moment for the outer-minus-inner shell — a solid section is the safe (stronger, more
+  // conservative for a stress check) fallback rather than trusting a broken offset.
   function sectionProperties(af, chord, thickness) {
     const pts = loop(af);
     const outer = polygonMoments(pts);
     const inner = polygonMoments(offsetPolygon(pts, thickness / chord));
-    const combined = inner.area <= 0 || inner.area >= outer.area * 0.98 ? outer : {
+    const shellRaw = inner.area <= 0 || inner.area >= outer.area * 0.98 ? null : {
       area: outer.area - inner.area, My: outer.My - inner.My, Mx: outer.Mx - inner.Mx,
       Ixx: outer.Ixx - inner.Ixx, Iyy: outer.Iyy - inner.Iyy, Ixy: outer.Ixy - inner.Ixy,
     };
-    const c = aboutCentroid(combined);
-    return { area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord, Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4 };
+    // Validity must be checked AFTER the parallel-axis shift to the (candidate) centroid: a
+    // self-intersecting inner offset can still leave raw about-origin moments positive while
+    // violating Ixx/Iyy >= area*(distance)^2, which only shows up post-shift as a negative result.
+    const shell = shellRaw && aboutCentroid(shellRaw);
+    const c = shell && shell.Ixx > 0 && shell.Iyy > 0 ? shell : aboutCentroid(outer);
+    let yMax = 0, xMax = 0;
+    for (const [x, y] of pts) { yMax = Math.max(yMax, Math.abs(y - c.cy)); xMax = Math.max(xMax, Math.abs(x - c.cx)); }
+    return {
+      area: c.area * chord * chord, cx: c.cx * chord, cy: c.cy * chord,
+      Ixx: c.Ixx * chord ** 4, Iyy: c.Iyy * chord ** 4, Ixy: c.Ixy * chord ** 4,
+      yMax: yMax * chord, xMax: xMax * chord,
+    };
+  }
+  // Cumulative integral from the tip inward: F[i] = integral of q(r) dr from stations[i] to the
+  // last station (trapezoidal), with F[last] = 0. Used both for shear-from-line-load and for
+  // moment-from-shear (cantileverBeam below), and directly for an axial force distribution (e.g.
+  // centrifugal tension, integrated the same way from the free tip toward the fixed root).
+  // stations must be sorted root -> tip (ascending).
+  function intFromTip(stations, q) {
+    const n = stations.length, F = new Array(n).fill(0);
+    for (let i = n - 2; i >= 0; i--) F[i] = F[i + 1] + 0.5 * (q[i] + q[i + 1]) * (stations[i + 1] - stations[i]);
+    return F;
+  }
+  // Euler-Bernoulli cantilever fixed at stations[0] (root), free at stations[last] (tip), under a
+  // distributed transverse line load w(r) (N/m) and bending stiffness EI(r) (N*m^2), both sampled
+  // at `stations` (m, ascending root->tip). Returns per-station shear V, bending moment
+  // M(r) = integral_r^tip w(r')*(r'-r) dr', slope and deflection (both zero at the fixed root),
+  // via two trapezoidal integrations of curvature M/EI. Small-deflection beam theory only (no
+  // geometric/centrifugal stiffening).
+  function cantileverBeam(stations, w, EI) {
+    const n = stations.length;
+    const V = intFromTip(stations, w), M = intFromTip(stations, V);
+    const kappa = M.map((m, i) => m / EI[i]);
+    const slope = new Array(n).fill(0), defl = new Array(n).fill(0);
+    for (let i = 1; i < n; i++) {
+      const dr = stations[i] - stations[i - 1];
+      slope[i] = slope[i - 1] + 0.5 * (kappa[i - 1] + kappa[i]) * dr;
+      defl[i] = defl[i - 1] + 0.5 * (slope[i - 1] + slope[i]) * dr;
+    }
+    return { V, M, slope, defl };
   }
 
   // store-only ZIP
@@ -207,6 +251,6 @@ const GEO = (function () {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
     return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties };
+  return { loop, loft, hawtBlade, vawtBlade, merge, rotX, stl, zip, PIVOT, polygonMoments, offsetPolygon, sectionProperties, intFromTip, cantileverBeam };
 })();
 if (typeof module !== 'undefined') module.exports = GEO;

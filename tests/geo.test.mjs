@@ -71,3 +71,46 @@ test('sectionProperties: thin shell area is close to perimeter * thickness', () 
   assert.ok(s.Ixx > 0 && s.Iyy > 0, 'positive second moments');
   assert.ok(s.cx > 0.2 * chord && s.cx < 0.6 * chord, 'centroid within chord');
 });
+
+test('sectionProperties: yMax/xMax bracket the airfoil half-thickness/chord', () => {
+  const af = A.naca4('0012'), chord = 2;
+  const s = GEO.sectionProperties(af, chord, 1); // solid section
+  // NACA 0012 max half-thickness is ~6% of chord (symmetric profile, cy ~= 0)
+  near(s.cy, 0, 1e-9 * chord, 'symmetric section centroid on chord line');
+  near(s.yMax, 0.06 * chord, 0.02 * chord, 'yMax close to max half-thickness');
+  assert.ok(s.xMax > 0.4 * chord && s.xMax < 0.6 * chord, 'xMax roughly half the chord');
+});
+
+test('sectionProperties: falls back to solid section instead of going non-physical when the shell thickness overwhelms a small chord', () => {
+  // A fixed absolute shell thickness applied to a small tip chord can make offsetPolygon's miter
+  // join self-intersect near the thin leading/trailing edge; this used to produce a negative Iyy.
+  const af = A.naca4('4412');
+  for (const chord of [0.15, 0.1, 0.07, 0.05, 0.03]) {
+    const s = GEO.sectionProperties(af, chord, 0.003); // 3mm shell, shrinking chord
+    assert.ok(s.Ixx > 0, `Ixx positive at chord=${chord}`);
+    assert.ok(s.Iyy > 0, `Iyy positive at chord=${chord}`);
+    assert.ok(s.area > 0 && s.area <= 0.6851 * 0.12 * chord * chord * 1.05, `area within solid-section bound at chord=${chord}`);
+  }
+});
+
+test('intFromTip: cumulative integral of a distributed load matches the analytic shear', () => {
+  const N = 400, L = 3, w0 = 50;
+  const stations = Array.from({ length: N }, (_, i) => L * i / (N - 1));
+  const w = stations.map(() => w0); // uniform load
+  const V = GEO.intFromTip(stations, w);
+  near(V[0], w0 * L, 1e-3 * w0 * L, 'root shear = w0*L');
+  near(V[N - 1], 0, 1e-9, 'tip shear = 0');
+  const mid = Math.floor(N / 2);
+  near(V[mid], w0 * (L - stations[mid]), 1e-2 * w0 * L, 'shear at midspan');
+});
+
+test('cantileverBeam: uniform load on uniform-EI beam matches the textbook cantilever solution', () => {
+  const N = 400, L = 2.5, w0 = 120, EI0 = 4500;
+  const stations = Array.from({ length: N }, (_, i) => L * i / (N - 1));
+  const w = stations.map(() => w0), EI = stations.map(() => EI0);
+  const b = GEO.cantileverBeam(stations, w, EI);
+  near(b.M[0], w0 * L * L / 2, 1e-3 * w0 * L * L / 2, 'root moment = w0*L^2/2');
+  near(b.M[N - 1], 0, 1e-9, 'tip moment = 0');
+  const tipDefl = w0 * L ** 4 / (8 * EI0); // classic uniformly-loaded cantilever tip deflection
+  near(b.defl[N - 1], tipDefl, 0.01 * tipDefl, 'tip deflection matches w0*L^4/(8EI)');
+});

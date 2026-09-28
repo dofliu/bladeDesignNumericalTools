@@ -7,19 +7,23 @@
 (function (root) {
 'use strict';
 const A = AERO;
+// E: Young's modulus (Pa), sigmaAllow: working stress limit for a first-order static-strength
+// check (Pa) — order-of-magnitude literature figures for preliminary small-blade design, already
+// includes a rough safety margin (not the material's ultimate strength). Not a substitute for a
+// datasheet + proper fatigue analysis; see docs/ROADMAP.md item 3.
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 17e9, sigmaAllow: 80e6 },
+  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 10e9, sigmaAllow: 20e6 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, sigmaAllow: 70e6 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 1.8e9, sigmaAllow: 15e6 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, sigmaAllow: 200e6 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
 const S = {
   mode: 'HAWT', step: 'af', ctab: 'airfoil',
   af: { st: [{ f: 0.2, k: 'n4:4421' }, { f: 0.5, k: 'n4:4415' }, { f: 0.8, k: 'n4:4412' }], vawt: 'n4:0018', cdMax: 1.3, custom: [], imported: [], polarImp: {}, view: 2, alphaView: 6, reIdx: 3, full: false },
-  hawt: { R: 1.5, Rhub: 0.15, B: 3, tsr: 7, Vd: 8, aMode: 'auto', aDes: 5, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChord: 0.12, pitch: 0, material: 'gfrp', ov: {}, twMode: 'bem', twRoot: 20, twTip: 0 },
+  hawt: { R: 1.5, Rhub: 0.15, B: 3, tsr: 7, Vd: 8, aMode: 'auto', aDes: 5, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChord: 0.12, pitch: 0, material: 'gfrp', ov: {}, twMode: 'bem', twRoot: 20, twTip: 0, shellT: 0.003 },
   vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true },
@@ -89,7 +93,7 @@ function blendPS(p1, p2, w) {
 }
 
 /* ---------- geometry + performance ---------- */
-const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0 };
+const G = { rows: [], afs: [], pss: [], mass: 0, J: 1, A: 1, R: 1, perf: null, yawCurves: {}, vcfg: null, gen: 0, struct: null };
 const DLAM = 0.25;
 
 /* ---------- spanwise airfoil stations ---------- */
@@ -192,6 +196,40 @@ function designHAWT() {
   const mh = 0.35 * m + 0.5; J += 0.5 * mh * Rh * Rh;
   J *= 1.12; // generator rotor share
   Object.assign(G, { rows, afs, pss, bladeMass: mb, mass: m, J: Math.max(J, 1e-3), A: Math.PI * R * R, R, Rhub: Rh });
+  G.struct = structuralLoads(rows, afs, resD.elems, mat, h.shellT, omD, rho);
+}
+// Single-blade static structural check at the design operating point: flapwise bending from the
+// BEM thrust distribution, edgewise bending from the BEM torque (tangential force) distribution,
+// axial tension from centrifugal force, combined into an extreme-fibre stress and a safety factor
+// per station, plus cantilever tip deflection (flap/edge, small-deflection beam theory). Uses a
+// single shell thickness for the whole span and one material for the whole blade (see
+// docs/ROADMAP.md item 3 for per-station thickness/material and extreme-gust/parked-rotor cases,
+// not yet implemented).
+function structuralLoads(rows, afs, elems, mat, shellT, omega, rhoAir) {
+  const stations = rows.map(x => x.r);
+  const secs = rows.map((x, i) => GEO.sectionProperties(afs[i], x.c, Math.min(shellT, 0.49 * x.c)));
+  const wFlap = rows.map((x, i) => {
+    const el = elems[i], phi = el.phi * A.D2R, cn = el.cl * Math.cos(phi) + el.cd * Math.sin(phi);
+    return 0.5 * rhoAir * el.W * el.W * x.c * cn;
+  });
+  const wEdge = rows.map((x, i) => {
+    const el = elems[i], phi = el.phi * A.D2R, ct = el.cl * Math.sin(phi) - el.cd * Math.cos(phi);
+    return 0.5 * rhoAir * el.W * el.W * x.c * ct;
+  });
+  const qCf = rows.map((x, i) => mat.rho * secs[i].area * omega * omega * x.r);
+  const flap = GEO.cantileverBeam(stations, wFlap, secs.map(s => mat.E * Math.max(s.Ixx, 1e-14)));
+  const edge = GEO.cantileverBeam(stations, wEdge, secs.map(s => mat.E * Math.max(s.Iyy, 1e-14)));
+  const N = GEO.intFromTip(stations, qCf);
+  const sigma = secs.map((s, i) => Math.abs(flap.M[i]) * s.yMax / Math.max(s.Ixx, 1e-14)
+    + Math.abs(edge.M[i]) * s.xMax / Math.max(s.Iyy, 1e-14) + N[i] / Math.max(s.area, 1e-9));
+  const sf = sigma.map(s => mat.sigmaAllow / Math.max(s, 1));
+  const n = stations.length;
+  return {
+    r: stations, area: secs.map(s => s.area), Ixx: secs.map(s => s.Ixx), Iyy: secs.map(s => s.Iyy),
+    Mflap: flap.M, Medge: edge.M, N, sigma, sf, sfMin: Math.min(...sf),
+    tipDeflFlap: flap.defl[n - 1], tipDeflEdge: edge.defl[n - 1],
+    tipDefl: Math.hypot(flap.defl[n - 1], edge.defl[n - 1]),
+  };
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
@@ -489,6 +527,6 @@ function steadyPower(V) {
 
 const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
   stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower };
+  simStep, recordHist, steadyPower, structuralLoads };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
 })(this);
