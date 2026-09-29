@@ -158,6 +158,15 @@ const Report = (function () {
       h += `<div class="two">${fig(capture(cv => Plot.draw(cv, { title: `攻角 vs 方位角(λ ${fmt(G.lopt, 2)})`, series: [{ x: az, y: Array.from(res.alAz), color: col('--c1'), label: 'α' }], xlim: [0, 360], xlabel: '方位角 (°)', ylabel: 'α (°)', bands: [{ x0: 90, x1: 270, color: col('--grid') }] }), 520, 300), '圖:中段剖面攻角變化(灰區為下風半圈)')}${fig(capture(cv => Plot.draw(cv, { title: '轉矩 vs 方位角(8 m/s)', series: [{ x: az, y: tot, color: col('--c1'), label: '總轉矩' }, { x: az, y: qb, color: col('--c2'), dash: [4, 3], label: '單葉' }], xlim: [0, 360], xlabel: '方位角 (°)', ylabel: 'N·m' }), 520, 300), '圖:轉矩漣波')}</div>`;
     }
     // 4 performance
+    if (H && G.loads && G.rows.length) {
+      h += hN('葉片結構(設計點與極端風速)');
+      const L = G.loads, ex = L.extreme, mat = MATERIALS[S.hawt.material], warn = v => v < 1.5 ? ' style="color:var(--warn);font-weight:700"' : '';
+      const sf = v => isFinite(v) ? fmt(v, 1) : '—';
+      h += `<table class="kvt"><tr><th>材料</th><td>${mat.name}(E ${fmt(mat.E / 1e9, 0)} GPa,容許應力 ${fmt(mat.allow / 1e6, 0)} MPa)</td></tr><tr><th>根部彎矩(揮舞 / 擺振)</th><td>${fmt(L.MflapRoot, 1)} / ${fmt(L.MedgeRoot, 1)} N·m</td></tr><tr><th>根部離心軸力</th><td>${fmt(L.FaxRoot, 0)} N</td></tr><tr><th>設計點最小安全係數</th><td${warn(L.minSafety)}>${sf(L.minSafety)}</td></tr><tr><th>設計點葉尖揮舞撓度</th><td>${fmt(L.tipDefl * 1000, 1)} mm(${fmt(L.tipDefl / S.hawt.R * 100, 1)}% 半徑)</td></tr>${ex ? `<tr><th>極端風速停機工況最小安全係數</th><td${warn(ex.minSafety)}>${sf(ex.minSafety)}</td></tr>` : ''}</table>`;
+      const pick = [0, 0.25, 0.5, 0.75, 1].map(f => Math.round(f * (G.rows.length - 1)));
+      h += `<table><thead><tr><th>r/R</th><th>截面積 (mm²)</th><th>Ixx (mm⁴)</th><th>Iyy (mm⁴)</th><th>應力 (MPa)</th><th>安全係數</th></tr></thead><tbody>${[...new Set(pick)].map(i => { const r = G.rows[i]; return `<tr><td>${fmt(r.r / S.hawt.R, 2)}</td><td>${fmt(r.secArea * 1e6, 0)}</td><td>${fmt(r.Ixx * 1e12, 0)}</td><td>${fmt(r.Iyy * 1e12, 0)}</td><td>${fmt(r.stress / 1e6, 1)}</td><td${warn(r.safety)}>${sf(r.safety)}</td></tr>`; }).join('')}</tbody></table>`;
+      h += `<p class="note">結構為單一等效殼截面的懸臂梁模型:只含揮舞/擺振彎曲與離心軸力的保守相加,無扭轉、屈曲、疲勞與分項安全係數;安全係數低於 1.5 以紅色標示,僅供概念設計參考。</p>`;
+    }
     h += hN('轉子性能預測');
     const P = G.perf;
     const cpUrl = capture(cv => Plot.draw(cv, { title: 'Cp–λ 與 Ct', series: [{ x: P.lam, y: P.cp, color: col('--c1'), label: 'Cp' }, { x: P.lam, y: P.ct, color: col('--c2'), axis: 'R', dash: [5, 3], label: 'Ct' }, { x: [0, P.lam[P.lam.length - 1]], y: [16 / 27, 16 / 27], color: col('--muted'), dash: [2, 3], width: 1, label: 'Betz' }], ylim: [0, 0.65], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Ct' }), 520, 300);

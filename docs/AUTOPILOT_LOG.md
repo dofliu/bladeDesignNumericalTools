@@ -2,6 +2,14 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-29 — ROADMAP 3:結構截面圖與報告結構一節
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/bench.js` 沿展長圖新增「截面積與慣性矩」檢視(面積、Ixx、Iyy);`src/report.js` 新增「葉片結構」一節(HAWT):材料、根部彎矩/離心軸力、設計點與極端風速停機工況最小安全係數、葉尖撓度、五站截面表,安全係數 < 1.5 標紅,並附模型限制說明。更新 ROADMAP。
+  - 順手修掉截圖時發現的真實錯誤:根部厚截面(t/c 0.21)的等效殼厚二分搜尋因內偏移多邊形自我翻折而不單調,得到殼厚 23 mm、第 3 站 Ixx 為負值,葉尖撓度算成 231 m(ROADMAP 先前標註「tipDefl 數量級待查證」即此)。`geo.mjs` 的 `equivalentThickness` 上限改為半個翼型厚度,`sectionProperties` 在殼厚 ≥ 半厚時視為實心;預設 HAWT 葉尖撓度變為約 36 mm。`tests/core.test.mjs` 新增 Ixx 為正/不隨外側增加、葉尖撓度 < 0.1R 的回歸。
+- 驗證:見 PR 內文。
+- 已知限制:僅 HAWT;疲勞、屈曲、扭轉、分項安全係數未做。
+- 下一步:ROADMAP 3 疲勞(雨流計數);ROADMAP 4 變槳/側偏收尾;ROADMAP 1 轉 `ui.js` 等。
+
 ## 2026-09-29 — ROADMAP 1:core.js 轉成 ES module
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/core.js` → `src/core.mjs`:拿掉雙模組 IIFE,改 `import * as A from './aero.mjs'`、`import * as GEO from './geo.mjs'` 與具名 `export`;`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `core: 'CORE'`,新增 `EXPAND_GLOBALS`,在 IIFE 後接 `Object.assign(globalThis, CORE)`,ui/bench/flow/report 不必改;`tests/core.test.mjs` 改直接 import,不再設定全域。更新 CLAUDE.md 與 ROADMAP。

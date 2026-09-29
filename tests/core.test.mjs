@@ -59,6 +59,9 @@ test('HAWT design point produces sane spanwise stress/deflection/safety factor',
   const n = G.rows.length;
   assert.ok(isFinite(G.loads.tipDefl) && G.loads.tipDefl >= 0, `tip deflection should be a small positive number: ${G.loads.tipDefl}`);
   assert.ok(G.loads.minSafety > 0 && isFinite(G.loads.minSafety), `minimum safety factor should be positive and finite: ${G.loads.minSafety}`);
+  for (let i = 0; i < n; i++) assert.ok(G.rows[i].Ixx > 0, `station ${i} Ixx must be positive (thick root sections used to fold the shell offset): ${G.rows[i].Ixx}`);
+  for (let i = 1; i < n; i++) assert.ok(G.rows[i].Ixx <= G.rows[i - 1].Ixx * 1.001, `Ixx should not grow outboard (station ${i})`);
+  assert.ok(G.loads.tipDefl < 0.1 * S.hawt.R, `tip deflection should be a small fraction of the radius: ${G.loads.tipDefl} m`);
   assert.equal(G.rows[0].defl, 0, 'deflection is fixed (0) at the root');
   for (let i = 0; i < n; i++) {
     assert.ok(G.rows[i].stress >= 0, `combined stress must be non-negative at row ${i}`);

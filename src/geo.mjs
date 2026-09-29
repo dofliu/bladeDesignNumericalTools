@@ -169,11 +169,15 @@ export function offsetPolygon(ptsIn, t) {
 // Returns area (m^2), centroid cx/cy (m from LE, chord-axis/thickness-axis) and second moments
 // of area Ixx/Iyy/Ixy about the centroid (m^4). Falls back to the solid section if the shell
 // thickness would consume (near-)the whole profile.
+function maxThickness(af) { let m = 0; for (let i = 0; i < af.yu.length; i++) m = Math.max(m, af.yu[i] - af.yl[i]); return m; }
 export function sectionProperties(af, chord, thickness) {
   const pts = loop(af);
   const outer = polygonMoments(pts);
-  const inner = polygonMoments(offsetPolygon(pts, thickness / chord));
-  const combined = inner.area <= 0 || inner.area >= outer.area * 0.98 ? outer : {
+  // A wall thicker than half the local airfoil thickness makes the inward offset fold over itself
+  // (garbage area/inertia), so treat it as a solid section instead.
+  const solid = thickness / chord >= 0.5 * maxThickness(af);
+  const inner = solid ? { area: 0 } : polygonMoments(offsetPolygon(pts, thickness / chord));
+  const combined = solid || inner.area <= 0 || inner.area >= outer.area * 0.98 ? outer : {
     area: outer.area - inner.area, My: outer.My - inner.My, Mx: outer.Mx - inner.Mx,
     Ixx: outer.Ixx - inner.Ixx, Iyy: outer.Iyy - inner.Iyy, Ixy: outer.Ixy - inner.Ixy,
   };
@@ -190,7 +194,7 @@ export function sectionProperties(af, chord, thickness) {
 // Used to back out an equivalent wall thickness from the mass model's `fill` fraction (see
 // core.js bladeLoads) instead of adding a separate user-facing thickness field.
 export function equivalentThickness(af, chord, targetArea) {
-  let lo = 1e-6 * chord, hi = chord;
+  let lo = 1e-6 * chord, hi = 0.5 * maxThickness(af) * chord;
   for (let it = 0; it < 24; it++) {
     const mid = 0.5 * (lo + hi);
     if (sectionProperties(af, chord, mid).area < targetArea) lo = mid; else hi = mid;

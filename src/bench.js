@@ -82,7 +82,7 @@ const Bench = (function () {
         ${card('剖面形狀與速度三角形', '<canvas id="bSec" style="height:320px"></canvas>', 'span2')}
         ${card('此剖面的極曲線', '<canvas id="bPol" style="height:320px"></canvas>')}
         ${card('剖面疊圖(由葉尖往輪轂看)', '<canvas id="bStack" style="height:300px"></canvas>')}
-        ${card('沿展長的氣動特性變化', `<div class="ctrlbar" style="padding:0 0 8px"><label>顯示 <select id="bQ">${[['alpha', '攻角 α(實際 vs 最佳升阻比)'], ['clcd', '升力係數 Cl / 阻力係數 Cd'], ['ld', '升阻比 L/D'], ['re', '雷諾數 Re'], ['load', '推力與轉矩分布 dT/dr、dQ/dr'], ['ind', '誘導因子 a、a′ 與葉尖損失 F'], ['geom', '弦長 c/R 與扭角 θ'], ['phi', '入流角 φ 與扭角 θ'], ['tc', '相對厚度 t/c'], ['moment', '結構:揮舞/擺振彎矩'], ['stress', '結構:合成應力與容許應力'], ['defl', '結構:揮舞撓度']].map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label></div><canvas id="bSpan" style="height:252px"></canvas>`, 'span2')}
+        ${card('沿展長的氣動特性變化', `<div class="ctrlbar" style="padding:0 0 8px"><label>顯示 <select id="bQ">${[['alpha', '攻角 α(實際 vs 最佳升阻比)'], ['clcd', '升力係數 Cl / 阻力係數 Cd'], ['ld', '升阻比 L/D'], ['re', '雷諾數 Re'], ['load', '推力與轉矩分布 dT/dr、dQ/dr'], ['ind', '誘導因子 a、a′ 與葉尖損失 F'], ['geom', '弦長 c/R 與扭角 θ'], ['phi', '入流角 φ 與扭角 θ'], ['tc', '相對厚度 t/c'], ['moment', '結構:揮舞/擺振彎矩'], ['stress', '結構:合成應力與容許應力'], ['defl', '結構:揮舞撓度'], ['secprop', '結構:截面積與慣性矩']].map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label></div><canvas id="bSpan" style="height:252px"></canvas>`, 'span2')}
       </div>`;
     } else {
       h += `<div class="bgrid">
@@ -267,6 +267,7 @@ const Bench = (function () {
       case 'stress': { const allow = MATERIALS[S.hawt.material].allow / 1e6;
         o = { title: `合成應力(最小安全係數 ${G.loads && isFinite(G.loads.minSafety) ? fmt(G.loads.minSafety, 1) : '—'})`, series: [{ x, y: rows.map(r => r.stress / 1e6), color: col('--c1'), label: '應力 (MPa)', dots: 2 }, { x: [0, 1], y: [allow, allow], color: col('--signal'), dash: [4, 3], label: '容許應力' }], ylabel: 'MPa' }; break; }
       case 'defl': o = { title: `揮舞撓度(葉尖 ${G.loads ? fmt(G.loads.tipDefl * 1000, 1) : '—'} mm)`, series: [{ x, y: rows.map(r => r.defl * 1000), color: col('--c3'), label: '撓度 (mm)', dots: 2 }], ylabel: 'mm' }; break;
+      case 'secprop': o = { title: '等效殼截面性質', series: [{ x, y: rows.map(r => r.secArea * 1e6), color: col('--c1'), label: '面積 (mm²)', dots: 2 }, { x, y: rows.map(r => r.Ixx * 1e12), color: col('--c2'), axis: 'R', label: 'Ixx (mm⁴)', dots: 2 }, { x, y: rows.map(r => r.Iyy * 1e12), color: col('--c3'), axis: 'R', dash: [4, 3], label: 'Iyy (mm⁴)', dots: 2 }], ylabel: 'mm²', ylabelR: 'mm⁴' }; break;
       default: o = { title: '相對厚度', series: [{ x, y: G.afs.map(a => a.t * 100), color: col('--c4'), label: 't/c (%)', dots: 2 }], ylabel: 't/c (%)' };
     }
     Plot.draw(cv, { ...o, xlim: [0, 1], xlabel: 'r/R', vlines: [{ x: rr, color: col('--signal') }, ...stSorted().map(s => ({ x: s.f, color: col('--grid') }))] });
