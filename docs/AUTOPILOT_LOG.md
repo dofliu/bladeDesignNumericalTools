@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-28 — ROADMAP 3:單葉片工作區顯示結構量
+
+- 做了什麼:啟動時唯一開著的 `[autopilot]` PR 是 #12(ES modules/Vite)。它基於過期 main,其 `geo.mjs` 會刪掉後來合併的截面性質/撓度函式,且引入首個 npm 相依並需使用者決定 ESM 方向,故留言後關閉、不合併。改做 ROADMAP 3 的 UI 小步:`src/bench.js` 沿展長圖新增「彎矩 / 合成應力(含容許應力線、最小安全係數)/ 揮舞撓度」三個檢視,資料取自 `G.rows` 與 `G.loads`。
+- 驗證:見 PR 內文。
+- 已知限制:只有 HAWT;報告尚未新增結構一節;面積/Ixx/Iyy 圖未做。
+- 下一步:ROADMAP 3 報告結構一節,或極端風速載重。
+
 ## 2026-09-29 — ROADMAP 3:極端風速停機工況載重
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。ROADMAP 1、2 仍待使用者決定,依序做 ROADMAP 3 下一個未完成子項。`src/core.js` 新增 `EXTREME`(IEC 61400-2 Class II Vref 42.5 m/s、Ve50 = 1.4 Vref = 59.5 m/s、Cn 1.2),`bladeLoads` 增加停機(ω=0)全失速工況:每站法向力 0.5ρVe²·c·dr·Cn,沿用 `cumulativeMoment`、等效殼厚截面性質與 `beamDeflection`,得到 `G.loads.extreme`(根部揮舞彎矩、葉尖撓度、最小安全係數)與各站 `MflapExt/stressExt/safetyExt`。
