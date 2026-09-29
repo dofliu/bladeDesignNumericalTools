@@ -13,9 +13,9 @@ import { build } from 'vite';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const ORDER = ['aero', 'charts', 'geo', 'scene', 'core', 'ui', 'bench', 'flow', 'report'];
-const ESM_GLOBAL = { aero: 'AERO', charts: 'Plot', geo: 'GEO', scene: 'Scene3D', core: 'CORE' };
+const ESM_GLOBAL = { aero: 'AERO', charts: 'Plot', geo: 'GEO', scene: 'Scene3D', core: 'CORE', report: 'ReportMod' };
 // Modules whose exports must also become bare globals for the not-yet-converted scripts.
-const EXPAND_GLOBALS = new Set(['core']);
+const EXPAND_GLOBALS = new Set(['core', 'report']);
 
 async function moduleSource(name) {
   const globalName = ESM_GLOBAL[name];

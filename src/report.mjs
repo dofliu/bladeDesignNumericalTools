@@ -1,5 +1,5 @@
 /* ===== Design & virtual wind-tunnel test report ===== */
-const Report = (function () {
+export const Report = (function () {
   const R0 = { name: '', author: '', goal: '', incTest: true, incFlow: true, incCmp: true };
   let last = null, busy = false, isStale = false, builtUI = false;
   const $r = id => document.getElementById(id);

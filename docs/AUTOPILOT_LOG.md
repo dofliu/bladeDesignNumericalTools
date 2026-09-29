@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-29 — ROADMAP 1:report.js 轉成 ES module
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/report.js` → `src/report.mjs`(`export const Report`);`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `report: 'ReportMod'`,並加入 `EXPAND_GLOBALS`,讓 `ui.js` 仍可直接使用裸全域 `Report`。更新 ROADMAP。
+- 驗證:`npm run check`、`npm test`(32/32)、`npm run build`(233 KB)、離線 e2e 全過(MPPT 追蹤率 95–97%);Playwright 桌面 1440×900 與手機 390×844 開啟報告分頁,無頁面錯誤、排版正常。
+- 已知限制:`ui.js`/`bench.js`/`flow.js` 仍為全域腳本串接。
+- 下一步:ROADMAP 1 轉 `flow.js`/`bench.js`/`ui.js`;ROADMAP 4 變槳/側偏收尾。
+
 ## 2026-09-29 — ROADMAP 3:疲勞分析(雨流計數 + Miner)
 
 - 做了什麼(使用者在互動工作階段指定):`geo.mjs` 新增 ASTM E1049 雨流計數、Miner 損傷(Basquin + Goodman)、等效應力範圍;`MATERIALS` 補 `su`/`m`;`core.mjs` 新增 `G.loads.root`、`rootStress()`、`fatigueEstimate()`;報告紊流測試記錄葉根應力,「葉片結構」一節新增疲勞段落、應力時間序列圖與低壽命結論。
