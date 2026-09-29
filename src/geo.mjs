@@ -175,7 +175,7 @@ export function sectionProperties(af, chord, thickness) {
   const outer = polygonMoments(pts);
   // A wall thicker than half the local airfoil thickness makes the inward offset fold over itself
   // (garbage area/inertia), so treat it as a solid section instead.
-  const solid = thickness / chord >= 0.5 * maxThickness(af);
+  const solid = thickness / chord >= 0.5 * maxThickness(af) * (1 - 1e-9);
   const inner = solid ? { area: 0 } : polygonMoments(offsetPolygon(pts, thickness / chord));
   const combined = solid || inner.area <= 0 || inner.area >= outer.area * 0.98 ? outer : {
     area: outer.area - inner.area, My: outer.My - inner.My, Mx: outer.Mx - inner.Mx,
@@ -195,6 +195,9 @@ export function sectionProperties(af, chord, thickness) {
 // core.js bladeLoads) instead of adding a separate user-facing thickness field.
 export function equivalentThickness(af, chord, targetArea) {
   let lo = 1e-6 * chord, hi = 0.5 * maxThickness(af) * chord;
+  // Near-solid targets (e.g. solid wood, fill 1): walls close to half the thickness fold the inner
+  // offset polygon, so return the solid section directly instead of bisecting into that region.
+  if (targetArea >= 0.95 * sectionProperties(af, chord, hi).area) return hi;
   for (let it = 0; it < 24; it++) {
     const mid = 0.5 * (lo + hi);
     if (sectionProperties(af, chord, mid).area < targetArea) lo = mid; else hi = mid;
@@ -212,6 +215,51 @@ export function beamDeflection(rows, M, EI) {
     v[i] = v[i - 1] + 0.5 * (slope[i - 1] + slope[i]) * dr;
   }
   return v;
+}
+
+// Rainflow cycle counting (ASTM E1049-85, three-point method) of a load/stress history.
+// Returns [{range, mean, count}] with count 1 (full cycle) or 0.5 (residue half cycle).
+export function reversals(series) {
+  const out = [];
+  for (const v of series) {
+    if (!isFinite(v)) continue;
+    const n = out.length;
+    if (n && v === out[n - 1]) continue;
+    if (n >= 2 && (out[n - 1] - out[n - 2]) * (v - out[n - 1]) > 0) out[n - 1] = v; // same direction: extend
+    else out.push(v);
+  }
+  return out;
+}
+export function rainflow(series) {
+  const cycles = [], st = [];
+  for (const v of reversals(series)) {
+    st.push(v);
+    while (st.length >= 3) {
+      const n = st.length, X = Math.abs(st[n - 1] - st[n - 2]), Y = Math.abs(st[n - 2] - st[n - 3]);
+      if (X < Y) break;
+      if (n === 3) { cycles.push({ range: Y, mean: 0.5 * (st[0] + st[1]), count: 0.5 }); st.shift(); }
+      else { cycles.push({ range: Y, mean: 0.5 * (st[n - 2] + st[n - 3]), count: 1 }); st.splice(n - 3, 2); }
+    }
+  }
+  for (let i = 0; i + 1 < st.length; i++) cycles.push({ range: Math.abs(st[i + 1] - st[i]), mean: 0.5 * (st[i] + st[i + 1]), count: 0.5 });
+  return cycles;
+}
+// Palmgren-Miner damage of rainflow cycles on a Basquin S-N curve N = (su / Sa)^m, with the
+// Goodman mean-stress correction Sa_eq = Sa / (1 - Sm/su) (tensile mean only; Sm >= su fails).
+export function minerDamage(cycles, su, m) {
+  let D = 0;
+  for (const c of cycles) {
+    const sa = 0.5 * c.range; if (!(sa > 0)) continue;
+    const g = 1 - Math.max(0, c.mean) / su;
+    if (g <= 0) return Infinity;
+    D += c.count * Math.pow(sa / g / su, m);
+  }
+  return D;
+}
+// Damage-equivalent (constant-amplitude) range at nEq cycles for S-N slope m (no mean correction).
+export function equivalentRange(cycles, m, nEq) {
+  let s = 0; for (const c of cycles) s += c.count * Math.pow(c.range, m);
+  return nEq > 0 ? Math.pow(s / nEq, 1 / m) : 0;
 }
 
 // store-only ZIP

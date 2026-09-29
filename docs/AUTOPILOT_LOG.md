@@ -2,6 +2,14 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-29 — ROADMAP 3:疲勞分析(雨流計數 + Miner)
+
+- 做了什麼(使用者在互動工作階段指定):`geo.mjs` 新增 ASTM E1049 雨流計數、Miner 損傷(Basquin + Goodman)、等效應力範圍;`MATERIALS` 補 `su`/`m`;`core.mjs` 新增 `G.loads.root`、`rootStress()`、`fatigueEstimate()`;報告紊流測試記錄葉根應力,「葉片結構」一節新增疲勞段落、應力時間序列圖與低壽命結論。
+  - 修正:木材(實心)截面反解錯誤,預設木材葉片最小安全係數由誤報的 0.35 變為 4.9(極端工況 0.60 → 1.98);`geo.mjs` 另加浮點容差讓剛好半厚的殼判為實心。`tests/core.test.mjs` 新增五種材料各站面積對得上質量模型的回歸。
+- 驗證:`npm run check`、`npm test`(32/32)、`npm run build`(239 KB)、離線 e2e 全過;瀏覽器實跑報告,疲勞段落與圖正常(預設玻纖:約 3100 個循環、1 Hz 等效應力範圍約 4.6 MPa、壽命 > 10,000 年)。
+- 已知限制:葉根、單一風況、準靜態、僅 HAWT;手機版報告預覽寬 613 px 超出畫面(既有行為,main 相同)。
+- 下一步:ROADMAP 4 變槳/側偏收尾;ROADMAP 1 轉 `ui.js` 等;疲勞可延伸為 Weibull 加權多風速。
+
 ## 2026-09-29 — ROADMAP 3:結構截面圖與報告結構一節
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/bench.js` 沿展長圖新增「截面積與慣性矩」檢視(面積、Ixx、Iyy);`src/report.js` 新增「葉片結構」一節(HAWT):材料、根部彎矩/離心軸力、設計點與極端風速停機工況最小安全係數、葉尖撓度、五站截面表,安全係數 < 1.5 標紅,並附模型限制說明。更新 ROADMAP。

@@ -32,17 +32,18 @@ const Report = (function () {
     const prog = t => onProg && onProg(done / total, t);
     async function run(dur, avgFrom, rec) {
       const trips0 = SIM.trips || 0;
-      let n = 0, acc = { Pa: 0, Po: 0, Pw: 0, rpm: 0, lam: 0, D: 0, cnt: 0, P2: 0, rpmMax: 0, PoMax: 0, latch: false }, t = 0, ser = rec ? { t: [], rpm: [], Po: [], V: [] } : null;
+      let n = 0, acc = { Pa: 0, Po: 0, Pw: 0, rpm: 0, lam: 0, D: 0, cnt: 0, P2: 0, rpmMax: 0, PoMax: 0, latch: false }, t = 0, ser = rec ? { t: [], rpm: [], Po: [], V: [] } : null, sig = rec && rootStress() != null ? [] : null;
       const steps = Math.round(dur / dt);
       for (let i = 0; i < steps; i++) {
         simStep(dt); t += dt; const o = SIM.out;
         if (t >= avgFrom) { acc.Pa += o.Pa; acc.Po += o.el.Pout; acc.P2 += o.el.Pout * o.el.Pout; acc.Pw += 0.5 * rho * G.A * o.V ** 3; acc.rpm += o.rpm; acc.lam += o.lam; acc.D += SIM.D; acc.cnt++; }
         acc.rpmMax = Math.max(acc.rpmMax, o.rpm); acc.PoMax = Math.max(acc.PoMax, o.el.Pout); if (SIM.latch) acc.latch = true;
+        if (sig && t >= avgFrom) sig.push(rootStress());
         if (ser && i % 25 === 0) { ser.t.push(+t.toFixed(2)); ser.rpm.push(o.rpm); ser.Po.push(o.el.Pout); ser.V.push(o.V); }
         if (++n % 1500 === 0) await sleep();
       }
       const c = Math.max(1, acc.cnt);
-      return { Pa: acc.Pa / c, Po: acc.Po / c, Pw: acc.Pw / c, rpm: acc.rpm / c, lam: acc.lam / c, D: acc.D / c, std: Math.sqrt(Math.max(0, acc.P2 / c - (acc.Po / c) ** 2)), rpmMax: acc.rpmMax, PoMax: acc.PoMax, latch: acc.latch, trips: (SIM.trips || 0) - trips0, ser };
+      return { Pa: acc.Pa / c, Po: acc.Po / c, Pw: acc.Pw / c, rpm: acc.rpm / c, lam: acc.lam / c, D: acc.D / c, std: Math.sqrt(Math.max(0, acc.P2 / c - (acc.Po / c) ** 2)), rpmMax: acc.rpmMax, PoMax: acc.PoMax, latch: acc.latch, trips: (SIM.trips || 0) - trips0, ser, fat: sig && sig.length > 10 ? { ...fatigueEstimate(sig, sig.length * dt), sig: sig.slice(0, Math.round(5 / dt)), dt } : null };
     }
     const reset = (V, lamFrac) => { S.tun.V = V; SIM.Vmeas = V; SIM.omega = G.lopt * V / R * lamFrac; SIM.gust = 0; SIM.gustT = -1; SIM.n = 0; SIM.latch = false; SIM.cutout = false; SIM.brake = false; SIM.po.wref = -1; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.D = 0.5; SIM.yaw = S.tun.dir; };
     try {
@@ -105,6 +106,7 @@ const Report = (function () {
       const fail = t.start.filter(s => s.tReach == null); if (fail.length) out.push(`啟動測試中 ${fail.map(s => s.V + ' m/s').join('、')} 無法在 60 秒內自行起轉到 λopt 的一半,需要馬達輔助啟動、增加實度或改用混合 Savonius 啟動器。`);
       else out.push(`在 4、6、8 m/s 皆能自行啟動,達到半最佳轉速時間分別為 ${t.start.map(s => fmt(s.tReach, 1) + ' s').join('、')}。`);
       if (t.gust && t.gust.latch) out.push('陣風測試觸發保護煞車,代表轉速或功率餘裕不足;可提高發電機額定或轉速上限。');
+      if (t.turb && t.turb.fat && t.turb.fat.lifeYears < 20) out.push(`葉根疲勞壽命估計只有約 ${fmt(t.turb.fat.lifeYears, 1)} 年(8 m/s、紊流 15% 連續運轉),低於常用的 20 年設計壽命;可改用強度較高的材料、加大根部弦長或厚度,或降低設計尖速比以減少推力。`);
       if (t.turb) out.push(`紊流 15% 下平均輸出 ${fmtP(t.turb.Po)},功率標準差 ${fmtP(t.turb.std)};轉子慣量越大功率越平順但追蹤越慢。`);
     }
     return out;
@@ -165,7 +167,13 @@ const Report = (function () {
       h += `<table class="kvt"><tr><th>材料</th><td>${mat.name}(E ${fmt(mat.E / 1e9, 0)} GPa,容許應力 ${fmt(mat.allow / 1e6, 0)} MPa)</td></tr><tr><th>根部彎矩(揮舞 / 擺振)</th><td>${fmt(L.MflapRoot, 1)} / ${fmt(L.MedgeRoot, 1)} N·m</td></tr><tr><th>根部離心軸力</th><td>${fmt(L.FaxRoot, 0)} N</td></tr><tr><th>設計點最小安全係數</th><td${warn(L.minSafety)}>${sf(L.minSafety)}</td></tr><tr><th>設計點葉尖揮舞撓度</th><td>${fmt(L.tipDefl * 1000, 1)} mm(${fmt(L.tipDefl / S.hawt.R * 100, 1)}% 半徑)</td></tr>${ex ? `<tr><th>極端風速停機工況最小安全係數</th><td${warn(ex.minSafety)}>${sf(ex.minSafety)}</td></tr>` : ''}</table>`;
       const pick = [0, 0.25, 0.5, 0.75, 1].map(f => Math.round(f * (G.rows.length - 1)));
       h += `<table><thead><tr><th>r/R</th><th>截面積 (mm²)</th><th>Ixx (mm⁴)</th><th>Iyy (mm⁴)</th><th>應力 (MPa)</th><th>安全係數</th></tr></thead><tbody>${[...new Set(pick)].map(i => { const r = G.rows[i]; return `<tr><td>${fmt(r.r / S.hawt.R, 2)}</td><td>${fmt(r.secArea * 1e6, 0)}</td><td>${fmt(r.Ixx * 1e12, 0)}</td><td>${fmt(r.Iyy * 1e12, 0)}</td><td>${fmt(r.stress / 1e6, 1)}</td><td${warn(r.safety)}>${sf(r.safety)}</td></tr>`; }).join('')}</tbody></table>`;
-      h += `<p class="note">結構為單一等效殼截面的懸臂梁模型:只含揮舞/擺振彎曲與離心軸力的保守相加,無扭轉、屈曲、疲勞與分項安全係數;安全係數低於 1.5 以紅色標示,僅供概念設計參考。</p>`;
+      const F = t && t.turb && t.turb.fat;
+      if (F) {
+        const life = F.lifeYears > 1e4 ? '> 10,000 年' : `${fmt(F.lifeYears, F.lifeYears < 10 ? 1 : 0)} 年`;
+        h += `<h3>疲勞(葉根,雨流計數 + Miner 法則)</h3><p>取紊流測試(平均風速 8 m/s、紊流強度 15%)${fmt(F.dur, 0)} 秒的葉根應力時間序列(推力揮舞 + 氣動轉矩擺振 + 離心力 + 每轉一次的重力擺振),以 ASTM E1049 雨流計數得到 ${fmt(F.n, 0)} 個循環,最大應力範圍 ${fmt(F.maxRange / 1e6, 2)} MPa,1 Hz 等效應力範圍 ${fmt(F.delRange / 1e6, 2)} MPa。以 Basquin S-N 曲線(極限強度 ${fmt(F.su / 1e6, 0)} MPa、斜率 m = ${F.m})與 Goodman 平均應力修正計算 Miner 損傷,若長期都在此工況運轉,估計疲勞壽命 <b${F.lifeYears < 20 ? ' style="color:var(--warn)"' : ''}>${life}</b>(小型風機常用設計壽命 20 年)。</p>`;
+        h += fig(capture(cv => Plot.draw(cv, { title: '葉根應力時間序列(前 5 秒)', series: [{ x: F.sig.map((_, i) => i * F.dt), y: F.sig.map(v => v / 1e6), color: col('--c1'), label: '葉根應力 (MPa)' }], xlabel: '時間 (s)', ylabel: 'MPa' }), 760, 240), '圖:紊流測試中的葉根應力');
+      } else if (!t) h += '<p class="note">執行虛擬風洞自動測試後,這一節會加入以紊流測試應力時間序列做雨流計數的疲勞壽命估計。</p>';
+      h += `<p class="note">結構為單一等效殼截面的懸臂梁模型:只含揮舞/擺振彎曲與離心軸力的保守相加,無扭轉、屈曲與分項安全係數;疲勞只取單一風況、S-N 參數為材料典型值,壽命估計的數量級比絕對值更有意義;安全係數低於 1.5 以紅色標示,僅供概念設計參考。</p>`;
     }
     h += hN('轉子性能預測');
     const P = G.perf;
