@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-29 — ROADMAP 1:core.js 轉成 ES module
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/core.js` → `src/core.mjs`:拿掉雙模組 IIFE,改 `import * as A from './aero.mjs'`、`import * as GEO from './geo.mjs'` 與具名 `export`;`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `core: 'CORE'`,新增 `EXPAND_GLOBALS`,在 IIFE 後接 `Object.assign(globalThis, CORE)`,ui/bench/flow/report 不必改;`tests/core.test.mjs` 改直接 import,不再設定全域。更新 CLAUDE.md 與 ROADMAP。
+- 驗證:`npm run check`、`npm test`(27/27)、`npm run build`(233 KB)、離線 e2e 全過(MPPT 追蹤率 95–97%),桌面 1440×900 與手機 390×844 截圖正常。
+- 已知限制:`ui.js`/`bench.js`/`flow.js`/`report.js` 仍是全域腳本串接;`Object.assign` 為匯出快照,若其他檔案需要重新指派 core 的變數需注意(與舊做法相同)。
+- 下一步:ROADMAP 1 轉 `ui.js`/`bench.js`/`flow.js`/`report.js`(一次一個);或 ROADMAP 3 報告結構一節。
+
 ## 2026-09-29 — ROADMAP 1:aero.js 轉成 ES module
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/aero.js` → `src/aero.mjs`:拿掉雙模組 IIFE,改具名 `export`;`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `aero: 'AERO'`(Vite lib 打包成全域 `AERO`);`tests/aero|geo|core.test.mjs` 改用 `import * as A from '../src/aero.mjs'`;更新 CLAUDE.md 與 ROADMAP。
