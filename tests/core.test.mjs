@@ -7,10 +7,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import * as GEO from '../src/geo.mjs';
 
 const require = createRequire(import.meta.url);
 global.AERO = require('../src/aero.js');
-global.GEO = require('../src/geo.js');
+global.GEO = GEO;
 const core = require('../src/core.js');
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
   gammaFn, weibullPdf, capacityFactor } = core;
