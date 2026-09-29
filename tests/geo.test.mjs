@@ -1,11 +1,11 @@
-// Regression tests for the blade cross-section property helpers in src/geo.js
+// Regression tests for the blade cross-section property helpers in src/geo.mjs
 // (polygon area/centroid/inertia integration + thin-shell offset), checked against
 // closed-form analytic shapes and one literature constant for a real airfoil.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import * as GEO from '../src/geo.mjs';
 const require = createRequire(import.meta.url);
-const GEO = require('../src/geo.js');
 const A = require('../src/aero.js');
 
 const near = (v, ref, tol, msg) => assert.ok(Math.abs(v - ref) <= tol, `${msg}: ${v} vs ${ref} ±${tol}`);
