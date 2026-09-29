@@ -227,6 +227,8 @@ function designHAWT() {
 // three are conservatively summed (no phase alignment) into a single combined stress and safety
 // factor (mat.allow / stress). Flapwise deflection integrates curvature Mflap/(mat.E*Ixx) from the
 // fixed root outward (GEO.beamDeflection, Euler-Bernoulli).
+// IEC 61400-2 Class II small-turbine reference wind (Vref) and 50-year extreme gust (1.4 Vref).
+const EXTREME = { Vref: 42.5, Ve50: 1.4 * 42.5, Cn: 1.2 };
 function bladeLoads(rows, afs, elems, omega, rho, mat) {
   const r = rows.map(x => x.r);
   const dFz = rows.map((x, i) => { const el = elems[i], phi = el.phi * A.D2R, q = 0.5 * rho * el.W * el.W * x.c * x.dr;
@@ -253,9 +255,19 @@ function bladeLoads(rows, afs, elems, omega, rho, mat) {
     x.defl = defl[i]; x.stress = stress[i]; x.safety = stress[i] > 0 ? mat.allow / stress[i] : Infinity;
   });
   const minSafety = Math.min(...rows.map(x => x.safety));
+  // Extreme case: parked (omega = 0, so no centrifugal load) in the 50-year extreme gust Ve50 =
+  // 1.4 Vref (IEC 61400-2 small turbines, Class II Vref 42.5 m/s). The blade is assumed fully
+  // stalled/flat to the wind, so each station takes a normal force 0.5 rho Ve^2 c dr Cn (Cn
+  // flat-plate-like, conservative); azimuth and yaw are unknown, so flapwise bending only.
+  const Fext = rows.map(x => 0.5 * rho * EXTREME.Ve50 * EXTREME.Ve50 * x.c * x.dr * EXTREME.Cn);
+  const Mext = A.cumulativeMoment(r, Fext);
+  const sExt = rows.map((x, i) => sec[i].Ixx > 0 ? Mext[i] * sec[i].yMax / sec[i].Ixx : 0);
+  const dExt = GEO.beamDeflection(rows, Mext, sec.map(s => mat.E * Math.max(s.Ixx, 1e-12)));
+  rows.forEach((x, i) => { x.MflapExt = Mext[i]; x.stressExt = sExt[i]; x.safetyExt = sExt[i] > 0 ? mat.allow / sExt[i] : Infinity; });
   G.loads = {
     omega, MflapRoot: Mflap[0], MedgeRoot: Medge[0], FaxRoot: Fax[0],
     tipDefl: defl[defl.length - 1], minSafety,
+    extreme: { Ve50: EXTREME.Ve50, MflapRoot: Mext[0], tipDefl: dExt[dExt.length - 1], minSafety: Math.min(...rows.map(x => x.safetyExt)) },
   };
 }
 function vawtCfg() {
