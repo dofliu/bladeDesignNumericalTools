@@ -140,3 +140,20 @@ test('capacityFactor is bounded in [0,1] for a plausible AEP and rated power', (
   assert.ok(Math.abs(cf - aep / (1000 * 8760 / 1000)) < 1e-9, 'capacityFactor formula');
   assert.equal(capacityFactor(aep, 0), 0, 'zero-rated-power guard');
 });
+
+test('HAWT parked extreme-wind (Ve50 = 1.4 Vref) load case is consistent and heavier than operation', () => {
+  setMode('HAWT');
+  const X = G.loads.extreme, n = G.rows.length;
+  assert.ok(Math.abs(X.Ve - 1.4 * S.hawt.vref) < 1e-9, 'Ve50 = 1.4 * Vref');
+  assert.equal(X.MflapRoot, G.rows[0].MflapX);
+  assert.ok(X.MflapRoot > 0 && X.tipDefl > 0 && isFinite(X.minSafety) && X.minSafety > 0, 'extreme case values are positive and finite');
+  for (let i = 1; i < n; i++) assert.ok(G.rows[i].MflapX <= G.rows[i - 1].MflapX + 1e-9, 'extreme flapwise moment decreases outboard');
+  // hand check: flat-plate drag on the blade planform, total force = 0.5 rho Ve^2 Cn * sum(c dr)
+  const rho = air().rho, F = G.rows.reduce((a, x) => a + 0.5 * rho * X.Ve * X.Ve * 1.2 * x.c * x.dr, 0);
+  assert.ok(X.MflapRoot > 0.3 * F * G.R && X.MflapRoot < F * G.R, 'root moment lies between 0.3 and 1.0 of (total force x span)');
+  const tipBefore = X.tipDefl;
+  S.hawt.vref = 50; setMode('HAWT');
+  const X2 = G.loads.extreme;
+  assert.ok(Math.abs(X2.MflapRoot / tipBefore * tipBefore / X.MflapRoot - (50 / 42.5) ** 2) < 1e-6, 'moment scales with Vref^2');
+  S.hawt.vref = 42.5; setMode('HAWT');
+});
