@@ -1,5 +1,6 @@
 /* ===== 3D wind tunnel scene ===== */
-const Scene3D = (function () {
+// ES module: state is module-scoped; the build bundles it into the global `Scene3D`.
+// THREE (r128) is an external browser global loaded by shell.html.
   let renderer, scene, camera, host, rotor, nacelle, turbineRoot, tunnel, particles, pGeo, pVel, arrow, ring, lights = {};
   let orbit = { th: Math.PI - 0.75, ph: 0.32, dist: 8, target: new THREE.Vector3(0, 1.5, 0) };
   let dims = { R: 1.5, hubY: 2, kind: 'HAWT', H: 2 };
@@ -263,5 +264,4 @@ const Scene3D = (function () {
     else if (name === 'top') { orbit.th = -Math.PI / 2; orbit.ph = 1.45; }
     else { orbit.th = -0.75 + Math.PI; orbit.ph = 0.32; }
   }
-  return { init, buildHAWT, buildVAWT, buildSavonius, frame, setScale, applyTheme, view, colors };
-})();
+  export { init, buildHAWT, buildVAWT, buildSavonius, frame, setScale, applyTheme, view, colors };

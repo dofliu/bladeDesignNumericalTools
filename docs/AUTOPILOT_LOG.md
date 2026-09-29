@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-29 — ROADMAP 1:scene.js 轉成 ES module
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/scene.js` → `src/scene.mjs`:拿掉 IIFE 包裝,改具名 `export`(`init`/`buildHAWT`/`buildVAWT`/`buildSavonius`/`frame`/`setScale`/`applyTheme`/`view`/`colors`);`scripts/build.mjs` 的 `ESM_GLOBAL` 加入 `scene: 'Scene3D'`,由 Vite 打包成 `Scene3D` 全域。`scene` 只依賴外部全域 `THREE`,對其他模組無依賴。
+- 驗證:`npm run check`、`npm test`(27/27)、`npm run build`(246 KB)、離線 e2e 全過(MPPT 追蹤率 92–97%),桌面 1440×900 與手機 390×844 截圖 3D 場景正常。
+- 已知限制:`aero.js`/`core.js`/`ui.js`/`bench.js`/`flow.js`/`report.js` 仍是全域腳本串接。
+- 下一步:ROADMAP 1 轉 `aero.js`/`core.js`(拿掉雙模組 IIFE);或 ROADMAP 3 的報告結構一節。
+
 ## 2026-09-29 — ROADMAP 1:修好 PR #12(charts.js / geo.js → 真正 ES modules)
 
 - 做了什麼:啟動時依規則檢查未完成的 `[autopilot]` PR,發現只剩一個開著的 PR #12(「把 charts.js / geo.js 改成真正的 ES modules,建置改用 Vite 打包」),依規則先處理完它,本次不開新工作。核對 PR #12 的 diff(對它宣稱的合併基底 `707ae40`)後發現與先前 PR #9 同一種錯誤:分支的本地檢出比 `707ae40` 還舊,commit 記錄的是更舊的狀態——`src/geo.mjs` 整個遺漏了 `polygonMoments`/`offsetPolygon`/`sectionProperties`/`equivalentThickness`/`beamDeflection`(ROADMAP 3 已完成的截面性質/應力/撓度功能),還一併刪掉了 `src/aero.js` 的 `cumulativeOutboard`/`cumulativeMoment`、`core.js` 的 `bladeLoads`/`G.loads`,以及 `tests/geo.test.mjs` 整個檔案與 `tests/aero.test.mjs`/`tests/core.test.mjs` 對應的測試。逐一核對後確認 `src/charts.js` 沒有這個問題(自 `707ae40` 後未變動,PR 轉出的 `charts.mjs` 逐行核對只多了 `export`),`scripts/build.mjs`(對已轉 ESM 的檔案改用 Vite `build({ build:{ write:false, lib:{...}, formats:['iife'] } })` 打包成指定全域名稱的 IIFE,其餘檔案仍字串串接)、`scripts/check.mjs`(掃描 `.js`/`.mjs`)、`package.json`(新增 `vite` devDependency)這三處改動本身乾淨可重用。
