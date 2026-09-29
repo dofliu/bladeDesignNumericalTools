@@ -5,9 +5,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as core from '../src/core.mjs';
+import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, capacityFactor } = core;
+  gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -154,5 +155,45 @@ test('HAWT parked extreme-gust (Ve50) load case is bigger than the design-point 
   for (let i = 1; i < G.rows.length; i++) assert.ok(G.rows[i].MflapExt <= G.rows[i - 1].MflapExt + 1e-9, 'extreme moment decreases outboard');
   designVAWT();
   assert.equal(G.loads, null, 'VAWT has no structural loads yet');
+  setMode('HAWT');
+});
+
+test('equivalent shell section matches the mass-model area for every material (incl. solid wood)', () => {
+  const mat0 = S.hawt.material;
+  for (const k of Object.keys(MATERIALS)) {
+    S.hawt.material = k; setMode('HAWT');
+    G.rows.forEach((x, i) => {
+      const target = MATERIALS[k].fill * A.airfoilArea(G.afs[i]) * x.c * x.c;
+      assert.ok(Math.abs(x.secArea / target - 1) < 0.01, `${k} station ${i}: area ${x.secArea} vs ${target}`);
+      assert.ok(x.Ixx > 0, `${k} station ${i}: Ixx ${x.Ixx}`);
+    });
+  }
+  S.hawt.material = mat0; setMode('HAWT');
+});
+
+function rootStressHistory(TI, dur) {
+  S.tun.TI = TI; S.tun.V = 8; S.load.ctrl = 'tsr';
+  SIM.omega = G.lopt * 8 / G.R; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null;
+  SIM.wcap = -1; SIM.pAvg = 0; SIM.latch = false; SIM.po.wref = -1;
+  for (let t = 0; t < 10; t += 0.004) simStep(0.004);
+  const sig = [], th0 = SIM.theta;
+  for (let t = 0; t < dur; t += 0.004) { simStep(0.004); sig.push(rootStress()); }
+  return { sig, revs: (SIM.theta - th0) / (2 * Math.PI) };
+}
+
+test('HAWT root stress history: steady mean at design, 1P gravity cycles, turbulence shortens fatigue life', () => {
+  setMode('HAWT');
+  const r = G.loads.root, design = r.sFlap + r.sEdge + r.sAx;
+  const calm = rootStressHistory(0, 30), fc = fatigueEstimate(calm.sig, 30);
+  const mean = calm.sig.reduce((t, v) => t + v, 0) / calm.sig.length;
+  assert.ok(Math.abs(mean / design - 1) < 0.25, `steady mean root stress ${mean} vs design ${design}`);
+  assert.ok(Math.abs(fc.n / calm.revs - 1) < 0.3, `calm wind: ~one rainflow cycle per revolution (gravity 1P): ${fc.n} vs ${calm.revs} revs`);
+  const turb = rootStressHistory(0.15, 30), ft = fatigueEstimate(turb.sig, 30);
+  assert.ok(ft.D > fc.D * 10, `15% turbulence should add far more damage: ${ft.D} vs ${fc.D}`);
+  assert.ok(ft.lifeYears > 0 && isFinite(ft.lifeYears), `finite fatigue life: ${ft.lifeYears}`);
+  assert.ok(ft.sMax < MATERIALS[S.hawt.material].su, 'peak root stress below ultimate strength');
+  S.tun.TI = 0;
+  designVAWT();
+  assert.equal(rootStress(), null, 'VAWT has no root stress model');
   setMode('HAWT');
 });

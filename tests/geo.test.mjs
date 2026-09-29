@@ -105,3 +105,27 @@ test('beamDeflection: tip point load matches the analytic cantilever (P L^3/3EI)
   const v = GEO.beamDeflection(rows, M, EI);
   near(v[n - 1], P * L ** 3 / (3 * EI0), 0.02 * P * L ** 3 / (3 * EI0), 'tip deflection');
 });
+
+test('rainflow: ASTM E1049 example history', () => {
+  const c = GEO.rainflow([-2, 1, -3, 5, -1, 3, -4, 4, -2]);
+  const byRange = {};
+  for (const x of c) byRange[x.range] = (byRange[x.range] || 0) + x.count;
+  assert.deepEqual(byRange, { 3: 0.5, 4: 1.5, 6: 0.5, 8: 1, 9: 0.5 });
+});
+
+test('rainflow: sine wave gives one full cycle per period at range 2a', () => {
+  const a = 3, n = 20, s = [];
+  for (let i = 0; i <= n * 40; i++) s.push(5 + a * Math.sin(2 * Math.PI * i / 40));
+  // ASTM three-point counting records constant-amplitude history as paired half cycles
+  const c = GEO.rainflow(s).filter(x => Math.abs(x.range - 2 * a) < 1e-9);
+  near(c.reduce((t, x) => t + x.count, 0), n, 0.5, 'cycles at range 2a');
+  for (const x of c) near(x.mean, 5, 1e-9, 'mean');
+});
+
+test('minerDamage / equivalentRange: constant amplitude closed form', () => {
+  const su = 100, m = 10, cycles = [{ range: 40, mean: 0, count: 1000 }];
+  near(GEO.minerDamage(cycles, su, m), 1000 * (20 / 100) ** 10, 1e-12, 'zero-mean damage');
+  near(GEO.minerDamage([{ range: 40, mean: 50, count: 1000 }], su, m), 1000 * (40 / 100) ** 10, 1e-9, 'Goodman mean correction');
+  near(GEO.equivalentRange(cycles, m, 1000), 40, 1e-9, 'equivalent range at the same cycle count');
+  assert.equal(GEO.minerDamage([{ range: 10, mean: 120, count: 1 }], su, m), Infinity, 'mean above ultimate fails');
+});
