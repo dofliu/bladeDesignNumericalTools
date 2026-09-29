@@ -1,6 +1,4 @@
 /* ===== AERO core: airfoil geometry, panel method, polar model, BEM, DMST ===== */
-(function (G) {
-  'use strict';
   const D2R = Math.PI / 180, R2D = 180 / Math.PI;
   const NX = 61; // points per surface (cosine spacing, LE->TE)
   const XS = [];
@@ -598,9 +596,6 @@
     return pts;
   }
 
-  const API = { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
-    panel, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-    cumulativeOutboard, cumulativeMoment,
-    vawtSlices, vawtArea, dmstPoint, vawtCurve, savoniusCurve };
-  if (typeof module !== 'undefined') module.exports = API; else G.AERO = API;
-})(this);
+export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
+  panel, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
+  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtCurve, savoniusCurve };

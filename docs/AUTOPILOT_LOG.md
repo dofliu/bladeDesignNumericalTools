@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-29 — ROADMAP 1:aero.js 轉成 ES module
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/aero.js` → `src/aero.mjs`:拿掉雙模組 IIFE,改具名 `export`;`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `aero: 'AERO'`(Vite lib 打包成全域 `AERO`);`tests/aero|geo|core.test.mjs` 改用 `import * as A from '../src/aero.mjs'`;更新 CLAUDE.md 與 ROADMAP。
+- 驗證:`npm run check`、`npm test`(27/27)、`npm run build`(231 KB,Vite 樹搖掉未用內部函式)、離線 e2e 全過(MPPT 追蹤率 92–97%),桌面截圖正常。
+- 已知限制:`core.js`/`ui.js`/`bench.js`/`flow.js`/`report.js` 仍是全域腳本串接。
+- 下一步:ROADMAP 1 轉 `core.js`(改 import `AERO`/`GEO`);或 ROADMAP 3 報告結構一節。
+
 ## 2026-09-29 — ROADMAP 1:scene.js 轉成 ES module
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/scene.js` → `src/scene.mjs`:拿掉 IIFE 包裝,改具名 `export`(`init`/`buildHAWT`/`buildVAWT`/`buildSavonius`/`frame`/`setScale`/`applyTheme`/`view`/`colors`);`scripts/build.mjs` 的 `ESM_GLOBAL` 加入 `scene: 'Scene3D'`,由 Vite 打包成 `Scene3D` 全域。`scene` 只依賴外部全域 `THREE`,對其他模組無依賴。
