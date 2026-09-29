@@ -10,7 +10,8 @@
 - ~~把 `core.js` 的設計與模擬邏輯拆成不依賴 DOM 的模組(目前 `simStep` 只能在瀏覽器測),把 MPPT 回歸測試移到 Node 單元測試。~~ 已完成:`core.js` 改成與 `aero.js` 相同的 Node/瀏覽器雙模組匯出(IIFE + `module.exports` / `Object.assign(root, API)`),不影響串接組建後的全域變數溝通;`tests/core.test.mjs` 直接在 Node 跑 HAWT/VAWT 三種控制器 × 兩種風速的追蹤率回歸(門檻同 e2e 的 90%),`npm test` 現在幾秒內就能驗證控制器邏輯。`tests/e2e.smoke.mjs` 的瀏覽器版回歸保留,作為建置後成品(dist)的端對端驗證。
 - ~~補上匯出視窗在非 claude.ai 環境的 Blob 下載備援(`ui.js` 的 `openExport` / `save`)。~~ 已完成,e2e 已涵蓋。
 - [x] `scene.js` → `scene.mjs`(2026-09-29):只依賴外部全域 `THREE`,拿掉 IIFE 包裝、改具名 `export`,`build.mjs` 的 `ESM_GLOBAL` 加 `scene: 'Scene3D'`;畫面與 e2e 無差異。
-- 下一步(ES modules 逐檔轉換,沿用 PR #12 驗證過的 Vite lib 打包做法):依序是 `aero.js`/`core.js`(拿掉既有的雙模組 IIFE,改真正 `export`)、`ui.js`/`bench.js`/`flow.js`/`report.js`(依賴最多,風險最高,建議一次一個檔案),最後才把 `scripts/build.mjs` 換成單一 `vite-plugin-singlefile` 設定。每次執行前務必先確認要轉換的檔案自排程宣稱的合併基底以來沒有被其他並行執行改過(`git log <base>..HEAD -- src/<name>.js`),並在 commit 前用 `git diff --stat <base>..HEAD` 檢查有沒有意外刪除不相關的既有函式或測試(見上面 PR #12 的踩點)。
+- [x] `aero.js` → `aero.mjs`(2026-09-29):拿掉雙模組 IIFE,改具名 `export`,`ESM_GLOBAL` 加 `aero: 'AERO'`;三個測試檔改 `import * as A from '../src/aero.mjs'`。
+- 下一步(ES modules 逐檔轉換,沿用 PR #12 驗證過的 Vite lib 打包做法):依序是 `core.js`(拿掉既有的雙模組 IIFE,改真正 `export`;注意它讀全域 `AERO`/`GEO`,要改成 import)、`ui.js`/`bench.js`/`flow.js`/`report.js`(依賴最多,風險最高,建議一次一個檔案),最後才把 `scripts/build.mjs` 換成單一 `vite-plugin-singlefile` 設定。每次執行前務必先確認要轉換的檔案自排程宣稱的合併基底以來沒有被其他並行執行改過(`git log <base>..HEAD -- src/<name>.js`),並在 commit 前用 `git diff --stat <base>..HEAD` 檢查有沒有意外刪除不相關的既有函式或測試(見上面 PR #12 的踩點)。
 - 驗收:`npm test` 涵蓋控制器;dist 行為與現版一致(e2e 全過、截圖比對)。
 
 ## 2. 真實翼型資料:XFOIL 整合

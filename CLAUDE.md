@@ -33,11 +33,11 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 
 ## 架構
 
-`scripts/build.mjs` 依固定順序把 `src/` 模組串進 `src/shell.html` 的同一個 `<script>`,模組之間靠全域變數溝通。多數檔案仍是**全域腳本字串串接**(非 ES modules);`charts.js`/`geo.js` 已改成真正的 ES modules(`charts.mjs`/`geo.mjs`,具名 `export`),`build.mjs` 對這兩個檔案改用 Vite 的 `build({ build: { lib: {...}, formats:['iife'] } })` 把它們各自打包成指定全域名稱(`Plot`/`GEO`)的 IIFE,再與其餘檔案原樣字串串接;輸出的單一 HTML 結構與串接順序不變。順序很重要:
+`scripts/build.mjs` 依固定順序把 `src/` 模組串進 `src/shell.html` 的同一個 `<script>`,模組之間靠全域變數溝通。多數檔案仍是**全域腳本字串串接**(非 ES modules);`aero.js`/`charts.js`/`geo.js`/`scene.js` 已改成真正的 ES modules(`aero.mjs`/`charts.mjs`/`geo.mjs`/`scene.mjs`,具名 `export`),`build.mjs` 對這兩個檔案改用 Vite 的 `build({ build: { lib: {...}, formats:['iife'] } })` 把它們各自打包成指定全域名稱(`AERO`/`Plot`/`GEO`/`Scene3D`)的 IIFE,再與其餘檔案原樣字串串接;輸出的單一 HTML 結構與串接順序不變。順序很重要:
 
 | 順序 | 檔案 | 內容 | 主要全域 |
 |---|---|---|---|
-| 1 | `aero.js` | 氣動核心(純函式,可在 Node 執行):翼型產生、`.dat` 解析、Hess-Smith 面板法(含場速度 `vel`)、半經驗極曲線 + Viterna、BEM、DMST、Savonius | `AERO`(core 內別名 `A`) |
+| 1 | `aero.mjs` | 氣動核心(真正的 ES module,純函式,可在 Node 執行):翼型產生、`.dat` 解析、Hess-Smith 面板法(含場速度 `vel`)、半經驗極曲線 + Viterna、BEM、DMST、Savonius | `AERO`(core 內別名 `A`) |
 | 2 | `charts.mjs` | 輕量 canvas 繪圖 `Plot.draw(canvas, opts)`;`Plot.draw.force = {W,H,dpr}` 用於離屏擷取;真正的 ES module,由 `build.mjs` 透過 Vite 打包成 `Plot` 全域 | `Plot` |
 | 3 | `geo.mjs` | 葉片幾何放樣、STL(mm)、store-only ZIP、截面性質/懸臂梁撓度(`polygonMoments`/`offsetPolygon`/`sectionProperties`/`equivalentThickness`/`beamDeflection`);真正的 ES module,打包方式同上 | `GEO` |
 | 4 | `scene.js` | Three.js r128 場景(自製軌道控制、煙流粒子、偏航) | `Scene3D` |
@@ -47,7 +47,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 8 | `flow.js` | 流場工作區 | `Flow` |
 | 9 | `report.js` | 虛擬風洞自動測試 + 報告產生/下載 | `Report` |
 
-`src/package.json` 只是讓 Node 把 `aero.js`/`core.js` 當 CommonJS 載入(測試用),與瀏覽器無關;`.mjs` 模組(`charts.mjs`/`geo.mjs`)測試改用 ESM `import * as GEO from '../src/geo.mjs'`(見 `tests/geo.test.mjs`/`tests/core.test.mjs`)。專案第一個 npm 相依套件是 `vite`(devDependency,只在 `npm run build` 時用到,`npm test`/`npm run check` 不需要它)。
+`src/package.json` 只是讓 Node 把 `core.js` 當 CommonJS 載入(測試用),與瀏覽器無關;`.mjs` 模組(`aero.mjs`/`charts.mjs`/`geo.mjs`)測試改用 ESM `import * as A from '../src/aero.mjs'`(見 `tests/geo.test.mjs`/`tests/core.test.mjs`)。專案第一個 npm 相依套件是 `vite`(devDependency,只在 `npm run build` 時用到,`npm test`/`npm run check` 不需要它)。
 
 ### 資料流
 
@@ -113,7 +113,7 @@ rebuild(geo): designHAWT()/designVAWT() → computePerf() → autoMatchGen() →
 - UI 文字一律繁體中文;數字用 `fmt()` / `fmtP()`;不要在畫面上用表情符號當圖示
 - 新增面板控制項用 `grp()` / `rng()` / `sel()` / `chk()` 建構器,指定正確的 `kind`
 - 新增 canvas 圖優先用 `Plot.draw`;自繪圖用 `fitCv()` 取得 context,才能同時支援報告離屏擷取
-- 動到 `aero.js` 要補或更新 `tests/aero.test.mjs`
+- 動到 `aero.mjs` 要補或更新 `tests/aero.test.mjs`
 - 大改之前先 `git commit`,方便使用者比較與退回
 
 ## 下一步

@@ -13,7 +13,7 @@ import { build } from 'vite';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const ORDER = ['aero', 'charts', 'geo', 'scene', 'core', 'ui', 'bench', 'flow', 'report'];
-const ESM_GLOBAL = { charts: 'Plot', geo: 'GEO', scene: 'Scene3D' };
+const ESM_GLOBAL = { aero: 'AERO', charts: 'Plot', geo: 'GEO', scene: 'Scene3D' };
 
 async function moduleSource(name) {
   const globalName = ESM_GLOBAL[name];

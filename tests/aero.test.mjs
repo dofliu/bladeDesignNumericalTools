@@ -1,11 +1,9 @@
-// Regression tests for the aerodynamic core (src/aero.js runs in Node as CommonJS).
+// Regression tests for the aerodynamic core (src/aero.mjs).
 // Reference values were verified when the models were written; keep tolerances tight
 // so that an accidental change in the physics shows up immediately.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const A = require('../src/aero.js');
+import * as A from '../src/aero.mjs';
 
 const near = (v, ref, tol, msg) => assert.ok(Math.abs(v - ref) <= tol, `${msg}: ${v} vs ${ref} ±${tol}`);
 
