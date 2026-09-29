@@ -140,3 +140,22 @@ test('capacityFactor is bounded in [0,1] for a plausible AEP and rated power', (
   assert.ok(Math.abs(cf - aep / (1000 * 8760 / 1000)) < 1e-9, 'capacityFactor formula');
   assert.equal(capacityFactor(aep, 0), 0, 'zero-rated-power guard');
 });
+
+test('HAWT parked extreme-gust (Ve50) load case is bigger than the design-point flapwise load', () => {
+  setMode('HAWT');
+  const e = G.loads.extreme;
+  assert.ok(e, 'G.loads.extreme populated');
+  assert.ok(Math.abs(e.Ve50 - 59.5) < 1e-9, `Ve50 = 1.4 x 42.5: ${e.Ve50}`);
+  const { rho } = air();
+  // analytic check: uniform normal force on each station -> root moment ~ q*Cn*sum(c*dr*r)
+  // (cumulativeMoment counts only the stations outboard of each one, so skip the root station)
+  let M = 0; G.rows.slice(1).forEach(x => { M += 0.5 * rho * e.Ve50 * e.Ve50 * 1.2 * x.c * x.dr * (x.r - G.rows[0].r); });
+  assert.ok(Math.abs(e.MflapRoot - M) / M < 1e-6, `root moment ${e.MflapRoot} vs analytic ${M}`);
+  assert.ok(e.MflapRoot > G.loads.MflapRoot, 'parked extreme gust exceeds the design-point flapwise moment');
+  assert.ok(e.tipDefl > 0 && isFinite(e.tipDefl), `tip deflection: ${e.tipDefl}`);
+  assert.ok(e.minSafety > 0 && isFinite(e.minSafety), `extreme safety factor: ${e.minSafety}`);
+  for (let i = 1; i < G.rows.length; i++) assert.ok(G.rows[i].MflapExt <= G.rows[i - 1].MflapExt + 1e-9, 'extreme moment decreases outboard');
+  designVAWT();
+  assert.equal(G.loads, null, 'VAWT has no structural loads yet');
+  setMode('HAWT');
+});
