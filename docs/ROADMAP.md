@@ -33,9 +33,9 @@
   - [x] 應力與撓度:`geo.js` 新增 `equivalentThickness(af, chord, targetArea)`(對 `sectionProperties` 的面積做二分搜尋,反解殼厚,如建議用 `MATERIALS[x].fill*airfoilArea*c²` 當目標面積,對齊既有質量模型,沒有新增使用者可調欄位)與 `sectionProperties` 新增回傳 `yMax`/`xMax`(形心到外緣的最大距離,彎曲應力用)、`beamDeflection(rows, M, EI)`(彎矩/EI 曲率由根部往葉尖梯形積分兩次)。`core.js` 的 `bladeLoads` 延伸:對每一站反解等效殼厚 → `sectionProperties` 取 Ixx/Iyy → 揮舞彎曲應力(`Mflap·yMax/Ixx`)、擺振彎曲應力(`Medge·xMax/Iyy`)、離心軸向應力(`Fax/area`)保守直接相加成 `x.stress`,安全係數 `x.safety = mat.allow/x.stress`;揮舞撓度 `x.defl` 用 `beamDeflection` 積分。`MATERIALS` 補上楊氏模數 `E` 與容許應力 `allow` 的合理文獻預設值(玻纖 20 GPa/100 MPa、木材 11 GPa/40 MPa、鋁 69 GPa/110 MPa、PLA 2.3 GPa/20 MPa、碳纖 70 GPa/250 MPa)。`G.loads` 新增 `tipDefl`、`minSafety`。`tests/geo.test.mjs`/`tests/core.test.mjs` 各新增測試(解析解驗證 `beamDeflection`、`equivalentThickness` 面積回代、真實設計點的應力/撓度/安全係數沿展長合理性)。
   - [x] 極端風速與停機工況的載重:`core.js` 的 `EXTREME`(Class II Vref 42.5 m/s、Ve50 = 1.4 Vref、Cn 1.2)+ `bladeLoads` 新增停機(ω=0、無離心力)全失速平板式法向力的揮舞彎矩/應力/撓度/安全係數,結果在 `G.loads.extreme` 與 `G.rows[i].{MflapExt,stressExt,safetyExt}`;`tests/core.test.mjs` 以解析和驗證。預設 HAWT 極端工況安全係數約 2.4(設計點 5.8)。限制:僅揮舞向、無方位/偏航組合、無分項安全係數;UI/報告尚未顯示。
 - [ ] 疲勞:以紊流測試時間序列做雨流計數,估計根部疲勞壽命(可先簡化)。
-- [ ] 單葉片工作區新增「結構」卡片(面積/Ixx/Iyy 沿展長圖 + 之後的應力/撓度);報告新增一節。
+- [x] 單葉片工作區新增「結構」卡片(面積/Ixx/Iyy 沿展長圖 + 之後的應力/撓度);報告新增一節。
   - [x] 單葉片工作區「沿展長的氣動特性變化」圖新增三個結構檢視:彎矩、合成應力(含容許應力線與最小安全係數)、揮舞撓度(僅 HAWT)。
-  - [ ] 面積/Ixx/Iyy 沿展長圖;報告新增結構一節。
+  - [x] 面積/Ixx/Iyy 沿展長圖(`bench.js` 新增 `secprop` 檢視)與報告新增「葉片結構」一節(`report.js`:材料、根部彎矩/軸力、最小安全係數、葉尖撓度、極端工況、五站截面表,安全係數 < 1.5 標紅;僅 HAWT)。
 - 驗收(需上面全部完成):與懸臂梁解析解比對撓度;材料安全係數低於門檻時給出警告。
 
 ## 4. 額定以上控制與保護狀態機
