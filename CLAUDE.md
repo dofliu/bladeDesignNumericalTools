@@ -33,7 +33,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 
 ## 架構
 
-`scripts/build.mjs` 依固定順序把 `src/` 模組串進 `src/shell.html` 的同一個 `<script>`,模組之間靠全域變數溝通。多數檔案仍是**全域腳本字串串接**(非 ES modules);`aero.js`/`charts.js`/`geo.js`/`scene.js` 已改成真正的 ES modules(`aero.mjs`/`charts.mjs`/`geo.mjs`/`scene.mjs`,具名 `export`),`build.mjs` 對這兩個檔案改用 Vite 的 `build({ build: { lib: {...}, formats:['iife'] } })` 把它們各自打包成指定全域名稱(`AERO`/`Plot`/`GEO`/`Scene3D`)的 IIFE,再與其餘檔案原樣字串串接;輸出的單一 HTML 結構與串接順序不變。順序很重要:
+`scripts/build.mjs` 依固定順序把 `src/` 模組串進 `src/shell.html` 的同一個 `<script>`,模組之間靠全域變數溝通。多數檔案仍是**全域腳本字串串接**(非 ES modules);`aero.js`/`charts.js`/`geo.js`/`scene.js`/`core.js` 已改成真正的 ES modules(`aero.mjs`/`charts.mjs`/`geo.mjs`/`scene.mjs`,具名 `export`),`build.mjs` 對這兩個檔案改用 Vite 的 `build({ build: { lib: {...}, formats:['iife'] } })` 把它們各自打包成指定全域名稱(`AERO`/`Plot`/`GEO`/`Scene3D`)的 IIFE,再與其餘檔案原樣字串串接;輸出的單一 HTML 結構與串接順序不變。順序很重要:
 
 | 順序 | 檔案 | 內容 | 主要全域 |
 |---|---|---|---|
@@ -41,7 +41,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 2 | `charts.mjs` | 輕量 canvas 繪圖 `Plot.draw(canvas, opts)`;`Plot.draw.force = {W,H,dpr}` 用於離屏擷取;真正的 ES module,由 `build.mjs` 透過 Vite 打包成 `Plot` 全域 | `Plot` |
 | 3 | `geo.mjs` | 葉片幾何放樣、STL(mm)、store-only ZIP、截面性質/懸臂梁撓度(`polygonMoments`/`offsetPolygon`/`sectionProperties`/`equivalentThickness`/`beamDeflection`);真正的 ES module,打包方式同上 | `GEO` |
 | 4 | `scene.js` | Three.js r128 場景(自製軌道控制、煙流粒子、偏航) | `Scene3D` |
-| 5 | `core.js` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep`;與 `aero.js` 相同,包成可在 Node 執行的模組(`require` 前需先設定全域 `AERO`/`GEO`,見 `tests/core.test.mjs`) | `S` `G` `SIM` |
+| 5 | `core.mjs` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep`;真正的 ES module(直接 `import` aero/geo),`build.mjs` 打包成 `CORE` 後再 `Object.assign(globalThis, CORE)` 還原成裸全域,測試直接 `import * as core from '../src/core.mjs'` | `S` `G` `SIM` |
 | 6 | `ui.js` | 左側設定面板、圖表分頁、方案比較、匯出、工作區切換、主迴圈 `init()` | 多數 UI 函式 |
 | 7 | `bench.js` | 單葉片工作區;共用繪圖工具 `fitCv` `arrow` `interp1` `card` | `Bench` |
 | 8 | `flow.js` | 流場工作區 | `Flow` |

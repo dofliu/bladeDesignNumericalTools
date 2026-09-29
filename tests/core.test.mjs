@@ -1,19 +1,11 @@
-// Controller / MPPT regression, run directly in Node against src/core.js (no browser needed).
-// core.js references the AERO and GEO globals the same way the browser build does, so we set
-// them up on `global` before requiring core.js (mirrors how the concatenated <script> loads
-// aero.js and geo.js before core.js). This mirrors the scenarios tests/e2e.smoke.mjs checks in
+// Controller / MPPT regression, run directly in Node against src/core.mjs (no browser needed).
+// core.mjs imports aero.mjs/geo.mjs directly. This mirrors the scenarios tests/e2e.smoke.mjs checks in
 // the built dist, giving fast feedback without spinning up Playwright; the e2e test still covers
 // the same tracking regression against the actual built artifact end-to-end.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-import * as GEO from '../src/geo.mjs';
-import * as AERO from '../src/aero.mjs';
+import * as core from '../src/core.mjs';
 
-const require = createRequire(import.meta.url);
-global.AERO = AERO;
-global.GEO = GEO;
-const core = require('../src/core.js');
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
   gammaFn, weibullPdf, capacityFactor } = core;
 

@@ -1,12 +1,9 @@
 /* ===== App core: state, computation, simulation ===== */
-// Wrapped as a Node/browser dual-export module (like aero.js) so simStep() and the
-// design/perf pipeline can be driven from Node tests without a DOM (see tests/core.test.mjs).
-// In the concatenated single-script build, Object.assign(root, API) below republishes every
-// name this file used to expose as a bare top-level identifier, so ui.js/bench.js/flow.js/
-// report.js keep working unchanged.
-(function (root) {
-'use strict';
-const A = AERO;
+// Real ES module (ROADMAP 1). scripts/build.mjs bundles it to a `CORE` IIFE and then republishes
+// every export as a bare global so ui.js/bench.js/flow.js/report.js keep working unchanged.
+// Node tests import it directly (see tests/core.test.mjs).
+import * as A from './aero.mjs';
+import * as GEO from './geo.mjs';
 // E: 楊氏模數 (Pa),供結構彎曲/撓度估算; allow: 容許應力 (Pa,已含疲勞/安全係數的保守值),
 // 供結構安全係數估算。兩者皆為典型文獻值的合理預設,尚未做逐站/逐使用者調整。
 const MATERIALS = {
@@ -569,8 +566,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-const API = { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS,
-  stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen,
-  simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor };
-if (typeof module !== 'undefined' && module.exports) module.exports = API; else Object.assign(root, API);
-})(this);
+export { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor };
