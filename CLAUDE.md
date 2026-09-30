@@ -44,7 +44,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 5 | `core.mjs` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep`;真正的 ES module(直接 `import` aero/geo),`build.mjs` 打包成 `CORE` 後再 `Object.assign(globalThis, CORE)` 還原成裸全域,測試直接 `import * as core from '../src/core.mjs'` | `S` `G` `SIM` |
 | 6 | `ui.js` | 左側設定面板、圖表分頁、方案比較、匯出、工作區切換、主迴圈 `init()` | 多數 UI 函式 |
 | 7 | `bench.js` | 單葉片工作區;共用繪圖工具 `fitCv` `arrow` `interp1` `card` | `Bench` |
-| 8 | `flow.js` | 流場工作區 | `Flow` |
+| 8 | `flow.mjs` | 流場工作區(ES module,build 以 `FlowMod` 打包後還原成裸全域 `Flow`) | `Flow` |
 | 9 | `report.js` | 虛擬風洞自動測試 + 報告產生/下載 | `Report` |
 
 `src/package.json` 只是讓 Node 把 `core.js` 當 CommonJS 載入(測試用),與瀏覽器無關;`.mjs` 模組(`aero.mjs`/`charts.mjs`/`geo.mjs`)測試改用 ESM `import * as A from '../src/aero.mjs'`(見 `tests/geo.test.mjs`/`tests/core.test.mjs`)。專案第一個 npm 相依套件是 `vite`(devDependency,只在 `npm run build` 時用到,`npm test`/`npm run check` 不需要它)。
