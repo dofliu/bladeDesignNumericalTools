@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-09-30 — ROADMAP 1:ui.js 轉成 ES module
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/ui.js` → `src/ui.mjs`:頂層函式/常數加具名 `export`;`SNAPS` 改 `const` 陣列原地修改(避免 `Object.assign(globalThis, …)` 後複本過期);`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `ui: 'UIMod'` 並加入 `EXPAND_GLOBALS`。更新 ROADMAP。
+- 驗證:`npm run check`、`npm test`(32/32)、`npm run build`(201 KB)、離線 e2e 全過(MPPT 追蹤率 95–97%);Playwright 桌面 1440×900 與手機 390×844 無頁面錯誤,方案比較儲存/顯示正常。
+- 已知限制:其他 `let` 狀態變數(`opElems` 等)僅在 ui 內部使用,未匯出。
+- 下一步:ROADMAP 1 最後一步(`build.mjs` 換單一 Vite 設定,可選);ROADMAP 4 變槳/側偏收尾。
+
 ## 2026-09-30 — ROADMAP 1:bench.js 轉成 ES module
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/bench.js` → `src/bench.mjs`:共用繪圖工具與 `Bench` 改具名 `export`;`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `bench: 'BenchMod'` 並加入 `EXPAND_GLOBALS`,讓 flow/report/ui 仍可用裸全域 `fitCv`/`arrow`/`interp1`/`card`/`Bench`。更新 ROADMAP。
