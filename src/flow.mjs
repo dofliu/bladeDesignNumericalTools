@@ -1,5 +1,5 @@
 /* ===== Flow-field visualisation: airfoil section (panel method) + rotor (actuator / DMST streamtubes) ===== */
-const Flow = (function () {
+export const Flow = (function () {
   const F = { rr: 0.7, alpha: null, mode: 'speed', lines: true, lam: null, follow: false };
   let built = '', pcache = { key: '', solve: null }, lastFollow = 0;
   const $f = id => document.getElementById(id);
