@@ -212,11 +212,11 @@ export const Report = (function () {
       h += fig(f1, `圖:${H ? '0.7R 剖面' : '葉片剖面'}在設計攻角下的位勢流速度場與流線`) + fig(f2, H ? '圖:設計點轉子子午面軸向速度與流管擴張' : '圖:最佳尖速比下的俯視流管速度');
     }
     // 7 comparison
-    if (R0.incCmp && SNAPS.length) {
+    if (R0.incCmp && getSnaps().length) {
       h += hN('方案比較');
-      h += `<table class="small"><thead><tr><th>方案</th><th>Cp,max</th><th>λopt</th><th>高效區 λ</th><th>AEP (kWh)</th></tr></thead><tbody>${SNAPS.map(s => `<tr><td>${esc(s.name)}</td><td>${fmt(s.cpMax, 3)}</td><td>${fmt(s.lopt, 2)}</td><td>${s.band && s.band[0] != null ? fmt(s.band[0], 1) + '–' + fmt(s.band[1], 1) : '–'}</td><td>${fmt(snapAEP(s), 0)}</td></tr>`).join('')}</tbody></table>`;
+      h += `<table class="small"><thead><tr><th>方案</th><th>Cp,max</th><th>λopt</th><th>高效區 λ</th><th>AEP (kWh)</th></tr></thead><tbody>${getSnaps().map(s => `<tr><td>${esc(s.name)}</td><td>${fmt(s.cpMax, 3)}</td><td>${fmt(s.lopt, 2)}</td><td>${s.band && s.band[0] != null ? fmt(s.band[0], 1) + '–' + fmt(s.band[1], 1) : '–'}</td><td>${fmt(snapAEP(s), 0)}</td></tr>`).join('')}</tbody></table>`;
       const pal = ['--c1', '--c2', '--c3', '--c4', '--c5', '--warn', '--good', '--signal'];
-      h += fig(capture(cv => Plot.draw(cv, { title: 'Cp–λ 比較', series: SNAPS.map(s => ({ x: s.lam, y: s.cp, color: col(pal[s.ci % 8]), label: s.name.split(':')[0] })), ylim: [0, 0.62], xlabel: '尖速比 λ', ylabel: 'Cp' }), 760, 300), '圖:各方案功率係數');
+      h += fig(capture(cv => Plot.draw(cv, { title: 'Cp–λ 比較', series: getSnaps().map(s => ({ x: s.lam, y: s.cp, color: col(pal[s.ci % 8]), label: s.name.split(':')[0] })), ylim: [0, 0.62], xlabel: '尖速比 λ', ylabel: 'Cp' }), 760, 300), '圖:各方案功率係數');
     }
     // 8 conclusions
     h += hN('結論與建議');

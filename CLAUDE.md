@@ -42,7 +42,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 3 | `geo.mjs` | 葉片幾何放樣、STL(mm)、store-only ZIP、截面性質/懸臂梁撓度(`polygonMoments`/`offsetPolygon`/`sectionProperties`/`equivalentThickness`/`beamDeflection`);真正的 ES module,打包方式同上 | `GEO` |
 | 4 | `scene.js` | Three.js r128 場景(自製軌道控制、煙流粒子、偏航) | `Scene3D` |
 | 5 | `core.mjs` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep`;真正的 ES module(直接 `import` aero/geo),`build.mjs` 打包成 `CORE` 後再 `Object.assign(globalThis, CORE)` 還原成裸全域,測試直接 `import * as core from '../src/core.mjs'` | `S` `G` `SIM` |
-| 6 | `ui.js` | 左側設定面板、圖表分頁、方案比較、匯出、工作區切換、主迴圈 `init()` | 多數 UI 函式 |
+| 6 | `ui.mjs` | 左側設定面板、圖表分頁、方案比較、匯出、工作區切換、主迴圈 `init()` | 多數 UI 函式 |
 | 7 | `bench.mjs` | 單葉片工作區;共用繪圖工具 `fitCv` `arrow` `interp1` `card` | `Bench` |
 | 8 | `flow.js` | 流場工作區 | `Flow` |
 | 9 | `report.js` | 虛擬風洞自動測試 + 報告產生/下載 | `Report` |
@@ -81,7 +81,7 @@ rebuild(geo): designHAWT()/designVAWT() → computePerf() → autoMatchGen() →
 要繼續能貼回 claude.ai 發佈,dist 必須維持:
 
 - 單一 HTML、< 16 MB;外部 script 只能來自 `cdnjs.cloudflare.com`、`cdn.jsdelivr.net/npm`、`cdn.tailwindcss.com`、`code.jquery.com`;樣式只能 Google Fonts;**不能 fetch 其他網站**、不能載入遠端圖片
-- 下載檔案透過 `window.claude.use('downloads')`(`ui.js` 的 `save()`);其他託管環境(GitHub Pages、本機開檔)沒有這個 API 時,`save()` 自動改用 Blob 下載(`blobSave()`),回傳 `'api'` / `'blob'` / `false`。匯出視窗在 Blob 下載後另提供「顯示內容供複製」按鈕,因為瀏覽器可能無聲擋下下載;e2e 會檢查三種匯出的檔名與大小
+- 下載檔案透過 `window.claude.use('downloads')`(`ui.mjs` 的 `save()`);其他託管環境(GitHub Pages、本機開檔)沒有這個 API 時,`save()` 自動改用 Blob 下載(`blobSave()`),回傳 `'api'` / `'blob'` / `false`。匯出視窗在 Blob 下載後另提供「顯示內容供複製」按鈕,因為瀏覽器可能無聲擋下下載;e2e 會檢查三種匯出的檔名與大小
 - localStorage 可用(鍵:`wt-snaps-v1` 方案、`wt-theme` 佈景),一律包 try/catch
 - 主題色全部用 CSS 變數(`--accent` `--c1..c5` `--signal` 等),深色模式要兩處同步(`@media prefers-color-scheme` 與 `[data-theme=dark]`)
 - 手機斷點 860px;手機版底部導覽 `.bnav`,設定面板以 `.app.m-set` 切換
