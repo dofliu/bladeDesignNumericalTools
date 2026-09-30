@@ -1,6 +1,6 @@
 /* ===== App core: state, computation, simulation ===== */
 // Real ES module (ROADMAP 1). scripts/build.mjs bundles it to a `CORE` IIFE and then republishes
-// every export as a bare global so ui.js/bench.js/flow.js/report.js keep working unchanged.
+// every export as a bare global so ui.js/bench.js keep working unchanged.
 // Node tests import it directly (see tests/core.test.mjs).
 import * as A from './aero.mjs';
 import * as GEO from './geo.mjs';
