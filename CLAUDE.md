@@ -43,7 +43,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 4 | `scene.js` | Three.js r128 場景(自製軌道控制、煙流粒子、偏航) | `Scene3D` |
 | 5 | `core.mjs` | 狀態 `S`、衍生設計 `G`、模擬 `SIM`;設計、性能曲線、發電機、控制器、`simStep`;真正的 ES module(直接 `import` aero/geo),`build.mjs` 打包成 `CORE` 後再 `Object.assign(globalThis, CORE)` 還原成裸全域,測試直接 `import * as core from '../src/core.mjs'` | `S` `G` `SIM` |
 | 6 | `ui.js` | 左側設定面板、圖表分頁、方案比較、匯出、工作區切換、主迴圈 `init()` | 多數 UI 函式 |
-| 7 | `bench.js` | 單葉片工作區;共用繪圖工具 `fitCv` `arrow` `interp1` `card` | `Bench` |
+| 7 | `bench.mjs` | 單葉片工作區;共用繪圖工具 `fitCv` `arrow` `interp1` `card` | `Bench` |
 | 8 | `flow.js` | 流場工作區 | `Flow` |
 | 9 | `report.js` | 虛擬風洞自動測試 + 報告產生/下載 | `Report` |
 

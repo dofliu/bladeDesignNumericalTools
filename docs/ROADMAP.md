@@ -14,7 +14,8 @@
 - [x] `core.js` → `core.mjs`(2026-09-29):拿掉雙模組 IIFE,改 `import` aero/geo 與具名 `export`;`build.mjs` 以 `CORE` 全域打包,並用 `EXPAND_GLOBALS` 在其後 `Object.assign(globalThis, CORE)` 讓未轉換的 ui/bench/flow/report 仍能用裸全域;`tests/core.test.mjs` 改 `import * as core`。
 - [x] `report.js` → `report.mjs`(2026-09-29):`export const Report`,`build.mjs` 以 `ReportMod` 打包並加入 `EXPAND_GLOBALS`(`Object.assign(globalThis, ReportMod)` 還原裸全域 `Report`);功能無差異。
 - [x] `flow.js` → `flow.mjs`(2026-09-30):`export const Flow`,`build.mjs` 以 `FlowMod` 打包並加入 `EXPAND_GLOBALS`;功能無差異。
-- 下一步(ES modules 逐檔轉換,沿用 PR #12 驗證過的 Vite lib 打包做法):依序是 `bench.js`/`ui.js`(`report.js`、`flow.js` 已完成)(依賴最多,風險最高,建議一次一個檔案),最後才把 `scripts/build.mjs` 換成單一 `vite-plugin-singlefile` 設定。每次執行前務必先確認要轉換的檔案自排程宣稱的合併基底以來沒有被其他並行執行改過(`git log <base>..HEAD -- src/<name>.js`),並在 commit 前用 `git diff --stat <base>..HEAD` 檢查有沒有意外刪除不相關的既有函式或測試(見上面 PR #12 的踩點)。
+- [x] `bench.js` → `bench.mjs`(2026-09-30):`export` 共用繪圖工具(`fitCv`/`interp1`/`arrow`/`hexMix`/`card`/`afOutline`/`stationBlendLabel`)與 `Bench`,`build.mjs` 以 `BenchMod` 打包並加入 `EXPAND_GLOBALS`,flow/report/ui 仍可用裸全域;功能無差異。
+- 下一步(ES modules 逐檔轉換,沿用 PR #12 驗證過的 Vite lib 打包做法):只剩 `ui.js`(最後一個,依賴最多,風險最高),最後才把 `scripts/build.mjs` 換成單一 `vite-plugin-singlefile` 設定。每次執行前務必先確認要轉換的檔案自排程宣稱的合併基底以來沒有被其他並行執行改過(`git log <base>..HEAD -- src/<name>.js`),並在 commit 前用 `git diff --stat <base>..HEAD` 檢查有沒有意外刪除不相關的既有函式或測試(見上面 PR #12 的踩點)。
 - 驗收:`npm test` 涵蓋控制器;dist 行為與現版一致(e2e 全過、截圖比對)。
 
 ## 2. 真實翼型資料:XFOIL 整合
