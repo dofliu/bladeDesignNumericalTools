@@ -1,5 +1,5 @@
 /* ===== Shared drawing helpers ===== */
-function fitCv(cv) {
+export function fitCv(cv) {
   const fs = Plot.draw.force;
   const dpr = fs ? fs.dpr : (window.devicePixelRatio || 1);
   const W = fs ? fs.W : cv.clientWidth, H = fs ? fs.H : cv.clientHeight;
@@ -9,27 +9,27 @@ function fitCv(cv) {
   g.font = '11px ' + Plot.css('--font-ui');
   return { g, W, H };
 }
-function interp1(xs, ys, x) {
+export function interp1(xs, ys, x) {
   const n = xs.length; if (!n) return NaN; if (x <= xs[0]) return ys[0]; if (x >= xs[n - 1]) return ys[n - 1];
   let i = 0; while (i < n - 2 && x > xs[i + 1]) i++;
   const w = (x - xs[i]) / (xs[i + 1] - xs[i]); return ys[i] + w * (ys[i + 1] - ys[i]);
 }
-function arrow(g, x0, y0, x1, y1, color, w, head) {
+export function arrow(g, x0, y0, x1, y1, color, w, head) {
   const L = Math.hypot(x1 - x0, y1 - y0); if (L < 2) return;
   const hd = Math.min(head || 8, L * 0.45), ux = (x1 - x0) / L, uy = (y1 - y0) / L;
   g.strokeStyle = color; g.fillStyle = color; g.lineWidth = w || 1.6;
   g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1 - ux * hd * 0.6, y1 - uy * hd * 0.6); g.stroke();
   g.beginPath(); g.moveTo(x1, y1); g.lineTo(x1 - ux * hd - uy * hd * 0.45, y1 - uy * hd + ux * hd * 0.45); g.lineTo(x1 - ux * hd + uy * hd * 0.45, y1 - uy * hd - ux * hd * 0.45); g.closePath(); g.fill();
 }
-function hexMix(a, b, t) {
+export function hexMix(a, b, t) {
   const p = h => { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); };
   const A1 = p(a), B1 = p(b); return `rgb(${A1.map((v, i) => Math.round(v + (B1[i] - v) * t)).join(',')})`;
 }
-function card(title, inner, cls, id, open) {
+export function card(title, inner, cls, id, open) {
   return `<div class="card ${cls || ''}"${id ? ` id="${id}"` : ''}><details ${open === false ? '' : 'open'}><summary>${title}</summary><div class="cbx">${inner}</div></details></div>`;
 }
-function afOutline(af) { return { x: [...af.x, ...af.x.slice().reverse()], y: [...af.yu, ...af.yl.slice().reverse()] }; }
-function stationBlendLabel(x) {
+export function afOutline(af) { return { x: [...af.x, ...af.x.slice().reverse()], y: [...af.yu, ...af.yl.slice().reverse()] }; }
+export function stationBlendLabel(x) {
   const st = stSorted(), lab = k => afLabel(k).replace('NACA ', '');
   if (x <= st[0].f) return lab(st[0].k);
   if (x >= st[st.length - 1].f) return lab(st[st.length - 1].k);
@@ -40,7 +40,7 @@ function stationBlendLabel(x) {
 }
 
 /* ===== Single-blade workbench ===== */
-const Bench = (function () {
+export const Bench = (function () {
   const B = { rr: 0.7, lam: null, q: 'alpha', th: 60, zf: 0.5 };
   let built = '', cache = { key: '', res: null }, drag = false;
   const $b = id => document.getElementById(id);
