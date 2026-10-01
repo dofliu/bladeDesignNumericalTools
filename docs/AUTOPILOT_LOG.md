@@ -9,6 +9,13 @@
 - 已知限制:僅離線分析,時域模擬仍用軟失速降轉速;未含致動器速率限制與 UI。
 - 下一步:ROADMAP 4 時域模擬接上變槳(Cp(λ,β) 查表 + 開關)。
 
+## 2026-09-30 — ROADMAP 4:報告功率曲線涵蓋切出風速
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/report.mjs` 的自動功率曲線測試在啟用切出風速時,風速範圍延伸到「切出風速 + 2 m/s」(上限 25 m/s);切出後的理想 MPPT 曲線與追蹤率基準歸零,圖表 x 軸與結論文字(保護觸發/未觸發)隨實際測試範圍調整。未啟用切出時行為不變(3–15 m/s)。更新 ROADMAP。
+- 驗證:`npm run check`、`npm test`(32/32)、`npm run build`(201 KB)、離線 e2e 全過(MPPT 追蹤率 95–97%);Playwright 桌面/手機無頁面錯誤,切出 18 m/s 時跑 `Report.runTests` 至 20 m/s,輸出於 19 m/s 起降為 0、之前呈現平台。
+- 已知限制:報告測試耗時隨風速點增加;變槳與側偏收尾仍未做。
+- 下一步:ROADMAP 4 變槳選項或側偏收尾;ROADMAP 1 最後一步(build.mjs 換單一 Vite 設定,可選)。
+
 ## 2026-09-30 — ROADMAP 1:ui.js 轉成 ES module
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/ui.js` → `src/ui.mjs`:頂層函式/常數加具名 `export`;`SNAPS` 改 `const` 陣列原地修改(避免 `Object.assign(globalThis, …)` 後複本過期);`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `ui: 'UIMod'` 並加入 `EXPAND_GLOBALS`。更新 ROADMAP。

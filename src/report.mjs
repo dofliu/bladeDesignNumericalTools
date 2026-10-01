@@ -28,7 +28,8 @@ export const Report = (function () {
     const H = S.mode === 'HAWT', darr = !H && S.vawt.type !== 'sav';
     const dt = 0.004, R = G.R, { rho } = air();
     const res = { curve: [], yaw: [], turb: null, gust: null, start: [] };
-    let done = 0; const total = 13 + (H ? 4 : 0) + 1 + 1 + 3;
+    const Vmax = S.load.cutOut ? Math.min(25, Math.max(15, Math.ceil(S.load.vCutOut) + 2)) : 15;
+    let done = 0; const total = (Vmax - 2) + (H ? 4 : 0) + 1 + 1 + 3;
     const prog = t => onProg && onProg(done / total, t);
     async function run(dur, avgFrom, rec) {
       const trips0 = SIM.trips || 0;
@@ -49,11 +50,11 @@ export const Report = (function () {
     try {
       S.tun.TI = 0; S.tun.dir = 0; S.tun.yawMode = 'auto';
       const dur = H ? 30 : 48, avg = H ? 16 : 30;
-      for (let V = 3; V <= 15; V++) {
+      for (let V = 3; V <= Vmax; V++) {
         prog(`功率曲線測試 ${V} m/s`);
         reset(V, darr ? 0.85 : 0.6);
         const r = await run(dur, avg);
-        const ideal = Math.min(S.load.Pmax, 0.5 * rho * G.A * V ** 3 * G.cpMax * 0.92 * S.load.eta);
+        const ideal = S.load.cutOut && V > S.load.vCutOut ? 0 : Math.min(S.load.Pmax, 0.5 * rho * G.A * V ** 3 * G.cpMax * 0.92 * S.load.eta);
         const sp = steadyPower(V);
         res.curve.push({ V, ...r, Cp: r.Pw > 0 ? r.Pa / r.Pw : 0, eff: r.Pw > 0 ? r.Po / r.Pw : 0, ideal, fixed: sp ? sp.Pout : 0 });
         done++;
@@ -100,8 +101,8 @@ export const Report = (function () {
       const tr = mid.length ? mid.reduce((s, c) => s + c.Po / c.ideal, 0) / mid.length : null;
       if (tr != null) out.push(tr > 0.92 ? `6–10 m/s 區間實測輸出達理想 MPPT 的 ${(tr * 100).toFixed(0)}%,追蹤效果良好。` : `6–10 m/s 區間實測輸出只有理想 MPPT 的 ${(tr * 100).toFixed(0)}%;可嘗試最佳尖速比/最佳轉矩控制,或調整 P&O 擾動步長與週期。`);
       const trip = t.curve.find(c => c.trips > 0);
-      if (trip) out.push(`風速 ${trip.V} m/s 以上,轉子氣動功率超過發電機額定(${fmtP(S.load.Pmax)}),定槳距轉子即使降轉速進入失速仍無法把功率壓在額定內,多次觸發過速/過功率保護。${S.load.cutOut ? `目前已啟用切出風速停機(${fmt(S.load.vCutOut, 1)} m/s),可避免在額定風速以上反覆觸發保護,但測試風速範圍(至 15 m/s)未涵蓋切出風速,仍建議依實際場址風況調整切出/重啟風速。` : '可在「負載→保護」啟用切出風速停機來避免反覆觸發,或加入側偏收尾(furling)、變槳機構;若場址常有高風速,也可加大發電機額定。'}`);
-      else out.push(`測試風速範圍(至 15 m/s)內未觸發保護,發電機額定 ${fmtP(S.load.Pmax)} 足以涵蓋此轉子。`);
+      if (trip) out.push(`風速 ${trip.V} m/s 以上,轉子氣動功率超過發電機額定(${fmtP(S.load.Pmax)}),定槳距轉子即使降轉速進入失速仍無法把功率壓在額定內,多次觸發過速/過功率保護。${S.load.cutOut ? `目前已啟用切出風速停機(${fmt(S.load.vCutOut, 1)} m/s),可避免在額定風速以上反覆觸發保護,測試風速已延伸至 ${Vmax} m/s 以涵蓋切出風速,功率曲線在切出後降為 0;仍建議依實際場址風況調整切出/重啟風速。` : '可在「負載→保護」啟用切出風速停機來避免反覆觸發,或加入側偏收尾(furling)、變槳機構;若場址常有高風速,也可加大發電機額定。'}`);
+      else out.push(`測試風速範圍(至 ${t.curve[t.curve.length - 1].V} m/s)內未觸發保護,發電機額定 ${fmtP(S.load.Pmax)} 足以涵蓋此轉子。`);
       const cutin = t.curve.find(c => c.Po > 5); if (cutin) out.push(`實測切入風速約 ${cutin.V} m/s(輸出 > 5 W)。`);
       const fail = t.start.filter(s => s.tReach == null); if (fail.length) out.push(`啟動測試中 ${fail.map(s => s.V + ' m/s').join('、')} 無法在 60 秒內自行起轉到 λopt 的一半,需要馬達輔助啟動、增加實度或改用混合 Savonius 啟動器。`);
       else out.push(`在 4、6、8 m/s 皆能自行啟動,達到半最佳轉速時間分別為 ${t.start.map(s => fmt(s.tReach, 1) + ' s').join('、')}。`);
@@ -179,7 +180,7 @@ export const Report = (function () {
     const P = G.perf;
     const cpUrl = capture(cv => Plot.draw(cv, { title: 'Cp–λ 與 Ct', series: [{ x: P.lam, y: P.cp, color: col('--c1'), label: 'Cp' }, { x: P.lam, y: P.ct, color: col('--c2'), axis: 'R', dash: [5, 3], label: 'Ct' }, { x: [0, P.lam[P.lam.length - 1]], y: [16 / 27, 16 / 27], color: col('--muted'), dash: [2, 3], width: 1, label: 'Betz' }], ylim: [0, 0.65], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Ct' }), 520, 300);
     const Vs = Array.from({ length: 49 }, (_, i) => 0.5 + i * 0.5);
-    const pcUrl = capture(cv => { const ser = [{ x: Vs, y: Vs.map(v => Math.min(S.load.Pmax, 0.5 * rho * G.A * v ** 3 * G.cpMax * 0.92 * S.load.eta)), color: col('--c1'), label: '理想 MPPT(限額定)' }]; if (t) ser.push({ x: t.curve.map(c => c.V), y: t.curve.map(c => c.Po), color: col('--signal'), label: '虛擬風洞實測', dots: 3.5 }, { x: t.curve.map(c => c.V), y: t.curve.map(c => c.fixed), color: col('--c2'), dash: [4, 3], label: `固定 D ${Math.round(S.load.D * 100)}%` }); Plot.draw(cv, { title: '功率曲線', series: ser, xlim: [0, 16], xlabel: '風速 (m/s)', ylabel: '電功率 (W)' }); }, 520, 300);
+    const pcUrl = capture(cv => { const ser = [{ x: Vs, y: Vs.map(v => S.load.cutOut && v > S.load.vCutOut ? 0 : Math.min(S.load.Pmax, 0.5 * rho * G.A * v ** 3 * G.cpMax * 0.92 * S.load.eta)), color: col('--c1'), label: '理想 MPPT(限額定)' }]; if (t) ser.push({ x: t.curve.map(c => c.V), y: t.curve.map(c => c.Po), color: col('--signal'), label: '虛擬風洞實測', dots: 3.5 }, { x: t.curve.map(c => c.V), y: t.curve.map(c => c.fixed), color: col('--c2'), dash: [4, 3], label: `固定 D ${Math.round(S.load.D * 100)}%` }); Plot.draw(cv, { title: '功率曲線', series: ser, xlim: [0, t ? t.curve[t.curve.length - 1].V + 1 : 16], xlabel: '風速 (m/s)', ylabel: '電功率 (W)' }); }, 520, 300);
     h += `<div class="two">${fig(cpUrl, '圖:功率係數與推力係數')}${fig(pcUrl, '圖:功率曲線(預測與實測)')}</div>`;
     // 5 tests
     if (t) {
