@@ -211,3 +211,20 @@ test('pitchRegulation holds power at the generator limit above rated with monoto
     if (i > 0) assert.ok(r.pitch[i] >= r.pitch[i - 1] - 1e-9, 'pitch non-decreasing with wind speed');
   }
 });
+
+test('time-domain pitch control feathers above rated, holds power near the limit and returns to 0° below rated', () => {
+  setMode('HAWT');
+  const run = (V, dur) => { S.tun.TI = 0; S.tun.V = V; for (let t = 0; t < dur; t += 0.004) simStep(0.004); };
+  const reset = V => { S.load.ctrl = 'po'; S.load.cutOut = false; S.load.ospd = true; SIM.Vmeas = V; SIM.omega = G.lopt * V / G.R * 0.8; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null;
+    SIM.wcap = -1; SIM.pAvg = 0; SIM.latch = false; SIM.cutout = false; SIM.n = 0; SIM.po.wref = -1; SIM.trips = 0; SIM.wPrevObs = null; SIM.pitch = 0; };
+  S.load.pitchCtl = true; S.load.pitchRate = 5;
+  reset(16); run(16, 90);
+  assert.ok(SIM.pitch > 4 && SIM.pitch < 40, `pitch should feather above rated, got ${SIM.pitch.toFixed(1)}°`);
+  let e = 0, n = 0, trips = SIM.trips;
+  for (let t = 0; t < 20; t += 0.004) { simStep(0.004); e += SIM.out.el.Pout; n++; }
+  assert.ok(e / n < 1.1 * S.load.Pmax && e / n > 0.8 * S.load.Pmax, `mean power ${(e / n).toFixed(0)} W should sit near Pmax ${S.load.Pmax} W`);
+  assert.equal(SIM.trips, trips, 'no protection trips while pitch regulates');
+  run(6, 90);
+  assert.ok(SIM.pitch < 0.5, `pitch should return to 0° below rated, got ${SIM.pitch.toFixed(2)}°`);
+  S.load.pitchCtl = false; SIM.pitch = 0;
+});

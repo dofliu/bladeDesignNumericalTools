@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-01 — ROADMAP 4:時域模擬接上變槳
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `S.load.pitchCtl`/`pitchRate`、`SIM.pitch`、`pitchTable()`/`pitchDcq()`(Cq(λ,β) 查表差值疊加到原本 `cqAt`),`simStep` 啟用時以功率 PI 變槳取代 `SIM.wcap` 軟失速;負載面板新增開關與致動速率滑桿;ui/report 的重置處補 `SIM.pitch = 0`。新增 Node 測試。
+- 驗證:`npm run check`、`npm test`(34/34)、`npm run build`、`npm run test:e2e`(全過,追蹤率 94–97%);桌面/手機截圖版面正常。預設關閉,不影響既有行為。
+- 已知限制:報告功率曲線尚未顯示槳距;查表在設計風速 Vref 下計算,Re 隨風速的差異忽略;只有 HAWT。
+- 下一步:報告納入變槳,之後 ROADMAP 4 側偏收尾。
+
 ## 2026-10-01 — ROADMAP 4:離線變槳調節分析
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。ROADMAP 1 只剩「可選」的單一 Vite 設定(且需新增相依、收益低),依規則跳到下一個可獨立驗證的項目。`core.mjs` 新增 `pitchRegulation()`(額定轉速下,逐風速二分搜尋使氣動功率降到發電機上限的最小順槳角);`tests/core.test.mjs` 新增測試;更新 ROADMAP 拆分子步。
