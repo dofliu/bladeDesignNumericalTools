@@ -133,6 +133,8 @@ export function paneLoad() {
     chk('load.cutOut', '啟用切出風速停機(側偏收尾/停機保護的簡化模型)', { kind: 'pane' }) +
     (L.cutOut ? rng('load.vCutOut', '切出風速', 5, 40, 0.5, 'm/s', { kind: 'live' }) + rng('load.vRestart', '重啟風速', 3, Math.max(3, L.vCutOut - 0.5), 0.5, 'm/s', { kind: 'live' }) +
       `<p class="note">1 秒低通平均風速超過切出風速即煞車停機,待風速降到重啟風速以下才恢復運轉(遲滯避免陣風造成反覆停機/重啟)。</p>` : '') +
+    (S.mode === 'HAWT' ? chk('load.pitchCtl', '額定以上主動變槳(取代降轉速軟失速)', { kind: 'pane' }) +
+      (L.pitchCtl ? rng('load.pitchRate', '槳距致動速率', 1, 20, 0.5, '°/s', { kind: 'live' }) + `<p class="note">轉速上限固定在額定轉速,功率 PI 依輸出功率超出額定的程度把葉片往順槳方向轉(0–40°),低於額定則回到 0°;煞車/切出時全力順槳。槳距對轉矩的影響由 Cq(λ,β) 查表(BEM)取得。</p>` : '') : '') +
     `<div class="btns"><button class="btn warn" id="brakeBtn">${SIM.brake ? '放開煞車' : '煞車(短路 + 機械)'}</button></div>`);
   h += grp('電氣即時值', `<div class="kv" id="elecKv"></div>`);
   return h;
@@ -204,8 +206,8 @@ export function bindPane(p) {
     S.af.st.splice(+b.dataset.stdel, 1); S.af.view = Math.min(+S.af.view || 0, S.af.st.length - 1); renderPane(); scheduleRebuild(true);
   }));
   on('gustBtn', () => { SIM.gustT = 0; toast('陣風來了'); });
-  on('resetSim', () => { SIM.tEst = null; SIM.wcap = -1; SIM.Di = null; SIM.omega = 0; SIM.D = S.load.D; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; });
-  on('spinUp', () => { SIM.omega = G.lopt * S.tun.V / G.R; SIM.latch = false; SIM.cutout = false; });
+  on('resetSim', () => { SIM.tEst = null; SIM.wcap = -1; SIM.Di = null; SIM.omega = 0; SIM.D = S.load.D; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; });
+  on('spinUp', () => { SIM.omega = G.lopt * S.tun.V / G.R; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; });
   on('matchBtn', () => { autoMatchGen(); renderPane(); toast('已依設計點重新匹配發電機'); });
   on('brakeBtn', e => { SIM.brake = !SIM.brake; e.target.textContent = SIM.brake ? '放開煞車' : '煞車(短路 + 機械)'; });
 }
@@ -296,7 +298,7 @@ let rbTimer = null, rbGeo = false, pendingStart = false;
 export function assistStart() {
   const darrieus = S.mode === 'VAWT' && S.vawt.type !== 'sav';
   SIM.omega = G.lopt * S.tun.V / G.R * (darrieus ? 0.8 : 0.3);
-  SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false;
+  SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0;
 }
 export function scheduleRebuild(geo) { rbGeo = rbGeo || geo; clearTimeout(rbTimer); rbTimer = setTimeout(() => { const g = rbGeo; rbGeo = false; rebuild(g); }, 140); }
 export function rebuild(geo) {
@@ -789,7 +791,7 @@ export function afterDesignChange() { // called after rebuild so other workspace
 export function setMode(m) {
   S.mode = m;
   $('#mHAWT').setAttribute('aria-pressed', m === 'HAWT'); $('#mVAWT').setAttribute('aria-pressed', m === 'VAWT');
-  SIM.omega = 0; SIM.D = 0.5; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; opElems = null;
+  SIM.omega = 0; SIM.D = 0.5; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; opElems = null;
   $('#hud').innerHTML = '';
   if (m === 'VAWT' && S.af.view !== 'vawt') S.af.view = 'vawt'; if (m === 'HAWT' && S.af.view === 'vawt') S.af.view = S.af.st.length - 1;
   renderPane(); rebuild(true); chartOpts();
