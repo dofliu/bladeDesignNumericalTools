@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-01 — ROADMAP 4:離線變槳調節分析
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。ROADMAP 1 只剩「可選」的單一 Vite 設定(且需新增相依、收益低),依規則跳到下一個可獨立驗證的項目。`core.mjs` 新增 `pitchRegulation()`(額定轉速下,逐風速二分搜尋使氣動功率降到發電機上限的最小順槳角);`tests/core.test.mjs` 新增測試;更新 ROADMAP 拆分子步。
+- 驗證:見 PR 內文(check/test/build/e2e 與截圖)。預設 HAWT:14 m/s 8.8°、16 m/s 13.8°、20 m/s 21.2°、25 m/s 28.5°,功率平台 3368 W。
+- 已知限制:僅離線分析,時域模擬仍用軟失速降轉速;未含致動器速率限制與 UI。
+- 下一步:ROADMAP 4 時域模擬接上變槳(Cp(λ,β) 查表 + 開關)。
+
 ## 2026-09-30 — ROADMAP 1:ui.js 轉成 ES module
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/ui.js` → `src/ui.mjs`:頂層函式/常數加具名 `export`;`SNAPS` 改 `const` 陣列原地修改(避免 `Object.assign(globalThis, …)` 後複本過期);`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `ui: 'UIMod'` 並加入 `EXPAND_GLOBALS`。更新 ROADMAP。

@@ -367,6 +367,27 @@ function computePerf() {
   const { rho } = air();
   G.kopt = 0.5 * rho * G.A * G.R ** 3 * G.cpMax / G.lopt ** 3;
 }
+// Active-pitch regulation above rated (offline analysis; the time-domain sim still uses the soft-stall speed cap).
+// For each wind speed, holds the rotor at rated speed and finds the smallest blade pitch (deg, toward feather)
+// that brings aerodynamic power down to the generator limit. Returns { V[], pitch[], Pa[], Cp[], sat[] };
+// sat[i] is true when even pMax cannot shed enough power.
+function pitchRegulation(vList, opts = {}) {
+  const { rho } = air(), cfg = hawtCfg(), w = opts.omega || G.wRated;
+  const target = opts.target || S.load.Pmax / S.load.eta, pMax = opts.pMax || 40;
+  const out = { V: [], pitch: [], Pa: [], Cp: [], sat: [] };
+  for (const V of vList) {
+    const q = 0.5 * rho * G.A * V ** 3;
+    const pa = p => q * A.bemPoint(cfg, V, w, 0, S.hawt.pitch + p, {}).Cp;
+    let p = 0, sat = false;
+    if (pa(0) > target) {
+      if (pa(pMax) > target) { p = pMax; sat = true; }
+      else { let a = 0, b = pMax; for (let it = 0; it < 24; it++) { const m = (a + b) / 2; if (pa(m) > target) a = m; else b = m; } p = (a + b) / 2; }
+    }
+    const P = pa(p);
+    out.V.push(V); out.pitch.push(p); out.Pa.push(P); out.Cp.push(P / q); out.sat.push(sat);
+  }
+  return out;
+}
 let yawTimer = null;
 function scheduleYawBuckets(gen) {
   clearTimeout(yawTimer);
@@ -599,4 +620,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate };
+export { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate, pitchRegulation };
