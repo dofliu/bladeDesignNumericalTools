@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-01 — ROADMAP 4:報告功率曲線涵蓋切出風速
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。ROADMAP 1 剩下的「換成 vite-plugin-singlefile」屬可選且現行 Vite lib 打包已可用,略過。改做 ROADMAP 4 驗收項遺留:`src/report.mjs` 的穩態功率曲線測試,在 `S.load.cutOut` 啟用時把風速範圍從 3–15 m/s 延伸到「切出風速 + 2」(上限 30 m/s),未啟用時不變;結論文字與圖表 x 軸跟著調整(`res.vMax`)。
+- 驗證:`npm run check`、`npm test`(32/32)、`npm run build`、離線 e2e 全過(追蹤率 96–97%);Playwright 實跑報告(切出 18 m/s):功率曲線 3–20 m/s,18 m/s 以下 3.14 kW、19/20 m/s 為 0 W,桌面與手機載入無頁面錯誤。
+- 已知限制:報告測試時間隨風速點數增加;變槳與側偏收尾仍未做。
+- 下一步:ROADMAP 4 變槳 / 側偏收尾。
+
 ## 2026-09-30 — ROADMAP 1:ui.js 轉成 ES module
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/ui.js` → `src/ui.mjs`:頂層函式/常數加具名 `export`;`SNAPS` 改 `const` 陣列原地修改(避免 `Object.assign(globalThis, …)` 後複本過期);`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `ui: 'UIMod'` 並加入 `EXPAND_GLOBALS`。更新 ROADMAP。
