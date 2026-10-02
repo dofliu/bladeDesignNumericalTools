@@ -23,7 +23,7 @@ const S = {
   vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true,
-    cutOut: false, vCutOut: 20, vRestart: 15 },
+    cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5 },
   perf: { Vavg: 5.5, k: 2 }
 };
 
@@ -367,6 +367,42 @@ function computePerf() {
   const { rho } = air();
   G.kopt = 0.5 * rho * G.A * G.R ** 3 * G.cpMax / G.lopt ** 3;
 }
+// Active-pitch regulation above rated (offline analysis; the time-domain sim still uses the soft-stall speed cap).
+// For each wind speed, holds the rotor at rated speed and finds the smallest blade pitch (deg, toward feather)
+// that brings aerodynamic power down to the generator limit. Returns { V[], pitch[], Pa[], Cp[], sat[] };
+// sat[i] is true when even pMax cannot shed enough power.
+function pitchRegulation(vList, opts = {}) {
+  const { rho } = air(), cfg = hawtCfg(), w = opts.omega || G.wRated;
+  const target = opts.target || S.load.Pmax / S.load.eta, pMax = opts.pMax || 40;
+  const out = { V: [], pitch: [], Pa: [], Cp: [], sat: [] };
+  for (const V of vList) {
+    const q = 0.5 * rho * G.A * V ** 3;
+    const pa = p => q * A.bemPoint(cfg, V, w, 0, S.hawt.pitch + p, {}).Cp;
+    let p = 0, sat = false;
+    if (pa(0) > target) {
+      if (pa(pMax) > target) { p = pMax; sat = true; }
+      else { let a = 0, b = pMax; for (let it = 0; it < 24; it++) { const m = (a + b) / 2; if (pa(m) > target) a = m; else b = m; } p = (a + b) / 2; }
+    }
+    const P = pa(p);
+    out.V.push(V); out.pitch.push(p); out.Pa.push(P); out.Cp.push(P / q); out.sat.push(sat);
+  }
+  return out;
+}
+// Cp(λ,β) lookup for the time-domain pitch controller: Cq-vs-λ curves at fixed feather angles, cached per design generation.
+const PITCH_MAX = 40, PITCH_STEP = 5;
+function pitchTable() {
+  if (G.ptab && G.ptab.gen === G.gen) return G.ptab;
+  const cfg = hawtCfg(), lmax = G.perf.lam[G.perf.lam.length - 1], curves = [];
+  for (let b = 0; b <= PITCH_MAX + 1e-9; b += PITCH_STEP) { const c = curveArrays(hawtCurveStep(cfg, G.Vref, 0, S.hawt.pitch + b, lmax, 0.5)); c.step = 0.5; curves.push(c); }
+  return (G.ptab = { gen: G.gen, curves });
+}
+// torque-coefficient change caused by feathering the blades by beta (deg) at tip-speed ratio lam
+function pitchDcq(lam, beta) {
+  if (beta < 0.01) return 0;
+  const T = pitchTable().curves, f = Math.min(beta, PITCH_MAX) / PITCH_STEP, i = Math.min(T.length - 2, Math.floor(f)), w = f - i;
+  const d = k => interpCurve(T[k], 'cq', lam) - interpCurve(T[0], 'cq', lam);
+  return d(i) * (1 - w) + d(i + 1) * w;
+}
 let yawTimer = null;
 function scheduleYawBuckets(gen) {
   clearTimeout(yawTimer);
@@ -450,7 +486,7 @@ function frictionT(omega) {
 }
 
 /* ---------- simulation ---------- */
-const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, D: 0.5, brake: false, latch: false, cutout: false,
+const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, D: 0.5, brake: false, latch: false, cutout: false, pitch: 0,
   po: { acc: 0, cnt: 0, tim: 0, last: 0, dir: 1, wref: -1 }, out: {}, hist: { t: [], V: [], rpm: [], Pa: [], Po: [], D: [], lam: [], cp: [] }, histT: 0, traj: [] };
 function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 // converter with inner current control: find the duty that gives generator current Iref (inverse of electrical())
@@ -507,7 +543,9 @@ function simStep(dt) {
   const Vs = Math.max(V, 0.05);
   const lam = SIM.omega * G.R / Vs;
   const az = SIM.theta + T.dir * A.D2R;
-  const cq = V > 0.05 ? cqAt(lam, gam, az) : 0;
+  const usePitch = L.pitchCtl && S.mode === 'HAWT';
+  if (!usePitch) SIM.pitch = 0;
+  const cq = V > 0.05 ? cqAt(lam, gam, az) + (usePitch ? pitchDcq(lam, SIM.pitch) : 0) : 0;
   const Ta = 0.5 * rho * G.A * G.R * V * V * cq;
   // protection
   const wmax = L.wmaxRpm * Math.PI / 30;
@@ -536,7 +574,14 @@ function simStep(dt) {
   // rated-power limiting (fixed-pitch "soft stall"): a power PI lowers the speed ceiling wcap above rating
   const wmxC = 0.95 * L.wmaxRpm * Math.PI / 30, wrC = G.wRated || 20;
   if (!(SIM.wcap > 0)) SIM.wcap = wmxC;
-  if (!brake) SIM.wcap = A.clamp(SIM.wcap + 3 * (L.Pmax - el.Pout) / L.Pmax * wrC * dt, 0.25 * wrC, wmxC);
+  if (usePitch) {
+    // pitch regulation: speed ceiling = rated rotor speed (λopt at the wind speed where the generator saturates); the power PI feathers the blades instead
+    const Vr = Math.cbrt(L.Pmax / L.eta / (0.5 * rho * G.A * G.cpMax));
+    SIM.wcap = Math.min(wmxC, G.lopt * Vr / G.R);
+    const rate = Math.max(0.1, L.pitchRate);
+    const cmd = brake ? rate : A.clamp(40 * (el.Pout - L.Pmax) / L.Pmax, -rate, rate);
+    SIM.pitch = A.clamp(SIM.pitch + cmd * dt, 0, PITCH_MAX);
+  } else if (!brake) SIM.wcap = A.clamp(SIM.wcap + 3 * (L.Pmax - el.Pout) / L.Pmax * wrC * dt, 0.25 * wrC, wmxC);
   if (!brake) {
     if (ctl === 'manual') SIM.D = L.D;
     else if (ctl === 'po') {
@@ -599,4 +644,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate };
+export { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };

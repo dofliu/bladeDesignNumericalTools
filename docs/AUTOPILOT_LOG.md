@@ -9,6 +9,34 @@
 - 已知限制:模組之間仍靠裸全域溝通(未改成顯式 import),列為可選的後續整理。
 - 下一步:ROADMAP 4 變槳/側偏收尾。
 
+## 2026-10-02 — ROADMAP 4:報告納入變槳
+
+- 做了什麼:無開著的 `[autopilot]` PR。`report.mjs` 的穩態功率曲線測試新增各風速平均槳距,啟用變槳(HAWT)時表格多一欄「槳距」,結論加入變槳說明(起始順槳風速、最高風速槳距與輸出)。
+- 驗證:`npm run check`、`npm test`(34/34)、`npm run build`、`npm run test:e2e`(全過,追蹤率 94–97%);另以 Playwright 啟用變槳實際跑報告測試:13 m/s 起順槳、15 m/s 8.3°、輸出貼平 3.20 kW;桌面/手機畫面正常。
+- 已知限制:報告測試風速範圍預設到 15 m/s(未啟用切出時),更高風速的槳距需啟用切出風速延伸;未新增 Node 單元測試(report 為 DOM 模組)。
+- 下一步:ROADMAP 4 側偏收尾(furling)模型。
+
+## 2026-10-01 — ROADMAP 4:時域模擬接上變槳
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `S.load.pitchCtl`/`pitchRate`、`SIM.pitch`、`pitchTable()`/`pitchDcq()`(Cq(λ,β) 查表差值疊加到原本 `cqAt`),`simStep` 啟用時以功率 PI 變槳取代 `SIM.wcap` 軟失速;負載面板新增開關與致動速率滑桿;ui/report 的重置處補 `SIM.pitch = 0`。新增 Node 測試。
+- 驗證:`npm run check`、`npm test`(34/34)、`npm run build`、`npm run test:e2e`(全過,追蹤率 94–97%);桌面/手機截圖版面正常。預設關閉,不影響既有行為。
+- 已知限制:報告功率曲線尚未顯示槳距;查表在設計風速 Vref 下計算,Re 隨風速的差異忽略;只有 HAWT。
+- 下一步:報告納入變槳,之後 ROADMAP 4 側偏收尾。
+
+## 2026-10-01 — ROADMAP 4:離線變槳調節分析
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。ROADMAP 1 只剩「可選」的單一 Vite 設定(且需新增相依、收益低),依規則跳到下一個可獨立驗證的項目。`core.mjs` 新增 `pitchRegulation()`(額定轉速下,逐風速二分搜尋使氣動功率降到發電機上限的最小順槳角);`tests/core.test.mjs` 新增測試;更新 ROADMAP 拆分子步。
+- 驗證:見 PR 內文(check/test/build/e2e 與截圖)。預設 HAWT:14 m/s 8.8°、16 m/s 13.8°、20 m/s 21.2°、25 m/s 28.5°,功率平台 3368 W。
+- 已知限制:僅離線分析,時域模擬仍用軟失速降轉速;未含致動器速率限制與 UI。
+- 下一步:ROADMAP 4 時域模擬接上變槳(Cp(λ,β) 查表 + 開關)。
+
+## 2026-09-30 — ROADMAP 4:報告功率曲線涵蓋切出風速
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/report.mjs` 的自動功率曲線測試在啟用切出風速時,風速範圍延伸到「切出風速 + 2 m/s」(上限 25 m/s);切出後的理想 MPPT 曲線與追蹤率基準歸零,圖表 x 軸與結論文字(保護觸發/未觸發)隨實際測試範圍調整。未啟用切出時行為不變(3–15 m/s)。更新 ROADMAP。
+- 驗證:`npm run check`、`npm test`(32/32)、`npm run build`(201 KB)、離線 e2e 全過(MPPT 追蹤率 95–97%);Playwright 桌面/手機無頁面錯誤,切出 18 m/s 時跑 `Report.runTests` 至 20 m/s,輸出於 19 m/s 起降為 0、之前呈現平台。
+- 已知限制:報告測試耗時隨風速點增加;變槳與側偏收尾仍未做。
+- 下一步:ROADMAP 4 變槳選項或側偏收尾;ROADMAP 1 最後一步(build.mjs 換單一 Vite 設定,可選)。
+
 ## 2026-09-30 — ROADMAP 1:ui.js 轉成 ES module
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`src/ui.js` → `src/ui.mjs`:頂層函式/常數加具名 `export`;`SNAPS` 改 `const` 陣列原地修改(避免 `Object.assign(globalThis, …)` 後複本過期);`scripts/build.mjs` 的 `ESM_GLOBAL` 加 `ui: 'UIMod'` 並加入 `EXPAND_GLOBALS`。更新 ROADMAP。
