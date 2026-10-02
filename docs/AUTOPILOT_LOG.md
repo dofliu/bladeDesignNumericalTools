@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-02 — ROADMAP 4:報告納入變槳
+
+- 做了什麼:無開著的 `[autopilot]` PR。`report.mjs` 的穩態功率曲線測試新增各風速平均槳距,啟用變槳(HAWT)時表格多一欄「槳距」,結論加入變槳說明(起始順槳風速、最高風速槳距與輸出)。
+- 驗證:`npm run check`、`npm test`(34/34)、`npm run build`、`npm run test:e2e`(全過,追蹤率 94–97%);另以 Playwright 啟用變槳實際跑報告測試:13 m/s 起順槳、15 m/s 8.3°、輸出貼平 3.20 kW;桌面/手機畫面正常。
+- 已知限制:報告測試風速範圍預設到 15 m/s(未啟用切出時),更高風速的槳距需啟用切出風速延伸;未新增 Node 單元測試(report 為 DOM 模組)。
+- 下一步:ROADMAP 4 側偏收尾(furling)模型。
+
 ## 2026-10-01 — ROADMAP 4:時域模擬接上變槳
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `S.load.pitchCtl`/`pitchRate`、`SIM.pitch`、`pitchTable()`/`pitchDcq()`(Cq(λ,β) 查表差值疊加到原本 `cqAt`),`simStep` 啟用時以功率 PI 變槳取代 `SIM.wcap` 軟失速;負載面板新增開關與致動速率滑桿;ui/report 的重置處補 `SIM.pitch = 0`。新增 Node 測試。
