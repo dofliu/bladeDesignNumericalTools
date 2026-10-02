@@ -228,3 +228,20 @@ test('time-domain pitch control feathers above rated, holds power near the limit
   assert.ok(SIM.pitch < 0.5, `pitch should return to 0° below rated, got ${SIM.pitch.toFixed(2)}°`);
   S.load.pitchCtl = false; SIM.pitch = 0;
 });
+
+test('furling yaws the rotor out of the wind above vFurl, cuts power and recovers below', () => {
+  setMode('HAWT');
+  const run = (V, dur) => { S.tun.TI = 0; S.tun.V = V; for (let t = 0; t < dur; t += 0.004) simStep(0.004); };
+  const reset = V => { S.load.ctrl = 'po'; S.load.cutOut = false; S.load.pitchCtl = false; S.load.ospd = true; SIM.Vmeas = V; SIM.omega = G.lopt * V / G.R * 0.8; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null;
+    SIM.wcap = -1; SIM.pAvg = 0; SIM.latch = false; SIM.cutout = false; SIM.n = 0; SIM.po.wref = -1; SIM.trips = 0; SIM.wPrevObs = null; SIM.pitch = 0; SIM.furlAng = 0; };
+  S.tun.yawMode = 'auto'; S.tun.dir = 0; SIM.yaw = 0;
+  S.load.furl = true; S.load.vFurl = 11; S.load.furlMax = 60; S.load.furlRate = 4;
+  reset(8); run(8, 20);
+  assert.equal(SIM.furlAng, 0, 'no furling below vFurl');
+  reset(18); run(18, 30);
+  assert.ok(Math.abs(SIM.furlAng - 60) < 1e-6, `full furl at vFurl+6 m/s, got ${SIM.furlAng}`);
+  assert.ok(SIM.omega < G.lopt * 18 / G.R * 0.7, 'furled rotor must not spin at the unfurled optimum speed');
+  run(6, 40);
+  assert.equal(SIM.furlAng, 0, 'furl angle returns to 0 below vFurl');
+  S.load.furl = false; SIM.furlAng = 0;
+});

@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-02 — ROADMAP 4:側偏收尾簡化模型
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`core.mjs` 新增 `S.load.{furl,vFurl,furlMax,furlRate}` 與 `SIM.furlAng`:平均風速超過 `vFurl` 後側偏角線性增加(+6 m/s 達最大),速率限制,加進偏航誤差 γ 使氣動轉矩依既有偏航曲線下降;`ui.mjs` 負載面板新增開關與滑桿(僅 HAWT);重置點同步清除。預設關閉,不影響既有行為。
+- 驗證:`npm run check`、`npm test`(35/35,新增側偏測試:低風速不側偏、18 m/s 達 60°、轉速遠低於未側偏最佳值、降風後回 0°)、`npm run build`(187 KB)、離線 e2e 全過(追蹤率 92–97%);Playwright 桌面 1440×900 與手機 390×844 無頁面錯誤,18 m/s 啟用側偏後偏航誤差上升、畫面正常。
+- 已知限制:無尾翼力矩/陀螺效應與被動收尾遲滯;報告尚未列出側偏設定。
+- 下一步:報告納入側偏(功率曲線記錄側偏角),或變槳與 MPPT 額定附近調校;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-01 — ROADMAP 1:build.mjs 改單一 Vite 入口(ESM 遷移完成)
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。新增 `src/main.mjs`(import 全部模組並還原裸全域),`scripts/build.mjs` 改為一次 Vite IIFE 打包,移除逐檔打包與 `ESM_GLOBAL`/`EXPAND_GLOBALS`。dist 201 → 184 KB。

@@ -46,7 +46,7 @@ export const Report = (function () {
       const c = Math.max(1, acc.cnt);
       return { Pa: acc.Pa / c, Po: acc.Po / c, Pw: acc.Pw / c, rpm: acc.rpm / c, lam: acc.lam / c, D: acc.D / c, pitch: acc.pitch / c, std: Math.sqrt(Math.max(0, acc.P2 / c - (acc.Po / c) ** 2)), rpmMax: acc.rpmMax, PoMax: acc.PoMax, latch: acc.latch, trips: (SIM.trips || 0) - trips0, ser, fat: sig && sig.length > 10 ? { ...fatigueEstimate(sig, sig.length * dt), sig: sig.slice(0, Math.round(5 / dt)), dt } : null };
     }
-    const reset = (V, lamFrac) => { S.tun.V = V; SIM.Vmeas = V; SIM.omega = G.lopt * V / R * lamFrac; SIM.gust = 0; SIM.gustT = -1; SIM.n = 0; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; SIM.brake = false; SIM.po.wref = -1; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.D = 0.5; SIM.yaw = S.tun.dir; };
+    const reset = (V, lamFrac) => { S.tun.V = V; SIM.Vmeas = V; SIM.omega = G.lopt * V / R * lamFrac; SIM.gust = 0; SIM.gustT = -1; SIM.n = 0; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; SIM.furlAng = 0; SIM.brake = false; SIM.po.wref = -1; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.D = 0.5; SIM.yaw = S.tun.dir; };
     try {
       S.tun.TI = 0; S.tun.dir = 0; S.tun.yawMode = 'auto';
       const dur = H ? 30 : 48, avg = H ? 16 : 30;

@@ -23,7 +23,7 @@ const S = {
   vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true,
-    cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5 },
+    cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5, furl: false, vFurl: 11, furlMax: 60, furlRate: 4 },
   perf: { Vavg: 5.5, k: 2 }
 };
 
@@ -486,7 +486,7 @@ function frictionT(omega) {
 }
 
 /* ---------- simulation ---------- */
-const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, D: 0.5, brake: false, latch: false, cutout: false, pitch: 0,
+const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, D: 0.5, brake: false, latch: false, cutout: false, pitch: 0, furlAng: 0,
   po: { acc: 0, cnt: 0, tim: 0, last: 0, dir: 1, wref: -1 }, out: {}, hist: { t: [], V: [], rpm: [], Pa: [], Po: [], D: [], lam: [], cp: [] }, histT: 0, traj: [] };
 function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 // converter with inner current control: find the duty that gives generator current Iref (inverse of electrical())
@@ -539,7 +539,13 @@ function simStep(dt) {
       if (Math.abs(err) > 1.5) SIM.yaw += Math.sign(err) * Math.min(Math.abs(err), T.yawRate * dt);
     } else SIM.yaw = T.yawFixed;
   }
-  const gam = S.mode === 'HAWT' ? A.wrapPi((T.dir - SIM.yaw) * A.D2R) * A.R2D : 0;
+  // passive furling (simplified): above vFurl the nacelle turns out of the wind, reaching furlMax at vFurl + 6 m/s;
+  // the 1 s mean wind drives the target, the angle is rate-limited (heavy tail vane) and adds to the yaw error
+  if (S.mode === 'HAWT' && L.furl) {
+    const tgt = L.furlMax * A.clamp((SIM.Vmeas - L.vFurl) / 6, 0, 1), d = tgt - SIM.furlAng, mv = L.furlRate * dt;
+    SIM.furlAng += Math.abs(d) < mv ? d : Math.sign(d) * mv;
+  } else SIM.furlAng = 0;
+  const gam = S.mode === 'HAWT' ? A.wrapPi((T.dir - SIM.yaw) * A.D2R) * A.R2D + SIM.furlAng : 0;
   const Vs = Math.max(V, 0.05);
   const lam = SIM.omega * G.R / Vs;
   const az = SIM.theta + T.dir * A.D2R;

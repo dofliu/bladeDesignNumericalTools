@@ -130,6 +130,9 @@ export function paneLoad() {
     `<p class="note">${{ po: '每個週期擾動轉速參考值(內迴路以占空比追蹤轉速),若平均輸出功率下降就反向;不需風速計與轉子特性,但穩態會在最大功率點附近振盪,擾動週期須長於轉子的機械時間常數,紊流大時也容易誤判方向。', tsr: '量測風速後令 ω* = λ<sub>opt</sub>V/R,以 PI 調整占空比追蹤;反應快,但依賴風速計精度。', ot: '依 Cp<sub>max</sub> 與 λ<sub>opt</sub> 算出 k<sub>opt</sub>,令發電機轉矩追蹤 kω²;不需風速計,穩定但依賴轉子模型正確。', manual: '不做追蹤,直接以固定等效負載運轉,可比較 MPPT 的增益。' }[L.ctrl]}</p>`);
   h += grp('保護', chk('load.ospd', '超速保護(超過上限自動煞車)', { kind: 'live' }) + rng('load.wmaxRpm', '轉速上限', 10, 3000, 5, 'rpm', { kind: 'live' }) + rng('load.Pmax', '發電機額定功率', 10, 50000, 10, 'W', { kind: 'live' }) +
     `<p class="note">轉速超過上限或輸出功率超過額定 125% 時啟動保護煞車,待轉速降到上限的 55% 才解除。</p>` +
+    (S.mode === 'HAWT' ? chk('load.furl', '側偏收尾(風速超過門檻時機艙自動偏離風向)', { kind: 'pane' }) +
+      (L.furl ? rng('load.vFurl', '開始側偏風速', 5, 30, 0.5, 'm/s', { kind: 'live' }) + rng('load.furlMax', '最大側偏角', 20, 85, 1, '°', { kind: 'live' }) + rng('load.furlRate', '側偏速率', 1, 20, 0.5, '°/s', { kind: 'live' }) +
+        `<p class="note">1 秒低通平均風速超過開始側偏風速後,偏角隨風速線性增加,在 +6 m/s 時達最大側偏角;有效受風面積約隨 cos γ 下降、氣動轉矩約隨 cos² γ 下降,以限制高風速功率。簡化模型,不含尾翼力矩與陀螺效應。</p>` : '') : '') +
     chk('load.cutOut', '啟用切出風速停機(側偏收尾/停機保護的簡化模型)', { kind: 'pane' }) +
     (L.cutOut ? rng('load.vCutOut', '切出風速', 5, 40, 0.5, 'm/s', { kind: 'live' }) + rng('load.vRestart', '重啟風速', 3, Math.max(3, L.vCutOut - 0.5), 0.5, 'm/s', { kind: 'live' }) +
       `<p class="note">1 秒低通平均風速超過切出風速即煞車停機,待風速降到重啟風速以下才恢復運轉(遲滯避免陣風造成反覆停機/重啟)。</p>` : '') +
@@ -206,8 +209,8 @@ export function bindPane(p) {
     S.af.st.splice(+b.dataset.stdel, 1); S.af.view = Math.min(+S.af.view || 0, S.af.st.length - 1); renderPane(); scheduleRebuild(true);
   }));
   on('gustBtn', () => { SIM.gustT = 0; toast('陣風來了'); });
-  on('resetSim', () => { SIM.tEst = null; SIM.wcap = -1; SIM.Di = null; SIM.omega = 0; SIM.D = S.load.D; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; });
-  on('spinUp', () => { SIM.omega = G.lopt * S.tun.V / G.R; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; });
+  on('resetSim', () => { SIM.tEst = null; SIM.wcap = -1; SIM.Di = null; SIM.omega = 0; SIM.D = S.load.D; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; SIM.furlAng = 0; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; });
+  on('spinUp', () => { SIM.omega = G.lopt * S.tun.V / G.R; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; SIM.furlAng = 0; });
   on('matchBtn', () => { autoMatchGen(); renderPane(); toast('已依設計點重新匹配發電機'); });
   on('brakeBtn', e => { SIM.brake = !SIM.brake; e.target.textContent = SIM.brake ? '放開煞車' : '煞車(短路 + 機械)'; });
 }
@@ -298,7 +301,7 @@ let rbTimer = null, rbGeo = false, pendingStart = false;
 export function assistStart() {
   const darrieus = S.mode === 'VAWT' && S.vawt.type !== 'sav';
   SIM.omega = G.lopt * S.tun.V / G.R * (darrieus ? 0.8 : 0.3);
-  SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0;
+  SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; SIM.furlAng = 0;
 }
 export function scheduleRebuild(geo) { rbGeo = rbGeo || geo; clearTimeout(rbTimer); rbTimer = setTimeout(() => { const g = rbGeo; rbGeo = false; rebuild(g); }, 140); }
 export function rebuild(geo) {
@@ -791,7 +794,7 @@ export function afterDesignChange() { // called after rebuild so other workspace
 export function setMode(m) {
   S.mode = m;
   $('#mHAWT').setAttribute('aria-pressed', m === 'HAWT'); $('#mVAWT').setAttribute('aria-pressed', m === 'VAWT');
-  SIM.omega = 0; SIM.D = 0.5; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; opElems = null;
+  SIM.omega = 0; SIM.D = 0.5; SIM.po.last = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; SIM.furlAng = 0; for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; opElems = null;
   $('#hud').innerHTML = '';
   if (m === 'VAWT' && S.af.view !== 'vawt') S.af.view = 'vawt'; if (m === 'HAWT' && S.af.view === 'vawt') S.af.view = S.af.st.length - 1;
   renderPane(); rebuild(true); chartOpts();
