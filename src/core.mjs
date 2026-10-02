@@ -23,7 +23,7 @@ const S = {
   vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true,
-    cutOut: false, vCutOut: 20, vRestart: 15 },
+    cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 8 },
   perf: { Vavg: 5.5, k: 2 }
 };
 
@@ -388,6 +388,23 @@ function pitchRegulation(vList, opts = {}) {
   }
   return out;
 }
+// Cp(lambda, beta) table for the time-domain pitch controller: Cq at yaw 0 for pitch offsets 0..40 deg,
+// rebuilt lazily whenever the design changes (G.gen). pitchRatio() gives Cq(beta)/Cq(0) at a tip-speed ratio.
+const PITCH_BETAS = [0, 5, 10, 15, 20, 25, 30, 35, 40];
+function pitchTable() {
+  if (G.ptab && G.ptab.gen === G.gen) return G.ptab;
+  const cfg = hawtCfg(), lmax = G.perf.lam[G.perf.lam.length - 1];
+  const rows = PITCH_BETAS.map(b => { const c = curveArrays(hawtCurveStep(cfg, G.Vref, 0, S.hawt.pitch + b, lmax, 0.5)); c.step = 0.5; return c; });
+  return (G.ptab = { gen: G.gen, rows });
+}
+function pitchRatio(lam, beta) {
+  if (!(beta > 0)) return 1;
+  const rows = pitchTable().rows, f = A.clamp(beta / 5, 0, rows.length - 1), i = Math.min(rows.length - 2, Math.floor(f)), w = f - i;
+  const c0 = interpCurve(rows[0], 'cq', lam);
+  if (c0 < 1e-4) return 1;
+  const cb = (1 - w) * interpCurve(rows[i], 'cq', lam) + w * interpCurve(rows[i + 1], 'cq', lam);
+  return A.clamp(cb / c0, 0, 1.2);
+}
 let yawTimer = null;
 function scheduleYawBuckets(gen) {
   clearTimeout(yawTimer);
@@ -528,7 +545,9 @@ function simStep(dt) {
   const Vs = Math.max(V, 0.05);
   const lam = SIM.omega * G.R / Vs;
   const az = SIM.theta + T.dir * A.D2R;
-  const cq = V > 0.05 ? cqAt(lam, gam, az) : 0;
+  const pitchOn = S.mode === 'HAWT' && L.pitchCtl;
+  if (!pitchOn) SIM.pitch = 0;
+  const cq = V > 0.05 ? cqAt(lam, gam, az) * (pitchOn ? pitchRatio(lam, SIM.pitch || 0) : 1) : 0;
   const Ta = 0.5 * rho * G.A * G.R * V * V * cq;
   // protection
   const wmax = L.wmaxRpm * Math.PI / 30;
@@ -557,7 +576,12 @@ function simStep(dt) {
   // rated-power limiting (fixed-pitch "soft stall"): a power PI lowers the speed ceiling wcap above rating
   const wmxC = 0.95 * L.wmaxRpm * Math.PI / 30, wrC = G.wRated || 20;
   if (!(SIM.wcap > 0)) SIM.wcap = wmxC;
-  if (!brake) SIM.wcap = A.clamp(SIM.wcap + 3 * (L.Pmax - el.Pout) / L.Pmax * wrC * dt, 0.25 * wrC, wmxC);
+  if (pitchOn) {
+    // active pitch: hold rated speed, the power error plus an overspeed term drives the pitch rate (rate-limited actuator), feathering above rating
+    SIM.wcap = Math.min(wmxC, wrC);
+    SIM.pitch = A.clamp((SIM.pitch || 0) + (brake ? L.pitchRate : A.clamp(20 * ((SIM.pAvgP - L.Pmax) / L.Pmax + 2 * Math.max(0, SIM.omega / wrC - 1)), -L.pitchRate, L.pitchRate)) * dt, 0, PITCH_BETAS[PITCH_BETAS.length - 1]);
+    SIM.pAvgP = (SIM.pAvgP || 0) + (el.Pout - (SIM.pAvgP || 0)) * Math.min(1, dt / 0.5);
+  } else if (!brake) SIM.wcap = A.clamp(SIM.wcap + 3 * (L.Pmax - el.Pout) / L.Pmax * wrC * dt, 0.25 * wrC, wmxC);
   if (!brake) {
     if (ctl === 'manual') SIM.D = L.D;
     else if (ctl === 'po') {
@@ -587,7 +611,7 @@ function simStep(dt) {
     SIM.D = A.clamp(SIM.D, 0.03, 0.97);
   }
   SIM.t += dt;
-  SIM.out = { V, gam, lam, cq, Ta, Pa, Cp: V > 0.3 ? Pa / (0.5 * rho * G.A * V ** 3) : 0, el, brake, rpm: SIM.omega * 30 / Math.PI };
+  SIM.out = { V, gam, lam, cq, Ta, Pa, Cp: V > 0.3 ? Pa / (0.5 * rho * G.A * V ** 3) : 0, el, brake, rpm: SIM.omega * 30 / Math.PI, pitch: SIM.pitch || 0 };
 }
 function recordHist() {
   const h = SIM.hist, o = SIM.out;
@@ -620,4 +644,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate, pitchRegulation };
+export { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate, pitchRegulation, pitchRatio };

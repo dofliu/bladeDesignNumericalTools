@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-02 — ROADMAP 4:時域模擬接上主動變槳
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`S.load.pitchCtl`(預設關閉)啟用後,水平軸以 Cq(λ,β) 查表縮放氣動轉矩,額定以上維持額定轉速並由功率誤差 + 超速量驅動槳距(速率限制 `pitchRate`,煞車時順槳),取代軟失速降轉速。面板開關、報告條件列、`tests/core.test.mjs` 新測試、ROADMAP 子步勾選。
+- 驗證:`npm run check`、`npm test`(34/34)、`npm run build`(203 KB)、離線 e2e 全過(MPPT 追蹤率 95–97%);Playwright 桌面 1440×900 與手機 390×844 無頁面錯誤。
+- 已知限制:平衡點電功率約為額定 91%(超速項偏置);槳距表以設計風速 `G.Vref` 的 Re 建立;報告尚無變槳專屬結論;側偏收尾未做。
+- 下一步:報告變槳結論/e2e,或 ROADMAP 4 側偏收尾。
+
 ## 2026-10-01 — ROADMAP 4:離線變槳調節分析
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。ROADMAP 1 只剩「可選」的單一 Vite 設定(且需新增相依、收益低),依規則跳到下一個可獨立驗證的項目。`core.mjs` 新增 `pitchRegulation()`(額定轉速下,逐風速二分搜尋使氣動功率降到發電機上限的最小順槳角);`tests/core.test.mjs` 新增測試;更新 ROADMAP 拆分子步。

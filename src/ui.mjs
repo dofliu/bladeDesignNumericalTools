@@ -133,6 +133,9 @@ export function paneLoad() {
     chk('load.cutOut', '啟用切出風速停機(側偏收尾/停機保護的簡化模型)', { kind: 'pane' }) +
     (L.cutOut ? rng('load.vCutOut', '切出風速', 5, 40, 0.5, 'm/s', { kind: 'live' }) + rng('load.vRestart', '重啟風速', 3, Math.max(3, L.vCutOut - 0.5), 0.5, 'm/s', { kind: 'live' }) +
       `<p class="note">1 秒低通平均風速超過切出風速即煞車停機,待風速降到重啟風速以下才恢復運轉(遲滯避免陣風造成反覆停機/重啟)。</p>` : '') +
+    (S.mode === 'HAWT' ? chk('load.pitchCtl', '啟用主動變槳(額定以上順槳控功率,取代軟失速降轉速)', { kind: 'pane' }) +
+      (L.pitchCtl ? rng('load.pitchRate', '變槳速率上限', 1, 20, 0.5, '°/s', { kind: 'live' }) +
+        `<p class="note">額定以上維持額定轉速,功率誤差與超速量驅動槳距(受速率限制),向順槳方向增加;不論是否煞車都可順槳。槳距對 Cq 的影響來自 BEM 查表(0–40°)。</p>` : '') : '') +
     `<div class="btns"><button class="btn warn" id="brakeBtn">${SIM.brake ? '放開煞車' : '煞車(短路 + 機械)'}</button></div>`);
   h += grp('電氣即時值', `<div class="kv" id="elecKv"></div>`);
   return h;

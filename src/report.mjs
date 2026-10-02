@@ -46,7 +46,7 @@ export const Report = (function () {
       const c = Math.max(1, acc.cnt);
       return { Pa: acc.Pa / c, Po: acc.Po / c, Pw: acc.Pw / c, rpm: acc.rpm / c, lam: acc.lam / c, D: acc.D / c, std: Math.sqrt(Math.max(0, acc.P2 / c - (acc.Po / c) ** 2)), rpmMax: acc.rpmMax, PoMax: acc.PoMax, latch: acc.latch, trips: (SIM.trips || 0) - trips0, ser, fat: sig && sig.length > 10 ? { ...fatigueEstimate(sig, sig.length * dt), sig: sig.slice(0, Math.round(5 / dt)), dt } : null };
     }
-    const reset = (V, lamFrac) => { S.tun.V = V; SIM.Vmeas = V; SIM.omega = G.lopt * V / R * lamFrac; SIM.gust = 0; SIM.gustT = -1; SIM.n = 0; SIM.latch = false; SIM.cutout = false; SIM.brake = false; SIM.po.wref = -1; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.D = 0.5; SIM.yaw = S.tun.dir; };
+    const reset = (V, lamFrac) => { S.tun.V = V; SIM.Vmeas = V; SIM.omega = G.lopt * V / R * lamFrac; SIM.gust = 0; SIM.gustT = -1; SIM.n = 0; SIM.latch = false; SIM.cutout = false; SIM.brake = false; SIM.po.wref = -1; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.pAvgP = 0; SIM.pitch = 0; SIM.D = 0.5; SIM.yaw = S.tun.dir; };
     try {
       S.tun.TI = 0; S.tun.dir = 0; S.tun.yawMode = 'auto';
       const dur = H ? 30 : 48, avg = H ? 16 : 30;
@@ -128,6 +128,7 @@ export const Report = (function () {
     const cond = H ? [['型式', `水平軸,${Math.round(S.hawt.B)} 葉`], ['轉子半徑 / 輪轂半徑', `${fmt(S.hawt.R, 2)} m / ${fmt(G.Rhub, 3)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['設計風速 / 設計尖速比', `${fmt(S.hawt.Vd, 1)} m/s / ${fmt(S.hawt.tsr, 1)}`], ['扭角設計方式', { bem: 'BEM 數值最佳化', opt: 'Schmitz 解析解', linear: `線性 ${fmt(S.hawt.twRoot, 1)}° → ${fmt(S.hawt.twTip, 1)}°` }[S.hawt.twMode]], ['槳距角', fmt(S.hawt.pitch, 1) + '°'], ['材料 / 單葉質量', `${MATERIALS[S.hawt.material].name} / ${fmt(G.bladeMass, 2)} kg`]]
       : [['型式', VAWT_TYPES[S.vawt.type]], ['葉片數', Math.round(S.vawt.B)], ['半徑 / 高度', `${fmt(S.vawt.R, 2)} m / ${fmt(S.vawt.H, 2)} m`], ...(sav ? [['重疊比', fmt(S.vawt.overlap, 2)]] : [['弦長 / 翼型', `${fmt(S.vawt.c * 1000, 0)} mm / ${afLabel(S.af.vawt)}`], ['實度 Bc/R', fmt(S.vawt.B * S.vawt.c / S.vawt.R, 3)]]), ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']];
     cond.push(['空氣條件', `${fmt(S.tun.T, 0)} °C,海拔 ${fmt(S.tun.alt, 0)} m,ρ = ${fmt(rho, 3)} kg/m³`], ['負載', S.load.kind === 'bat' ? `電池充電 ${S.load.Vbat} V(升降壓轉換器)` : `電阻負載 ${fmt(S.load.RL, 1)} Ω`], ['MPPT 控制', { po: '擾動觀察法 P&O', tsr: '最佳尖速比控制', ot: '最佳轉矩控制', manual: '固定占空比' }[S.load.ctrl]], ['發電機', `ke ${fmt(S.load.ke, 3)} V·s/rad,Rs ${fmt(S.load.Rs, 3)} Ω,額定 ${fmtP(S.load.Pmax)},轉速上限 ${S.load.wmaxRpm} rpm`]);
+    if (S.mode === 'HAWT' && S.load.pitchCtl) cond.push(['功率控制', `主動變槳(速率上限 ${fmt(S.load.pitchRate, 1)} °/s,維持額定轉速)`]);
     if (S.load.cutOut) cond.push(['切出/重啟風速', `${fmt(S.load.vCutOut, 1)} m/s / ${fmt(S.load.vRestart, 1)} m/s(1 秒低通平均風速,含遲滯)`]);
     h += `<table class="kvt">${cond.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>`;
     // 2 airfoils
