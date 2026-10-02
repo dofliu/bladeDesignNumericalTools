@@ -16,7 +16,8 @@
 - [x] `flow.js` → `flow.mjs`(2026-09-30):`export const Flow`,`build.mjs` 以 `FlowMod` 打包並加入 `EXPAND_GLOBALS`;功能無差異。
 - [x] `bench.js` → `bench.mjs`(2026-09-30):`export` 共用繪圖工具(`fitCv`/`interp1`/`arrow`/`hexMix`/`card`/`afOutline`/`stationBlendLabel`)與 `Bench`,`build.mjs` 以 `BenchMod` 打包並加入 `EXPAND_GLOBALS`,flow/report/ui 仍可用裸全域;功能無差異。
 - [x] `ui.js` → `ui.mjs`(2026-09-30):所有頂層函式/常數改具名 `export`;`SNAPS` 由 `let` 重新指派改為 `const` 陣列原地修改(讓 report 透過全域複本仍讀到最新內容);`build.mjs` 以 `UIMod` 打包並加入 `EXPAND_GLOBALS`。至此 9 個模組全為 ES module。
-- 下一步(原計畫,ui 已完成;剩最後一步:把 `scripts/build.mjs` 換成單一 `vite-plugin-singlefile` 設定。舊說明:ES modules 逐檔轉換,沿用 PR #12 驗證過的 Vite lib 打包做法):只剩 `ui.js`(最後一個,依賴最多,風險最高),最後才把 `scripts/build.mjs` 換成單一 `vite-plugin-singlefile` 設定。每次執行前務必先確認要轉換的檔案自排程宣稱的合併基底以來沒有被其他並行執行改過(`git log <base>..HEAD -- src/<name>.js`),並在 commit 前用 `git diff --stat <base>..HEAD` 檢查有沒有意外刪除不相關的既有函式或測試(見上面 PR #12 的踩點)。
+- [x] `build.mjs` 換成單一 Vite 入口(2026-10-01):新增 `src/main.mjs` import 全部 9 個模組並在載入後 `Object.assign(globalThis, …)` 還原裸全域,`build.mjs` 只呼叫一次 Vite(IIFE);dist 由 201 KB 降為 184 KB(tree-shaking)。未採用 `vite-plugin-singlefile`(只需內嵌單一 JS 到既有 shell,不必新增相依)。**ROADMAP 1 的 ESM+Vite 遷移全部完成。**
+- (舊註記)下一步(原計畫,ui 已完成;剩最後一步:把 `scripts/build.mjs` 換成單一 `vite-plugin-singlefile` 設定。舊說明:ES modules 逐檔轉換,沿用 PR #12 驗證過的 Vite lib 打包做法):只剩 `ui.js`(最後一個,依賴最多,風險最高),最後才把 `scripts/build.mjs` 換成單一 `vite-plugin-singlefile` 設定。每次執行前務必先確認要轉換的檔案自排程宣稱的合併基底以來沒有被其他並行執行改過(`git log <base>..HEAD -- src/<name>.js`),並在 commit 前用 `git diff --stat <base>..HEAD` 檢查有沒有意外刪除不相關的既有函式或測試(見上面 PR #12 的踩點)。
 - 驗收:`npm test` 涵蓋控制器;dist 行為與現版一致(e2e 全過、截圖比對)。
 
 ## 2. 真實翼型資料:XFOIL 整合

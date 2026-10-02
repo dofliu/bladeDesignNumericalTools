@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-01 — ROADMAP 1:build.mjs 改單一 Vite 入口(ESM 遷移完成)
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。新增 `src/main.mjs`(import 全部模組並還原裸全域),`scripts/build.mjs` 改為一次 Vite IIFE 打包,移除逐檔打包與 `ESM_GLOBAL`/`EXPAND_GLOBALS`。dist 201 → 184 KB。
+- 驗證:`npm run check`、`npm test`(32/32)、`npm run build`、離線 e2e 全過(MPPT 追蹤率 92–97%);Playwright 桌面 1440×900 與手機 390×844 無頁面錯誤、畫面正常。
+- 已知限制:模組之間仍靠裸全域溝通(未改成顯式 import),列為可選的後續整理。
+- 下一步:ROADMAP 4 變槳/側偏收尾。
+
 ## 2026-10-02 — ROADMAP 4:報告納入變槳
 
 - 做了什麼:無開著的 `[autopilot]` PR。`report.mjs` 的穩態功率曲線測試新增各風速平均槳距,啟用變槳(HAWT)時表格多一欄「槳距」,結論加入變槳說明(起始順槳風速、最高風速槳距與輸出)。
