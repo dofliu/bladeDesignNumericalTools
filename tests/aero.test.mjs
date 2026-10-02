@@ -79,3 +79,15 @@ test('DMST: simplified dynamic stall is opt-in and mainly affects the stalled lo
   assert.ok(Math.abs(hi1 - base.Cp) < 0.06 * Math.max(base.Cp, 0.1) + 0.02, `near λopt change small (${base.Cp.toFixed(3)} -> ${hi1.toFixed(3)})`);
   console.log('dynStall', lo0.toFixed(3), lo1.toFixed(3), base.Cp.toFixed(3), hi1.toFixed(3));
 });
+
+test('DMST: streamline curvature correction is opt-in and lowers high-λ Cp', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('0018')));
+  const cfg = { type: 'H', R: 1, H: 2, B: 3, c: 0.15, pitch: 0, nz: 1, polar: ps, rho: 1.225, mu: 1.81e-5, struts: 2 };
+  const base = A.dmstPoint(cfg, 8, 4).Cp, off = A.dmstPoint({ ...cfg, curvature: false }, 8, 4).Cp;
+  assert.equal(base, off, 'flag off leaves results unchanged');
+  const on = A.dmstPoint({ ...cfg, curvature: true }, 8, 4).Cp;
+  assert.ok(on < base && on > 0.5 * base, `high-λ Cp drops moderately (${base.toFixed(3)} -> ${on.toFixed(3)})`);
+  const thin = A.dmstPoint({ ...cfg, c: 0.075, curvature: true }, 8, 4).Cp, thin0 = A.dmstPoint({ ...cfg, c: 0.075 }, 8, 4).Cp;
+  assert.ok((thin0 - thin) / thin0 < (base - on) / base, 'smaller c/R gives a smaller correction');
+  console.log('curvature', base.toFixed(3), on.toFixed(3));
+});

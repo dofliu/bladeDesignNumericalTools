@@ -20,7 +20,7 @@ const S = {
   mode: 'HAWT', step: 'af', ctab: 'airfoil',
   af: { st: [{ f: 0.2, k: 'n4:4421' }, { f: 0.5, k: 'n4:4415' }, { f: 0.8, k: 'n4:4412' }], vawt: 'n4:0018', cdMax: 1.3, custom: [], imported: [], polarImp: {}, view: 2, alphaView: 6, reIdx: 3, full: false },
   hawt: { R: 1.5, Rhub: 0.15, B: 3, tsr: 7, Vd: 8, aMode: 'auto', aDes: 5, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChord: 0.12, pitch: 0, material: 'gfrp', ov: {}, twMode: 'bem', twRoot: 20, twTip: 0 },
-  vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, dynStall: false, overlap: 0.2, endPlates: true, material: 'gfrp' },
+  vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, dynStall: false, curvature: false, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true,
     cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5, furl: false, vFurl: 11, furlMax: 60, furlRate: 4 },
@@ -302,7 +302,7 @@ function fatigueEstimate(sig, dur, matKey = S.hawt.material) {
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
-  return { type: v.type, R: v.R, H: v.H, B: Math.round(v.B), c: v.c, pitch: v.pitch, helix: v.helix, nz: 10, polar: getPS(S.af.vawt), rho, mu, struts: v.struts, dynStall: !!v.dynStall, overlap: v.overlap, endPlates: v.endPlates };
+  return { type: v.type, R: v.R, H: v.H, B: Math.round(v.B), c: v.c, pitch: v.pitch, helix: v.helix, nz: 10, polar: getPS(S.af.vawt), rho, mu, struts: v.struts, dynStall: !!v.dynStall, curvature: !!v.curvature, overlap: v.overlap, endPlates: v.endPlates };
 }
 function designVAWT() {
   const v = S.vawt, cfg = vawtCfg(), mat = MATERIALS[v.material];

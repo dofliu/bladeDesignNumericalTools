@@ -93,8 +93,9 @@ export function paneRotor() {
         (v.type === 'helical' ? rng('vawt.helix', '螺旋包角', 0, 240, 5, '°') : '') +
         ((v.type === 'H' || v.type === 'helical') ? rng('vawt.struts', '每葉支撐臂數', 0, 3, 1, '支') : '') +
         chk('vawt.dynStall', '簡化動態失速(Gormont 式,未校正)') +
+        chk('vawt.curvature', '流線彎曲修正(Migliore 簡化,未校正)') +
         sel('vawt.material', '材料', Object.entries(MATERIALS).map(([k, m]) => [k, m.name])));
-      h += `<p class="note">性能以雙重多流管法(DMST)計算,含葉片展弦比修正與支撐臂寄生阻力;流線彎曲未計入;動態失速預設關閉(可勾選簡化版),低實度高尖速比下結果偏樂觀。</p>`;
+      h += `<p class="note">性能以雙重多流管法(DMST)計算,含葉片展弦比修正與支撐臂寄生阻力;流線彎曲與動態失速預設關閉(可勾選簡化版,係數未校正),低實度高尖速比下結果偏樂觀。</p>`;
     }
   }
   h += grp('轉子摘要', `<div class="kv" id="rotorSummary"></div>`);

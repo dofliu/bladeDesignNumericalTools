@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-02 — ROADMAP 5:DMST 簡化流線彎曲修正(選用)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 的 `dmstSolveStream` 新增 `cfg.curvature`(預設關閉):以虛擬攻角 cω/(4W) 的 0.5 倍平移查表攻角;`core.mjs` 狀態 `vawt.curvature`;垂直軸面板新增勾選與說明。
+- 驗證:`npm run check`、`npm test`(37/37)、`npm run build`(188 KB)、離線 e2e 全過(追蹤率 95–97%);桌面 1440×900 面板截圖確認勾選框排版正常,手機版沿用同一控制項樣式。
+- 已知限制:係數為未校正的縮放(0.5)、符號依文獻趨勢(高 λ Cp 下降)選定;未含虛擬彎度;未與實驗資料比對。
+- 下一步:以文獻資料校正動態失速/流線彎曲係數(需實驗資料);ROADMAP 5 其餘「低 λ 啟動 360° 極曲線」;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-02 — ROADMAP 5:DMST 簡化動態失速(選用)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 的 `dmstSolveStream`/`dmstPoint` 新增 `cfg.dynStall`(預設關閉):依攻角變化率平移極曲線查表攻角(Gormont 式,係數未校正);`core.mjs` 狀態 `vawt.dynStall` 並傳入 cfg;垂直軸面板新增勾選與說明文字。
