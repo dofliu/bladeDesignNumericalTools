@@ -133,6 +133,9 @@ export function paneLoad() {
     chk('load.cutOut', '啟用切出風速停機(側偏收尾/停機保護的簡化模型)', { kind: 'pane' }) +
     (L.cutOut ? rng('load.vCutOut', '切出風速', 5, 40, 0.5, 'm/s', { kind: 'live' }) + rng('load.vRestart', '重啟風速', 3, Math.max(3, L.vCutOut - 0.5), 0.5, 'm/s', { kind: 'live' }) +
       `<p class="note">1 秒低通平均風速超過切出風速即煞車停機,待風速降到重啟風速以下才恢復運轉(遲滯避免陣風造成反覆停機/重啟)。</p>` : '') +
+    (S.mode === 'HAWT' ? chk('load.pitchCtl', '啟用主動變槳(額定以上順槳控功率)', { kind: 'pane' }) +
+      (L.pitchCtl ? rng('load.pitchRate', '變槳速率上限', 1, 30, 0.5, '°/s', { kind: 'live' }) +
+        `<p class="note">額定以上固定轉速在額定值,功率 PI 將槳葉順槳(0–40°,受速率限制)取代軟失速降轉速;目前槳距 <b id="pitchNow">–</b>。需要 Cp(λ,β) 查表,首次啟用會稍微計算。</p>` : '') : '') +
     `<div class="btns"><button class="btn warn" id="brakeBtn">${SIM.brake ? '放開煞車' : '煞車(短路 + 機械)'}</button></div>`);
   h += grp('電氣即時值', `<div class="kv" id="elecKv"></div>`);
   return h;
@@ -672,6 +675,7 @@ export function hud() {
   if (!el.children.length) el.innerHTML = gauges.map((g, i) => `<div class="gauge${i === 6 ? ' live' : ''}"><i>${g[0]}</i><b></b></div>`).join('');
   gauges.forEach((g, i) => { el.children[i].querySelector('b').innerHTML = g[1] + (g[2] ? `<small>${g[2]}</small>` : ''); });
   el.children[2].querySelector('b').classList.toggle('alarm', o.brake);
+  { const pn = $("#pitchNow"); if (pn) pn.textContent = fmt(SIM.pitch || 0, 1) + "°"; }
   const ek = $('#elecKv');
   if (ek) kv(ek, [['反電勢 E', fmt(o.el.E, 1) + ' V'], ['轉換器輸入電壓', fmt(o.el.Vin, 1) + ' V'], ['電流 I', fmt(o.el.I, 2) + ' A'], ['等效負載 Rin', isFinite(o.el.Rin) ? fmt(o.el.Rin, 2) + ' Ω' : '開路'],
     ['發電機損失', fmtP(o.el.Ploss)], ['系統效率', o.Pa > 1 ? fmt(o.el.Pout / o.Pa * 100, 1) + '%' : '–'], ['狀態', o.brake ? (SIM.latch ? '超速保護煞車中' : SIM.cutout ? '切出風速停機中' : '手動煞車') : SIM.omega < 0.01 ? '靜止' : '發電中']]);

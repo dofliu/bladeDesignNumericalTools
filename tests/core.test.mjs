@@ -211,3 +211,25 @@ test('pitchRegulation holds power at the generator limit above rated with monoto
     if (i > 0) assert.ok(r.pitch[i] >= r.pitch[i - 1] - 1e-9, 'pitch non-decreasing with wind speed');
   }
 });
+
+test('time-domain pitch control holds rated power above rated without tripping protection', () => {
+  setMode('HAWT');
+  Object.assign(S.load, { ctrl: 'tsr', pitchCtl: true, pitchRate: 8, cutOut: false });
+  S.tun.TI = 0; S.tun.V = 18;
+  const reg = pitchRegulation([18]).pitch[0];
+  SIM.omega = G.wRated; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0;
+  SIM.latch = false; SIM.cutout = false; SIM.brake = false; SIM.n = 0; SIM.po.wref = -1; SIM.pitch = 0; SIM.pitchI = 0; SIM.trips = 0; SIM.Vmeas = 18; let tripT = -1;
+  let e = 0, n = 0, maxP = 0;
+  for (let t = 0; t < 90; t += 0.004) {
+    simStep(0.004);
+    if (SIM.trips && tripT < 0) tripT = t;
+    if (t > 60) { e += SIM.out.el.Pout; n++; maxP = Math.max(maxP, SIM.out.el.Pout); }
+  }
+  const avg = e / n;
+  S.load.pitchCtl = false;
+  assert.ok(SIM.pitch > 0.5, 'blades feathered: ' + SIM.pitch);
+  assert.ok(Math.abs(SIM.pitch - reg) < 4, `pitch ${SIM.pitch.toFixed(1)} near offline ${reg.toFixed(1)}`);
+  assert.ok(Math.abs(avg - S.load.Pmax) / S.load.Pmax < 0.1, `mean power ${avg.toFixed(0)} vs ${S.load.Pmax}`);
+  assert.ok(!SIM.latch && !(tripT > 20), `no protection trips after the startup transient (first trip ${tripT} s)`);
+  setMode('HAWT');
+});
