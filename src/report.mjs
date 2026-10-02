@@ -33,18 +33,18 @@ export const Report = (function () {
     const prog = t => onProg && onProg(done / total, t);
     async function run(dur, avgFrom, rec) {
       const trips0 = SIM.trips || 0;
-      let n = 0, acc = { pitch: 0, Pa: 0, Po: 0, Pw: 0, rpm: 0, lam: 0, D: 0, cnt: 0, P2: 0, rpmMax: 0, PoMax: 0, latch: false }, t = 0, ser = rec ? { t: [], rpm: [], Po: [], V: [] } : null, sig = rec && rootStress() != null ? [] : null;
+      let n = 0, acc = { pitch: 0, furl: 0, Pa: 0, Po: 0, Pw: 0, rpm: 0, lam: 0, D: 0, cnt: 0, P2: 0, rpmMax: 0, PoMax: 0, latch: false }, t = 0, ser = rec ? { t: [], rpm: [], Po: [], V: [] } : null, sig = rec && rootStress() != null ? [] : null;
       const steps = Math.round(dur / dt);
       for (let i = 0; i < steps; i++) {
         simStep(dt); t += dt; const o = SIM.out;
-        if (t >= avgFrom) { acc.Pa += o.Pa; acc.Po += o.el.Pout; acc.P2 += o.el.Pout * o.el.Pout; acc.Pw += 0.5 * rho * G.A * o.V ** 3; acc.rpm += o.rpm; acc.lam += o.lam; acc.D += SIM.D; acc.pitch += SIM.pitch || 0; acc.cnt++; }
+        if (t >= avgFrom) { acc.Pa += o.Pa; acc.Po += o.el.Pout; acc.P2 += o.el.Pout * o.el.Pout; acc.Pw += 0.5 * rho * G.A * o.V ** 3; acc.rpm += o.rpm; acc.lam += o.lam; acc.D += SIM.D; acc.pitch += SIM.pitch || 0; acc.furl += SIM.furlAng || 0; acc.cnt++; }
         acc.rpmMax = Math.max(acc.rpmMax, o.rpm); acc.PoMax = Math.max(acc.PoMax, o.el.Pout); if (SIM.latch) acc.latch = true;
         if (sig && t >= avgFrom) sig.push(rootStress());
         if (ser && i % 25 === 0) { ser.t.push(+t.toFixed(2)); ser.rpm.push(o.rpm); ser.Po.push(o.el.Pout); ser.V.push(o.V); }
         if (++n % 1500 === 0) await sleep();
       }
       const c = Math.max(1, acc.cnt);
-      return { Pa: acc.Pa / c, Po: acc.Po / c, Pw: acc.Pw / c, rpm: acc.rpm / c, lam: acc.lam / c, D: acc.D / c, pitch: acc.pitch / c, std: Math.sqrt(Math.max(0, acc.P2 / c - (acc.Po / c) ** 2)), rpmMax: acc.rpmMax, PoMax: acc.PoMax, latch: acc.latch, trips: (SIM.trips || 0) - trips0, ser, fat: sig && sig.length > 10 ? { ...fatigueEstimate(sig, sig.length * dt), sig: sig.slice(0, Math.round(5 / dt)), dt } : null };
+      return { Pa: acc.Pa / c, Po: acc.Po / c, Pw: acc.Pw / c, rpm: acc.rpm / c, lam: acc.lam / c, D: acc.D / c, pitch: acc.pitch / c, furl: acc.furl / c, std: Math.sqrt(Math.max(0, acc.P2 / c - (acc.Po / c) ** 2)), rpmMax: acc.rpmMax, PoMax: acc.PoMax, latch: acc.latch, trips: (SIM.trips || 0) - trips0, ser, fat: sig && sig.length > 10 ? { ...fatigueEstimate(sig, sig.length * dt), sig: sig.slice(0, Math.round(5 / dt)), dt } : null };
     }
     const reset = (V, lamFrac) => { S.tun.V = V; SIM.Vmeas = V; SIM.omega = G.lopt * V / R * lamFrac; SIM.gust = 0; SIM.gustT = -1; SIM.n = 0; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; SIM.furlAng = 0; SIM.brake = false; SIM.po.wref = -1; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.D = 0.5; SIM.yaw = S.tun.dir; };
     try {
@@ -101,6 +101,8 @@ export const Report = (function () {
       const tr = mid.length ? mid.reduce((s, c) => s + c.Po / c.ideal, 0) / mid.length : null;
       if (tr != null) out.push(tr > 0.92 ? `6–10 m/s 區間實測輸出達理想 MPPT 的 ${(tr * 100).toFixed(0)}%,追蹤效果良好。` : `6–10 m/s 區間實測輸出只有理想 MPPT 的 ${(tr * 100).toFixed(0)}%;可嘗試最佳尖速比/最佳轉矩控制,或調整 P&O 擾動步長與週期。`);
       const trip = t.curve.find(c => c.trips > 0);
+      const fu = S.load.furl && H ? t.curve.filter(c => c.furl > 1) : [];
+      if (S.load.furl && H) out.push(fu.length ? `已啟用側偏收尾:${fu[0].V} m/s 起機艙開始側偏,最高測試風速 ${t.curve[t.curve.length - 1].V} m/s 時平均側偏角約 ${fmt(t.curve[t.curve.length - 1].furl, 0)}°(上限 ${fmt(S.load.furlMax, 0)}°),輸出功率 ${fmtP(t.curve[t.curve.length - 1].Po)}(發電機額定 ${fmtP(S.load.Pmax)});為簡化模型,不含尾翼力矩與被動收尾遲滯。` : `已啟用側偏收尾(啟動風速 ${fmt(S.load.vFurl, 1)} m/s),但測試風速範圍內未達到側偏條件。`);
       const pc = S.load.pitchCtl && H ? t.curve.filter(c => c.pitch > 0.5) : [];
       if (pc.length) out.push(`已啟用主動變槳:${pc[0].V} m/s 起槳距開始順槳,最高測試風速 ${t.curve[t.curve.length - 1].V} m/s 時穩態槳距約 ${fmt(t.curve[t.curve.length - 1].pitch, 1)}°,輸出功率 ${fmtP(t.curve[t.curve.length - 1].Po)}(發電機額定 ${fmtP(S.load.Pmax)});變槳取代降轉速軟失速,額定以上轉速維持在額定轉速。`);
       if (trip) out.push(`風速 ${trip.V} m/s 以上,轉子氣動功率超過發電機額定(${fmtP(S.load.Pmax)}),定槳距轉子即使降轉速進入失速仍無法把功率壓在額定內,多次觸發過速/過功率保護。${S.load.cutOut ? `目前已啟用切出風速停機(${fmt(S.load.vCutOut, 1)} m/s),可避免在額定風速以上反覆觸發保護,測試風速已延伸至 ${Vmax} m/s 以涵蓋切出風速,功率曲線在切出後降為 0;仍建議依實際場址風況調整切出/重啟風速。` : '可在「負載→保護」啟用切出風速停機來避免反覆觸發,或加入側偏收尾(furling)、變槳機構;若場址常有高風速,也可加大發電機額定。'}`);
@@ -130,6 +132,7 @@ export const Report = (function () {
     const cond = H ? [['型式', `水平軸,${Math.round(S.hawt.B)} 葉`], ['轉子半徑 / 輪轂半徑', `${fmt(S.hawt.R, 2)} m / ${fmt(G.Rhub, 3)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['設計風速 / 設計尖速比', `${fmt(S.hawt.Vd, 1)} m/s / ${fmt(S.hawt.tsr, 1)}`], ['扭角設計方式', { bem: 'BEM 數值最佳化', opt: 'Schmitz 解析解', linear: `線性 ${fmt(S.hawt.twRoot, 1)}° → ${fmt(S.hawt.twTip, 1)}°` }[S.hawt.twMode]], ['槳距角', fmt(S.hawt.pitch, 1) + '°'], ['材料 / 單葉質量', `${MATERIALS[S.hawt.material].name} / ${fmt(G.bladeMass, 2)} kg`]]
       : [['型式', VAWT_TYPES[S.vawt.type]], ['葉片數', Math.round(S.vawt.B)], ['半徑 / 高度', `${fmt(S.vawt.R, 2)} m / ${fmt(S.vawt.H, 2)} m`], ...(sav ? [['重疊比', fmt(S.vawt.overlap, 2)]] : [['弦長 / 翼型', `${fmt(S.vawt.c * 1000, 0)} mm / ${afLabel(S.af.vawt)}`], ['實度 Bc/R', fmt(S.vawt.B * S.vawt.c / S.vawt.R, 3)]]), ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']];
     cond.push(['空氣條件', `${fmt(S.tun.T, 0)} °C,海拔 ${fmt(S.tun.alt, 0)} m,ρ = ${fmt(rho, 3)} kg/m³`], ['負載', S.load.kind === 'bat' ? `電池充電 ${S.load.Vbat} V(升降壓轉換器)` : `電阻負載 ${fmt(S.load.RL, 1)} Ω`], ['MPPT 控制', { po: '擾動觀察法 P&O', tsr: '最佳尖速比控制', ot: '最佳轉矩控制', manual: '固定占空比' }[S.load.ctrl]], ['發電機', `ke ${fmt(S.load.ke, 3)} V·s/rad,Rs ${fmt(S.load.Rs, 3)} Ω,額定 ${fmtP(S.load.Pmax)},轉速上限 ${S.load.wmaxRpm} rpm`]);
+    if (S.load.furl && H) cond.push(['側偏收尾', `${fmt(S.load.vFurl, 1)} m/s 起側偏,上限 ${fmt(S.load.furlMax, 0)}°,速率 ${fmt(S.load.furlRate, 1)}°/s`]);
     if (S.load.cutOut) cond.push(['切出/重啟風速', `${fmt(S.load.vCutOut, 1)} m/s / ${fmt(S.load.vRestart, 1)} m/s(1 秒低通平均風速,含遲滯)`]);
     h += `<table class="kvt">${cond.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>`;
     // 2 airfoils
@@ -188,7 +191,7 @@ export const Report = (function () {
     if (t) {
       h += hN('虛擬風洞測試結果');
       h += `<h3>(1)穩態功率曲線測試</h3><p>紊流 0%、自動對風,每個風速模擬 ${H ? 30 : 48} 秒並取後段平均;控制策略:${{ po: '擾動觀察法', tsr: '最佳尖速比', ot: '最佳轉矩', manual: '固定占空比' }[S.load.ctrl]}。</p>`;
-      h += `<table class="small"><thead><tr><th>風速 (m/s)</th><th>轉速 (rpm)</th><th>λ</th><th>Cp 實測</th><th>氣動功率</th><th>輸出電功率</th><th>系統效率</th><th>理想 MPPT</th><th>追蹤率</th><th>占空比</th>${S.load.pitchCtl && H ? '<th>槳距</th>' : ''}</tr></thead><tbody>${t.curve.map(c => `<tr><td>${c.V}</td><td>${fmt(c.rpm, 0)}</td><td>${fmt(c.lam, 2)}</td><td>${fmt(c.Cp, 3)}</td><td>${fmtP(c.Pa)}</td><td>${fmtP(c.Po)}</td><td>${fmt(c.eff * 100, 1)}%</td><td>${fmtP(c.ideal)}</td><td>${c.ideal > 1 ? fmt(c.Po / c.ideal * 100, 0) + '%' : '–'}</td><td>${fmt(c.D * 100, 1)}%${c.trips ? ` ⚠保護 ${c.trips} 次` : ''}</td>${S.load.pitchCtl && H ? `<td>${fmt(c.pitch, 1)}°</td>` : ''}</tr>`).join('')}</tbody></table>`;
+      h += `<table class="small"><thead><tr><th>風速 (m/s)</th><th>轉速 (rpm)</th><th>λ</th><th>Cp 實測</th><th>氣動功率</th><th>輸出電功率</th><th>系統效率</th><th>理想 MPPT</th><th>追蹤率</th><th>占空比</th>${S.load.pitchCtl && H ? '<th>槳距</th>' : ''}${S.load.furl && H ? '<th>側偏角</th>' : ''}</tr></thead><tbody>${t.curve.map(c => `<tr><td>${c.V}</td><td>${fmt(c.rpm, 0)}</td><td>${fmt(c.lam, 2)}</td><td>${fmt(c.Cp, 3)}</td><td>${fmtP(c.Pa)}</td><td>${fmtP(c.Po)}</td><td>${fmt(c.eff * 100, 1)}%</td><td>${fmtP(c.ideal)}</td><td>${c.ideal > 1 ? fmt(c.Po / c.ideal * 100, 0) + '%' : '–'}</td><td>${fmt(c.D * 100, 1)}%${c.trips ? ` ⚠保護 ${c.trips} 次` : ''}</td>${S.load.pitchCtl && H ? `<td>${fmt(c.pitch, 1)}°</td>` : ''}${S.load.furl && H ? `<td>${fmt(c.furl, 0)}°</td>` : ''}</tr>`).join('')}</tbody></table>`;
       if (t.yaw.length) {
         h += `<h3>(2)偏航誤差測試(8 m/s)</h3><table class="small"><thead><tr><th>偏航誤差</th><th>Cp</th><th>輸出電功率</th><th>相對 0°</th><th>cos³γ 參考</th></tr></thead><tbody>${t.yaw.map(y => `<tr><td>${y.gam}°</td><td>${fmt(y.Cp, 3)}</td><td>${fmtP(y.Po)}</td><td>${fmt(y.Po / Math.max(1e-6, t.yaw[0].Po) * 100, 0)}%</td><td>${fmt(Math.cos(y.gam * A.D2R) ** 3 * 100, 0)}%</td></tr>`).join('')}</tbody></table>`;
       }
