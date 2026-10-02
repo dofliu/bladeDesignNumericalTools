@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-02 — ROADMAP 5:DMST 簡化動態失速(選用)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 的 `dmstSolveStream`/`dmstPoint` 新增 `cfg.dynStall`(預設關閉):依攻角變化率平移極曲線查表攻角(Gormont 式,係數未校正);`core.mjs` 狀態 `vawt.dynStall` 並傳入 cfg;垂直軸面板新增勾選與說明文字。
+- 驗證:見 PR 內文。
+- 已知限制:係數為未校正縮放,效果小(低 λ Cp +0.006);無流線彎曲;未與實驗資料比對。
+- 下一步:以文獻資料校正係數、流線彎曲修正;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-02 — ROADMAP 4:報告納入側偏收尾
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`report.mjs` 功率曲線測試記錄各風速平均側偏角 `SIM.furlAng`;啟用側偏(HAWT)時,測試條件新增「側偏收尾」列、功率曲線表新增「側偏角」欄、結論說明起始風速與最高風速的側偏角。

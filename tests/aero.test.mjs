@@ -67,3 +67,15 @@ test('DMST: H-type and Φ-type Darrieus', () => {
   near(h.Cp, 0.368, 0.015, 'H Cp'); near(h.l, 3, 0.5, 'H λopt');
   near(phi.Cp, 0.385, 0.015, 'Φ Cp');
 });
+
+test('DMST: simplified dynamic stall is opt-in and mainly affects the stalled low-λ region', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('0018')));
+  const cfg = { type: 'H', R: 1, H: 2, B: 3, c: 0.15, pitch: 0, nz: 1, polar: ps, rho: 1.225, mu: 1.81e-5, struts: 2 };
+  const base = A.dmstPoint(cfg, 8, 3), off = A.dmstPoint({ ...cfg, dynStall: false }, 8, 3);
+  assert.equal(base.Cp, off.Cp, 'flag off leaves results unchanged');
+  const lo0 = A.dmstPoint(cfg, 8, 1.8).Cp, lo1 = A.dmstPoint({ ...cfg, dynStall: true }, 8, 1.8).Cp;
+  assert.ok(Number.isFinite(lo1) && Math.abs(lo1 - lo0) > 0.005, `low-λ Cp changes (${lo0.toFixed(3)} -> ${lo1.toFixed(3)})`);
+  const hi1 = A.dmstPoint({ ...cfg, dynStall: true }, 8, 3).Cp;
+  assert.ok(Math.abs(hi1 - base.Cp) < 0.06 * Math.max(base.Cp, 0.1) + 0.02, `near λopt change small (${base.Cp.toFixed(3)} -> ${hi1.toFixed(3)})`);
+  console.log('dynStall', lo0.toFixed(3), lo1.toFixed(3), base.Cp.toFixed(3), hi1.toFixed(3));
+});

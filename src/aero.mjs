@@ -481,14 +481,21 @@
     return sl.reduce((s, x) => s + 2 * x.r * x.dz, 0);
   }
   const NTH = 36; // per half
-  function dmstSolveStream(K, lam, theta, cosd, pitch, ps, rho, mu, c, Rl, Vin, Vinf, arF, kInd) {
+  function dmstSolveStream(K, lam, theta, cosd, pitch, ps, rho, mu, c, Rl, Vin, Vinf, arF, kInd, ds) {
     // returns u (interference) for a streamtube; Vin: incoming speed; blade speed omega*Rl = lam*Vinf*Rl/R handled by caller via lamLocal
     const f = u => {
       const Vl = u * Vin;
       const Wn = Vl * Math.cos(theta) * cosd, Wt = lam * Vinf - Vl * Math.sin(theta);
       const phi = Math.atan2(Wn, Wt), W2 = Wn * Wn + Wt * Wt;
       const al = phi + pitch;
-      let [cl, cd] = lookup(ps, al, Math.max(1e3, rho * Math.sqrt(W2) * c / mu));
+      let alL = al;
+      if (ds) { // simplified Gormont dynamic stall: pitch-rate-dependent shift of the angle used for the static polar lookup
+        const dT = 0.02, ph = t => Math.atan2(Vl * Math.cos(t) * cosd, lam * Vinf - Vl * Math.sin(t));
+        const dadt = (ph(theta + dT) - ph(theta - dT)) / (2 * dT) * (lam * Vinf / Rl); // rad/s, omega = lam*Vinf/Rl
+        const rr = Math.sqrt(Math.min(1, Math.abs(c * dadt / (2 * Math.sqrt(W2)))));
+        alL = al - Math.sign(dadt) * (dadt > 0 ? ds.kUp : ds.kDn) * rr; // shift toward the lagging effective angle (rad)
+      }
+      let [cl, cd] = lookup(ps, alL, Math.max(1e3, rho * Math.sqrt(W2) * c / mu));
       cl *= arF; cd += kInd * cl * cl;
       const cn = cl * Math.cos(phi) + cd * Math.sin(phi), ct = cl * Math.sin(phi) - cd * Math.cos(phi);
       const g = (cn * Math.cos(theta) * cosd + ct * Math.sin(theta)) / Math.max(Math.abs(Math.cos(theta)), 0.03);
@@ -512,6 +519,7 @@
   function dmstPoint(cfg, V, lam) {
     const { B, c, rho, mu } = cfg, pitch = cfg.pitch * D2R, R = cfg.R;
     const slices = vawtSlices(cfg), A = vawtArea(cfg);
+    const ds = cfg.dynStall ? { kUp: 0.35, kDn: 0.125 } : null; // Gormont K1 (1.4 / 0.5) x 0.25: uncalibrated, gives a few degrees of stall delay
     const dth = Math.PI / NTH;
     const Lb = slices.reduce((q, x) => q + x.dz / Math.cos(x.delta), 0);
     const AR = Math.max(2, Lb / c), arF = AR / (AR + 1.8), kInd = 1 / (Math.PI * AR * 0.85);
@@ -525,11 +533,11 @@
       const ps = cfg.polar;
       for (let i = 0; i < NTH; i++) {
         const th = -Math.PI / 2 + (i + 0.5) * dth; // upwind
-        const up = dmstSolveStream(K, lamL, th, cosd, pitch, ps, rho, mu, c, Rl, V, V, arF, kInd);
+        const up = dmstSolveStream(K, lamL, th, cosd, pitch, ps, rho, mu, c, Rl, V, V, arF, kInd, ds);
         const Ve = V * Math.max(0.05, 2 * up.u - 1);
         const thd = Math.PI - th; // same streamtube downwind
         // downwind: incoming Ve, blade speed still lamL*V
-        const dn = dmstSolveStream(K, lamL * V / Ve, thd, cosd, pitch, ps, rho, mu, c, Rl, Ve, Ve, arF, kInd);
+        const dn = dmstSolveStream(K, lamL * V / Ve, thd, cosd, pitch, ps, rho, mu, c, Rl, Ve, Ve, arF, kInd, ds);
         if (s === slices[Math.floor(slices.length / 2)]) mid.push({ th, y: Math.sin(th), up: up.u, ve: Ve / V, dn: dn.u * Ve / V, wake: Math.max(0.05, 2 * dn.u - 1) * Ve / V });
         for (const [res, thx, Vref] of [[up, th, V], [dn, thd, Ve]]) {
           const W2 = res.W2; // in units of Vin^2 already absolute (Vin used)
