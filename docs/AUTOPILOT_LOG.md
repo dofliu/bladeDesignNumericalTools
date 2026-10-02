@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-02 — ROADMAP 4:報告納入側偏收尾
+
+- 做了什麼:啟動時無開著的 `[autopilot]` PR。`report.mjs` 功率曲線測試記錄各風速平均側偏角 `SIM.furlAng`;啟用側偏(HAWT)時,測試條件新增「側偏收尾」列、功率曲線表新增「側偏角」欄、結論說明起始風速與最高風速的側偏角。
+- 驗證:`npm run check`、`npm test`(35/35)、`npm run build`(188 KB)、離線 e2e 全過(追蹤率 92–97%);Playwright 實跑報告:vFurl 12 m/s 時 13 m/s 起側偏 10°、15 m/s 約 30°,輸出 3.10 kW,報告含新欄位與結論,無頁面錯誤;桌面 1440×900 與手機 390×844 畫面正常。
+- 已知限制:報告邏輯依賴 DOM,沒有 Node 單元測試,僅以瀏覽器實跑驗證;側偏模型本身仍無尾翼力矩/被動收尾遲滯。
+- 下一步:ROADMAP 4 剩低優先的變槳與 MPPT 額定附近調校;其後 ROADMAP 5 垂直軸動態失速。ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-02 — ROADMAP 4:側偏收尾簡化模型
 
 - 做了什麼:啟動時無開著的 `[autopilot]` PR。`core.mjs` 新增 `S.load.{furl,vFurl,furlMax,furlRate}` 與 `SIM.furlAng`:平均風速超過 `vFurl` 後側偏角線性增加(+6 m/s 達最大),速率限制,加進偏航誤差 γ 使氣動轉矩依既有偏航曲線下降;`ui.mjs` 負載面板新增開關與滑桿(僅 HAWT);重置點同步清除。預設關閉,不影響既有行為。
