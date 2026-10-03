@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, noiseEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -263,4 +263,16 @@ test('windSeriesPdf 直方圖積分為 1(範圍內)且平均值正確;windDensit
   core.S.perf.series = null;
   assert.ok(Math.abs(windDensity(5) - weibullPdf(5, core.S.perf.Vavg, core.S.perf.k)) < 1e-12);
   core.S.perf.series = old;
+});
+
+test('噪音估計:尖速 5 次方律與球面擴散', () => {
+  const a = noiseEstimate(60, 3, 50), b = noiseEstimate(120, 3, 50);
+  assert.ok(Math.abs((b.Lw - a.Lw) - 50 * Math.log10(2)) < 1e-9); // doubling tip speed -> +15.05 dB
+  const c = noiseEstimate(60, 3, 100);
+  assert.ok(Math.abs((a.Lp - c.Lp) - (20 * Math.log10(2) + 0.005 * 50)) < 1e-9); // -6 dB per distance doubling + absorption
+  // Hau formula reference: V 70 m/s, D 100 m -> ~ 50*1.845+20-4 = 108 dB(A)
+  assert.ok(Math.abs(noiseEstimate(70, 100).Lw - 108.3) < 0.5);
+  designHAWT(); computePerf();
+  const n = noiseEstimate(S.hawt.tsr * S.hawt.Vd, 2 * S.hawt.R, 50);
+  assert.ok(n.Lw > 60 && n.Lw < 100 && n.Lp < n.Lw);
 });
