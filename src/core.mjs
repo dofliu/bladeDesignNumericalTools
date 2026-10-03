@@ -24,7 +24,7 @@ const S = {
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true,
     cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5, furl: false, vFurl: 11, furlMax: 60, furlRate: 4 },
-  perf: { Vavg: 5.5, k: 2 }
+  perf: { Vavg: 5.5, k: 2, series: null }
 };
 
 /* ---------- wind resource: Weibull distribution & capacity factor ---------- */
@@ -41,6 +41,26 @@ function weibullPdf(v, meanV, k) { // Weibull pdf with mean meanV and shape k (k
   if (v <= 0) return 0;
   const c = meanV / gammaFn(1 + 1 / k);
   return (k / c) * Math.pow(v / c, k - 1) * Math.exp(-Math.pow(v / c, k));
+}
+function parseWindSeries(text) { // one wind speed per line (last numeric field wins, so CSV with timestamps/headers works); negatives/NaN skipped
+  const out = [];
+  for (const line of String(text).split(/\r?\n/)) {
+    const f = line.split(/[,;\t ]+/).filter(x => x !== '');
+    for (let i = f.length - 1; i >= 0; i--) { const v = +f[i]; if (f[i] !== '' && isFinite(v)) { if (v >= 0) out.push(v); break; } }
+  }
+  return out;
+}
+function windSeriesPdf(vals, dv = 0.5, vmax = 25) { // histogram density (1/(m/s)) with bins centred on dv, 2dv, ... vmax; matches the AEP loops
+  const nb = Math.round(vmax / dv), pdf = new Array(nb).fill(0);
+  let sum = 0;
+  for (const v of vals) { sum += v; const i = Math.round(v / dv) - 1; if (i >= 0 && i < nb) pdf[i]++; else if (v > vmax) { /* counted in n only */ } }
+  const n = vals.length;
+  return { n, mean: n ? sum / n : 0, dv, pdf: pdf.map(c => n ? c / (n * dv) : 0) };
+}
+function windDensity(v, dv = 0.5) { // measured-series density when imported, else Weibull(Vavg, k)
+  const ws = S.perf.series;
+  if (!ws) return weibullPdf(v, S.perf.Vavg, S.perf.k || 2);
+  const i = Math.round(v / ws.dv) - 1; return i >= 0 && i < ws.pdf.length ? ws.pdf[i] : 0;
 }
 function capacityFactor(aepKWh, ratedW) { return ratedW > 0 ? aepKWh / (ratedW * 8760 / 1000) : 0; }
 
@@ -650,4 +670,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
+export { parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
