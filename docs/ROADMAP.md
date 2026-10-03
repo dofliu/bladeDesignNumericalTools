@@ -78,6 +78,8 @@
 ## 7. 其他
 
 - 噪音估計(葉尖速度法 → 進階 BPM 模型)。
+  - [x] 葉尖速度法(2026-10-03):`core.mjs` 新增 `noiseEstimate(vTip, D, dist)`(Hau/Wagner 經驗式 Lw = 50log10(Vtip)+10log10(D)-4 dB(A),遠場半球擴散 + 空氣吸收),報告「設計條件」新增 HAWT 噪音估計列。限制:經驗式 ±5 dB、不含音調/調幅、僅 HAWT、UI 面板尚未顯示。
+  - [ ] 進階 BPM 模型(翼型自噪音,需邊界層厚度)。
 - 場址風況:匯入風速時間序列或 Weibull 參數,計算年發電量與容量因數。
   - [x] Weibull 參數法:`core.js` 新增 `gammaFn`(Lanczos 近似)、`weibullPdf(v, meanV, k)`、`capacityFactor(aepKWh, ratedW)`;`S.perf.k`(預設 2,等於原本的 Rayleigh 分布)可在「性能曲線」「方案比較」分頁調整(1.2–3.5);年發電量圖表、方案比較表格、報告摘要卡都新增容量因數。
   - [x] 匯入實測風速時間序列(2026-10-03):`core.mjs` 新增 `parseWindSeries`(每行取最後一個數值,可含標題/時間戳 CSV)、`windSeriesPdf`(0.5 m/s 直方圖密度)、`windDensity(v)`(有匯入則用實測分布,否則 Weibull);`S.perf.series`;「性能曲線」分頁新增匯入/清除,年發電量圖與方案比較 AEP 皆改用 `windDensity`。限制:超過 25 m/s 的風速不計入發電(仍計入總筆數);不依風向/時序;匯入資料不存入方案(`localStorage`)。

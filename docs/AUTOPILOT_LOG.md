@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-03 — ROADMAP 7:噪音估計(葉尖速度法)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `noiseEstimate(vTip, D, dist)`(Hau/Wagner 經驗式 + 半球擴散與空氣吸收);報告「設計條件」新增 HAWT 噪音估計列。
+- 驗證:`npm run check`、`npm test`、`npm run build`、離線 e2e(結果見 PR 內文)。
+- 已知限制:經驗式約 ±5 dB;不含音調/調幅噪音;僅 HAWT;主畫面尚未顯示。
+- 下一步:ROADMAP 7 經濟性(材料成本、LCOE 粗估);ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-03 — ROADMAP 7:匯入實測風速時間序列
 
 - 做了什麼:無開著的 `[autopilot]` PR。ROADMAP 1–6 剩餘項目不是需使用者決定(2)、需實驗資料(5 校正)就是低優先/需大改(4),故跳到 ROADMAP 7。`core.mjs` 新增 `parseWindSeries`/`windSeriesPdf`/`windDensity`,`S.perf.series`;「性能曲線」分頁新增「匯入風速時間序列」與清除,年發電量圖與方案比較 AEP 改用實測分布(未匯入時行為與先前相同)。

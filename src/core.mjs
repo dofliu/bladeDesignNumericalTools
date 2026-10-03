@@ -64,6 +64,14 @@ function windDensity(v, dv = 0.5) { // measured-series density when imported, el
 }
 function capacityFactor(aepKWh, ratedW) { return ratedW > 0 ? aepKWh / (ratedW * 8760 / 1000) : 0; }
 
+/* Tip-speed noise estimate (HAWT), after the Hau/Wagner empirical law Lw = 50 log10(Vtip) + 10 log10(D) - 4 dB(A).
+   Far field: hemispherical spreading Lp = Lw - 10 log10(2 pi r^2) minus air absorption (~0.005 dB/m). Rough, +-5 dB. */
+function noiseEstimate(vTip, D, dist = 50) {
+  const Lw = 50 * Math.log10(Math.max(vTip, 1)) + 10 * Math.log10(Math.max(D, 0.1)) - 4;
+  const Lp = Lw - 10 * Math.log10(2 * Math.PI * dist * dist) - 0.005 * dist;
+  return { Lw, Lp, dist };
+}
+
 /* ---------- air properties ---------- */
 function air() {
   const T = S.tun.T + 273.15, p = 101325 * Math.pow(1 - 2.25577e-5 * S.tun.alt, 5.25588);
@@ -670,4 +678,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
+export { parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, noiseEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
