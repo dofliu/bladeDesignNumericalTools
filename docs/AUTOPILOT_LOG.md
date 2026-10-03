@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-03 — ROADMAP 7:成本與 LCOE 粗估
+
+- 做了什麼:無開著的 `[autopilot]` PR。`MATERIALS` 新增單價 `cost`;`core.mjs` 新增 `costEstimate`(資本支出 + 固定費率/維運 → LCOE);報告「設計條件」新增成本與 LCOE 列。
+- 驗證:`npm run check`、`npm test`(41/41)、`npm run build`(191 KB)、離線 e2e 全過(追蹤率 94–97%);Playwright 桌面 1440×900 與手機 390×844 無頁面錯誤。
+- 已知限制:單價為概念性假設且不可調;主畫面/方案比較尚未顯示。
+- 下一步:LCOE 顯示於方案比較與單價可調;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-03 — ROADMAP 7:噪音估計(葉尖速度法)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `noiseEstimate(vTip, D, dist)`(Hau/Wagner 經驗式 + 半球擴散與空氣吸收);報告「設計條件」新增 HAWT 噪音估計列。

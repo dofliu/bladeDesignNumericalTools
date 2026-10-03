@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, noiseEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -275,4 +275,18 @@ test('噪音估計:尖速 5 次方律與球面擴散', () => {
   designHAWT(); computePerf();
   const n = noiseEstimate(S.hawt.tsr * S.hawt.Vd, 2 * S.hawt.R, 50);
   assert.ok(n.Lw > 60 && n.Lw < 100 && n.Lp < n.Lw);
+});
+
+test('成本與 LCOE 粗估:各項加總、與發電量成反比、材料單價影響', () => {
+  const a = costEstimate(10, 'gfrp', 3000, 7, 5000);
+  assert.ok(Math.abs(a.capex - (a.blades + a.gen + a.tower)) < 1e-9);
+  assert.ok(Math.abs(a.blades - 10 * MATERIALS.gfrp.cost) < 1e-9);
+  assert.ok(Math.abs(a.lcoe * 5000 - a.annual) < 1e-6);
+  const b = costEstimate(10, 'gfrp', 3000, 7, 10000);
+  assert.ok(Math.abs(a.lcoe / b.lcoe - 2) < 1e-9);
+  assert.ok(costEstimate(10, 'cfrp', 3000, 7, 5000).capex > a.capex);
+  assert.equal(costEstimate(10, 'gfrp', 3000, 7, 0).lcoe, Infinity);
+  designHAWT(); computePerf();
+  const d = costEstimate(G.mass, S.hawt.material, S.load.Pmax, G.A, 4000);
+  assert.ok(d.lcoe > 1 && d.lcoe < 100, 'LCOE ' + d.lcoe);
 });
