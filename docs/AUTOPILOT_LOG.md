@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-03 — ROADMAP 7:匯入實測風速時間序列
+
+- 做了什麼:無開著的 `[autopilot]` PR。ROADMAP 1–6 剩餘項目不是需使用者決定(2)、需實驗資料(5 校正)就是低優先/需大改(4),故跳到 ROADMAP 7。`core.mjs` 新增 `parseWindSeries`/`windSeriesPdf`/`windDensity`,`S.perf.series`;「性能曲線」分頁新增「匯入風速時間序列」與清除,年發電量圖與方案比較 AEP 改用實測分布(未匯入時行為與先前相同)。
+- 驗證:`npm run check`、`npm test`(39/39,新增 2 個)、`npm run build`(190 KB)、離線 e2e 全過(追蹤率 95–97%);Playwright 桌面 1440×900 與手機 390×844 無頁面錯誤,匯入 400 筆 CSV 後圖表與標題更新正常。
+- 已知限制:>25 m/s 不計發電;不含風向/時序;匯入資料不隨方案儲存。
+- 下一步:ROADMAP 7 經濟性(材料成本、LCOE 粗估)或噪音估計;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-02 — ROADMAP 5:DMST 簡化流線彎曲修正(選用)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 的 `dmstSolveStream` 新增 `cfg.curvature`(預設關閉):以虛擬攻角 cω/(4W) 的 0.5 倍平移查表攻角;`core.mjs` 狀態 `vawt.curvature`;垂直軸面板新增勾選與說明。

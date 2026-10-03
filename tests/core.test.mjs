@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, capacityFactor, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -244,4 +244,23 @@ test('furling yaws the rotor out of the wind above vFurl, cuts power and recover
   run(6, 40);
   assert.equal(SIM.furlAng, 0, 'furl angle returns to 0 below vFurl');
   S.load.furl = false; SIM.furlAng = 0;
+});
+
+test('parseWindSeries 取每行最後一個數值並略過標題與負值', () => {
+  const v = parseWindSeries('time,speed\n2020-01-01 00:00,5.5\n2020-01-01 01:00;6\n\n7\nabc\n-3\n');
+  assert.deepEqual(v, [5.5, 6, 7]);
+});
+
+test('windSeriesPdf 直方圖積分為 1(範圍內)且平均值正確;windDensity 匯入後取代 Weibull', () => {
+  const vals = []; for (let i = 0; i < 2000; i++) vals.push(0.5 * (1 + (i % 20))); // 0.5..10 均勻
+  const h = windSeriesPdf(vals);
+  assert.ok(Math.abs(h.pdf.reduce((a, b) => a + b, 0) * h.dv - 1) < 1e-9);
+  assert.ok(Math.abs(h.mean - 5.25) < 1e-9);
+  const old = core.S.perf.series;
+  core.S.perf.series = { name: 't', ...h };
+  assert.ok(Math.abs(windDensity(5) - 0.1) < 1e-9, '10 個 bin 各 0.1');
+  assert.equal(windDensity(20), 0);
+  core.S.perf.series = null;
+  assert.ok(Math.abs(windDensity(5) - weibullPdf(5, core.S.perf.Vavg, core.S.perf.k)) < 1e-12);
+  core.S.perf.series = old;
 });

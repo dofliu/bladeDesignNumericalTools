@@ -379,6 +379,18 @@ export function chartOpts() {
       `<label title="Weibull 形狀參數 k(2 = Rayleigh 分布,地形起伏越平緩、風速越穩定 k 越大)">Weibull k <input id="wbk" type="number" min="1.2" max="3.5" step="0.1" value="${S.perf.k}" style="width:50px"></label>`;
     o.querySelector('#vavg').addEventListener('change', e => { S.perf.Vavg = Math.max(1, +e.target.value || 5); redrawStatic(); });
     o.querySelector('#wbk').addEventListener('change', e => { S.perf.k = Math.min(3.5, Math.max(1.2, +e.target.value || 2)); redrawStatic(); });
+    const ws = S.perf.series;
+    o.insertAdjacentHTML('beforeend', `<label class="iconbtn" title="每行一筆風速(m/s),可為 CSV(取每行最後一個數值);匯入後以實測分布取代 Weibull 計算年發電量"><input id="wsFile" type="file" accept=".csv,.txt,text/plain" style="display:none">匯入風速時間序列</label>` +
+      (ws ? `<span class="hint">${String(ws.name).replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`)}:${ws.n} 筆,平均 ${fmt(ws.mean, 2)} m/s</span><button class="iconbtn" id="wsClr">清除</button>` : ''));
+    const wf = o.querySelector('#wsFile');
+    if (wf) wf.addEventListener('change', async e => {
+      const f = e.target.files[0]; if (!f) return;
+      const vals = parseWindSeries(await f.text());
+      if (vals.length < 10) { toast('風速資料不足(至少 10 筆數值)'); return; }
+      S.perf.series = { name: f.name, ...windSeriesPdf(vals) }; S.perf.Vavg = Math.min(12, Math.max(2, +S.perf.series.mean.toFixed(1)));
+      chartOpts(); redrawStatic(); toast('已匯入 ' + vals.length + ' 筆風速');
+    });
+    const wc = o.querySelector('#wsClr'); if (wc) wc.addEventListener('click', () => { S.perf.series = null; chartOpts(); redrawStatic(); });
   } else if (S.ctab === 'cmp') {
     const opts = [['tw', '扭角分布'], ['a', '設計點攻角'], ['c', '弦長分布'], ['tc', '厚度分布'], ['pc', '功率曲線']];
     o.innerHTML = `<label>中間圖 <select id="cmpView">${opts.map(([v, t]) => `<option value="${v}" ${(S.cmpView || 'tw') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>` +
@@ -450,7 +462,7 @@ export function loadSnap(sn) {
 }
 export function snapAEP(m) { // ideal MPPT (Cp,max tracking, no rated-power cap), Weibull(Vavg, k) wind distribution
   const { rho } = air(), Va = S.perf.Vavg, k = S.perf.k || 2, eta = 0.92 * S.load.eta; let e = 0;
-  for (let v = 0.5; v <= 25.001; v += 0.5) { const f = weibullPdf(v, Va, k); e += 0.5 * rho * m.A * v ** 3 * m.cpMax * eta * f * 0.5 * 8760 / 1000; }
+  for (let v = 0.5; v <= 25.001; v += 0.5) { const f = windDensity(v); e += 0.5 * rho * m.A * v ** 3 * m.cpMax * eta * f * 0.5 * 8760 / 1000; }
   return e;
 }
 export function setCmpLayout(on) {
@@ -647,7 +659,7 @@ export function drawPerf() {
     Pm.push(lim ? NaN : pm);
     const st = steadyPower(v);
     Pf.push(S.load.ospd && (st.w > S.load.wmaxRpm * Math.PI / 30 || st.Pout > 1.25 * S.load.Pmax) ? NaN : st.Pout);
-    const f = weibullPdf(v, Va, kW);
+    const f = windDensity(v);
     wb.push(f);
     aepM += (isFinite(Pm[Pm.length - 1]) ? Pm[Pm.length - 1] : 0) * f * 0.5 * 8760 / 1000;
     aepF += (isFinite(Pf[Pf.length - 1]) ? Pf[Pf.length - 1] : 0) * f * 0.5 * 8760 / 1000;

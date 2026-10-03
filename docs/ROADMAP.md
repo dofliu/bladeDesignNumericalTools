@@ -80,6 +80,6 @@
 - 噪音估計(葉尖速度法 → 進階 BPM 模型)。
 - 場址風況:匯入風速時間序列或 Weibull 參數,計算年發電量與容量因數。
   - [x] Weibull 參數法:`core.js` 新增 `gammaFn`(Lanczos 近似)、`weibullPdf(v, meanV, k)`、`capacityFactor(aepKWh, ratedW)`;`S.perf.k`(預設 2,等於原本的 Rayleigh 分布)可在「性能曲線」「方案比較」分頁調整(1.2–3.5);年發電量圖表、方案比較表格、報告摘要卡都新增容量因數。
-  - [ ] 匯入實測風速時間序列(另一種做法,尚未做)。
+  - [x] 匯入實測風速時間序列(2026-10-03):`core.mjs` 新增 `parseWindSeries`(每行取最後一個數值,可含標題/時間戳 CSV)、`windSeriesPdf`(0.5 m/s 直方圖密度)、`windDensity(v)`(有匯入則用實測分布,否則 Weibull);`S.perf.series`;「性能曲線」分頁新增匯入/清除,年發電量圖與方案比較 AEP 皆改用 `windDensity`。限制:超過 25 m/s 的風速不計入發電(仍計入總筆數);不依風向/時序;匯入資料不存入方案(`localStorage`)。
 - 經濟性:材料成本、LCOE 粗估。
 - 介面:英文語系、報告 PDF 直接輸出(需處理中文字型)。
