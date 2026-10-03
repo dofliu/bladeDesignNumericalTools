@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-03 — ROADMAP 7:方案比較顯示 LCOE
+
+- 做了什麼:無開著的 `[autopilot]` PR。方案存檔新增 `massTot`/`mat`;方案比較表新增 LCOE(NT$/kWh)欄,以 `costEstimate` + 各方案 AEP 計算,最低者標示為最佳;舊方案缺欄位顯示「–」。
+- 驗證:見 PR 內文。
+- 已知限制:單價仍不可調;主畫面摘要尚未顯示 LCOE。
+- 下一步:單價可調;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-03 — ROADMAP 7:成本與 LCOE 粗估
 
 - 做了什麼:無開著的 `[autopilot]` PR。`MATERIALS` 新增單價 `cost`;`core.mjs` 新增 `costEstimate`(資本支出 + 固定費率/維運 → LCOE);報告「設計條件」新增成本與 LCOE 列。
