@@ -291,6 +291,8 @@ export function updateSummaries() {
     }
     if (S.mode === 'HAWT' && G.cpDesign != null) rows.push([`設計點 Cp(λd=${fmt(S.hawt.tsr, 1)})`, fmt(G.cpDesign, 3)]);
     rows.push(['Cp,max', fmt(G.cpMax, 3)], ['最佳尖速比 λopt', fmt(G.lopt, 2)], [`功率 @ ${fmt(Vd, 1)} m/s`, fmtP(Pd)], ['對應轉速', fmt(G.lopt * Vd / G.R * 30 / Math.PI, 0) + ' rpm']);
+    { const ce = costEstimate(G.mass, S.mode === 'HAWT' ? S.hawt.material : S.vawt.material, S.load.Pmax, G.A, snapAEP({ A: G.A, cpMax: G.cpMax }));
+      rows.push(['資本支出(概估)', 'NT$ ' + fmt(ce.capex, 0)], ['LCOE(概估)', isFinite(ce.lcoe) ? 'NT$ ' + fmt(ce.lcoe, 1) + '/kWh' : '–']); }
     kv($('#rotorSummary'), rows);
   }
 }
