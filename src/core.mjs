@@ -6,13 +6,14 @@ import * as A from './aero.mjs';
 import * as GEO from './geo.mjs';
 // E: 楊氏模數 (Pa),供結構彎曲/撓度估算; allow: 容許應力 (Pa,已含疲勞/安全係數的保守值),
 // 供結構安全係數估算。兩者皆為典型文獻值的合理預設,尚未做逐站/逐使用者調整。
+// cost: rough finished-blade price (NT$/kg, material + fabrication), conceptual only.
 // su: ultimate strength and m: Basquin S-N slope (N = (su/Sa)^m), typical conceptual values for fatigue.
 const MATERIALS = {
-  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, fill: 0.28, E: 20e9, allow: 100e6, su: 250e6, m: 10 },
-  wood: { name: '木材(實心)', rho: 550, fill: 1, E: 11e9, allow: 40e6, su: 70e6, m: 12 },
-  alu: { name: '鋁擠型(空心)', rho: 2700, fill: 0.22, E: 69e9, allow: 110e6, su: 290e6, m: 7 },
-  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, fill: 0.42, E: 2.3e9, allow: 20e6, su: 50e6, m: 8 },
-  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, fill: 0.22, E: 70e9, allow: 250e6, su: 600e6, m: 14 }
+  gfrp: { name: '玻纖複合材(空心殼)', rho: 1850, cost: 400, fill: 0.28, E: 20e9, allow: 100e6, su: 250e6, m: 10 },
+  wood: { name: '木材(實心)', rho: 550, cost: 150, fill: 1, E: 11e9, allow: 40e6, su: 70e6, m: 12 },
+  alu: { name: '鋁擠型(空心)', rho: 2700, cost: 300, fill: 0.22, E: 69e9, allow: 110e6, su: 290e6, m: 7 },
+  pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, cost: 800, fill: 0.42, E: 2.3e9, allow: 20e6, su: 50e6, m: 8 },
+  cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, cost: 2000, fill: 0.22, E: 70e9, allow: 250e6, su: 600e6, m: 14 }
 };
 const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
 
@@ -70,6 +71,16 @@ function noiseEstimate(vTip, D, dist = 50) {
   const Lw = 50 * Math.log10(Math.max(vTip, 1)) + 10 * Math.log10(Math.max(D, 0.1)) - 4;
   const Lp = Lw - 10 * Math.log10(2 * Math.PI * dist * dist) - 0.005 * dist;
   return { Lw, Lp, dist };
+}
+
+/* Rough cost / LCOE estimate (NT$). Capex = blades (mass x material price) + generator/electronics (per rated W)
+   + tower/foundation (per swept m2); LCOE = (capex x FCR + annual O&M) / AEP. Conceptual unit prices only. */
+const COST_DEFAULT = { gen: 30, tower: 3000, fcr: 0.08, om: 0.03, life: 20 };
+function costEstimate(massKg, matKey, ratedW, sweptA, aepKWh, p = {}) {
+  const c = { ...COST_DEFAULT, ...p }, mat = MATERIALS[matKey] || MATERIALS.gfrp;
+  const blades = massKg * mat.cost, gen = ratedW * c.gen, tower = sweptA * c.tower, capex = blades + gen + tower;
+  const annual = capex * c.fcr + capex * c.om;
+  return { blades, gen, tower, capex, annual, lcoe: aepKWh > 0 ? annual / aepKWh : Infinity, life: c.life };
 }
 
 /* ---------- air properties ---------- */
@@ -678,4 +689,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, noiseEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
+export { parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
