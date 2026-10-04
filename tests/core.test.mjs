@@ -240,7 +240,8 @@ test('furling yaws the rotor out of the wind above vFurl, cuts power and recover
   assert.equal(SIM.furlAng, 0, 'no furling below vFurl');
   reset(18); run(18, 30);
   assert.ok(Math.abs(SIM.furlAng - 60) < 1e-6, `full furl at vFurl+6 m/s, got ${SIM.furlAng}`);
-  assert.ok(SIM.omega < G.lopt * 18 / G.R * 0.7, 'furled rotor must not spin at the unfurled optimum speed');
+  // cd0 高 Re 校正後(PR 說明):側偏 60° 轉速比由 0.57 升為 0.76(阻力降低),門檻 0.7 → 0.8,仍須明顯低於未側偏最佳轉速
+  assert.ok(SIM.omega < G.lopt * 18 / G.R * 0.8, 'furled rotor must not spin at the unfurled optimum speed');
   run(6, 40);
   assert.equal(SIM.furlAng, 0, 'furl angle returns to 0 below vFurl');
   S.load.furl = false; SIM.furlAng = 0;
