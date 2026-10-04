@@ -91,3 +91,18 @@ test('DMST: streamline curvature correction is opt-in and lowers high-λ Cp', ()
   assert.ok((thin0 - thin) / thin0 < (base - on) / base, 'smaller c/R gives a smaller correction');
   console.log('curvature', base.toFixed(3), on.toFixed(3));
 });
+
+test('boundary layer: NACA 0012 attached at 0° with plausible friction drag (Re 1e6)', () => {
+  const bl = A.boundaryLayer(A.panel(A.naca4('0012'))(0), 1e6);
+  assert.equal(bl.upper.xSep, null); assert.equal(bl.lower.xSep, null);
+  near(bl.cd, 0.0056, 0.002, 'cd'); near(bl.upper.xTr, bl.lower.xTr, 0.05, '對稱翼型兩面轉捩點');
+});
+
+test('boundary layer: separation moves forward with angle of attack and lower Re', () => {
+  const sep = (a, Re) => A.boundaryLayer(A.panel(A.naca4('0012'))(a * A.D2R), Re).upper.xSep;
+  assert.ok(sep(12, 3e5) !== null && sep(16, 3e5) < sep(12, 3e5), '攻角越大分離點越前移');
+  assert.ok(sep(12, 3e5) < sep(12, 1e6), '低 Re 分離較早');
+  assert.equal(sep(2, 1e6), null);
+  const cds = [0, 8, 16].map(a => A.boundaryLayer(A.panel(A.naca4('0012'))(a * A.D2R), 3e5).cd);
+  assert.ok(cds[0] < cds[1] && cds[1] < cds[2], '阻力隨攻角增加');
+});

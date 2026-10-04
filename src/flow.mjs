@@ -95,9 +95,10 @@ export const Flow = (function () {
     g.fillStyle = Plot.css('--panel'); g.fill(); g.strokeStyle = Plot.css('--ink'); g.lineWidth = 1.4; g.stroke();
     // separation sketch
     const aS = stallAngle(inp.ps, inp.Re);
-    const frac = (Math.abs(alphaDeg) - 0.7 * aS) / (0.6 * aS);
+    const bl = A.boundaryLayer(sol, inp.Re), up = alphaDeg >= 0, blS = up ? bl.upper : bl.lower;
+    const xsBL = blS.xSep, frac = xsBL == null ? 0 : A.clamp((1 - xsBL) / 0.7, 0.05, 1);
     if (frac > 0) {
-      const xs = A.clamp(1 - frac, 0.05, 0.98), up = alphaDeg > 0, af = inp.af, NX = af.x.length;
+      const xs = A.clamp(xsBL, 0.05, 0.98), af = inp.af, NX = af.x.length;
       g.save(); g.fillStyle = Plot.css('--warn'); g.globalAlpha = 0.22; g.beginPath();
       const surf = up ? af.yu : af.yl; let started = false;
       for (let i = 0; i < NX; i++) if (af.x[i] >= xs) { const d = toDisp(af.x[i], surf[i]), p = scr(d[0], d[1]); if (!started) { g.moveTo(p[0], p[1]); started = true; } else g.lineTo(p[0], p[1]); }
@@ -109,8 +110,8 @@ export const Flow = (function () {
     g.fillStyle = Plot.css('--ink'); g.font = '600 12px ' + Plot.css('--font-ui'); g.textAlign = 'left'; g.textBaseline = 'top';
     g.fillText(W < 560 ? `α ${alphaDeg.toFixed(1)}° · 位勢流 Cl ${sol.cl.toFixed(2)}` : `${inp.label}  ·  α = ${alphaDeg.toFixed(1)}°  ·  位勢流 Cl = ${sol.cl.toFixed(2)}`, 10, 8);
     g.font = '11px ' + Plot.css('--font-ui'); g.fillStyle = Plot.css('--muted');
-    g.fillText(`估計失速角 ≈ ${aS.toFixed(1)}°(Re ${(inp.Re / 1e5).toFixed(1)}×10⁵)`, 10, 26);
-    if (frac > 0) { g.fillStyle = Plot.css('--warn'); g.font = '600 12px ' + Plot.css('--font-ui'); g.fillText(frac > 0.4 ? '⚠ 已接近或超過失速:紅色為估計分離區(示意),位勢流結果不再可靠' : '注意:攻角偏大,上表面後段開始出現分離風險', 10, 42); }
+    g.fillText(`${W < 560 ? '失速角' : '估計失速角'} ≈ ${aS.toFixed(1)}°${W < 560 ? '' : `(Re ${(inp.Re / 1e5).toFixed(1)}×10⁵)`}  ·  轉捩 ${(blS.xTr ?? 1).toFixed(2)}  ·  ${xsBL == null ? '無分離' : '分離 ' + xsBL.toFixed(2)}`, 10, 26);
+    if (frac > 0) { g.fillStyle = Plot.css('--warn'); g.font = '600 12px ' + Plot.css('--font-ui'); g.fillText(frac > 0.4 ? '⚠ 已接近或超過失速:紅色為邊界層積分估計的分離區(示意),位勢流結果不再可靠' : '注意:攻角偏大,後段邊界層開始分離', 10, 42); }
     const tk = opts.mode === 'cp' ? { min: 0, max: 2, v: [[0, 'Cp 1'], [1, '0'], [Math.sqrt(2), '−1'], [2, '−3']] } : { min: 0, max: 2, v: [[0, '0'], [1, '1'], [2, '2']] };
     colorbar(g, W - 170, H - 26, 150, 8, map, opts.mode === 'cp' ? '壓力係數' : '|V|/V∞', tk);
     return { sol, aS };
@@ -241,7 +242,7 @@ export const Flow = (function () {
         ${S.mode === 'VAWT' && S.vawt.type === 'sav' ? '' : `<div class="card span3"><div class="ctrlbar"><label>轉子尖速比 λ <input type="range" id="fLam" min="0.5" max="${lmax.toFixed(1)}" step="0.05"><output id="fLamo"></output></label><button class="iconbtn" id="fLd">${H ? '設計點' : '最佳 λ'}</button><label><input type="checkbox" id="fFol"> 跟隨目前運轉點</label></div></div>
         ${card(H ? '轉子流場(致動盤 + BEM 誘導)' : '轉子流場(雙重多流管)', '<canvas id="fRot" style="height:340px"></canvas>', 'span2')}
         ${card('速度剖面', '<canvas id="fProf" style="height:340px"></canvas>')}`}
-        ${card('模型說明', `<p class="hint">翼型剖面:Hess-Smith 面板法(源 + 均勻渦,Kutta 條件)求無黏位勢流,流線以速度場積分。位勢流不含邊界層與分離,因此失速附近以紅色示意估計分離區,Cl 會高於實際值;實際升阻力請以「極曲線」分頁的黏性修正模型為準。<br>水平軸轉子:以 BEM 求得各截面軸向誘導因子 a(r),搭配致動盤渦柱理論 u = V∞[1 − a(1 + x/√(x²+R²))] 近似軸向速度,流線由各流管質量守恆求得;未顯示尾流旋轉與葉尖渦。<br>垂直軸轉子:以雙重多流管法的上、下風誘導速度組合成俯視流場,示意上風半圈先減速、下風葉片再次取能的特性。</p>`, 'span3', null, false)}
+        ${card('模型說明', `<p class="hint">翼型剖面:Hess-Smith 面板法(源 + 均勻渦,Kutta 條件)求無黏位勢流,流線以速度場積分。位勢流不含邊界層與分離;分離點由表面速度做 Thwaites(層流)+ Michel 轉捩 + Head(紊流)積分邊界層估計,紅色分離區只是示意,Cl 會高於實際值;實際升阻力請以「極曲線」分頁的黏性修正模型為準。<br>水平軸轉子:以 BEM 求得各截面軸向誘導因子 a(r),搭配致動盤渦柱理論 u = V∞[1 − a(1 + x/√(x²+R²))] 近似軸向速度,流線由各流管質量守恆求得;未顯示尾流旋轉與葉尖渦。<br>垂直軸轉子:以雙重多流管法的上、下風誘導速度組合成俯視流場,示意上風半圈先減速、下風葉片再次取能的特性。</p>`, 'span3', null, false)}
       </div>`;
     $f('flowInner').innerHTML = h;
     const on = (id, ev, fn) => { const e = $f(id); if (e) e.addEventListener(ev, fn); };

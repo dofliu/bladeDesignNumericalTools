@@ -192,6 +192,65 @@
     return solve;
   }
 
+
+  /* ---------- Integral boundary layer (Thwaites + Michel transition + Head) ---------- */
+  // Marches both surfaces of an inviscid panel solution (the result of solve(alpha)). Lengths in chords.
+  // Per surface returns { xTr, xLam, xSep, cd, H }: transition x/c, laminar-separation x/c (assumed to
+  // reattach turbulent, i.e. a short bubble), turbulent-separation x/c (null = attached to the TE),
+  // Squire-Young cd of that surface, TE shape factor.
+  function boundaryLayer(sol, Re) {
+    const n = sol.n, nu = 1 / Re, ue = [];
+    for (let i = 0; i < n; i++) ue.push(Math.sqrt(Math.max(1e-6, 1 - sol.cp[i])));
+    let st = 0, best = 1e9; // stagnation = slowest panel near the leading edge
+    for (let i = 0; i < n; i++) if (sol.xm[i] < 0.3 && ue[i] < best) { best = ue[i]; st = i; }
+    const h1of = h => (h <= 1.6 ? 3.3 : 3.32) + 0.8234 * Math.pow(h - 1.1, -1.287);
+    const hofh1 = h1 => (h1 > 5.3 ? 1.1 + 0.86 * Math.pow(h1 - 3.3, -0.777) : 0.6778 + 1.1536 * Math.pow(h1 - 3.3, -0.326));
+    // panels run lower TE -> LE -> upper TE: upper surface = st..n-1, lower = st..0
+    function march(idx) {
+      const m = idx.length, s = [0], U = [], X = [];
+      for (let k = 0; k < m; k++) {
+        const i = idx[k];
+        if (k > 0) s.push(s[k - 1] + Math.hypot(sol.xm[i] - sol.xm[idx[k - 1]], sol.ym[i] - sol.ym[idx[k - 1]]));
+        U.push(ue[i]); X.push(sol.xm[i]);
+      }
+      const dU = [];
+      for (let i = 0; i < m; i++) { const a = Math.max(0, i - 1), b = Math.min(m - 1, i + 1); dU.push((U[b] - U[a]) / Math.max(1e-9, s[b] - s[a])); }
+      const out = { xTr: null, xLam: null, xSep: null, cd: 0, H: 1.4 };
+      let integ = 0, turb = false, th = 0, H = 1.4, H1 = 0;
+      for (let i = 1; i < m; i++) {
+        const ds = s[i] - s[i - 1];
+        if (!turb) {
+          integ += 0.5 * (Math.pow(U[i], 5) + Math.pow(U[i - 1], 5)) * ds;
+          th = Math.sqrt(0.45 * nu * integ / Math.pow(U[i], 6));
+          const lam = Re * th * th * dU[i], Rth = Re * U[i] * th, Rx = Math.max(1, Re * s[i] * U[i]);
+          const trig = Rth > 100 && Rth > 1.174 * (1 + 22400 / Rx) * Math.pow(Rx, 0.46);
+          if (lam <= -0.09 || trig) {
+            if (lam <= -0.09) out.xLam = X[i];
+            out.xTr = X[i]; turb = true; H = 1.4; H1 = h1of(H);
+          } else H = lam >= 0 ? 2.61 - 3.75 * lam + 5.24 * lam * lam : 2.088 + 0.0731 / (lam + 0.14);
+        } else {
+          const Rth = Math.max(100, Re * U[i - 1] * th);
+          const cf = 0.246 * Math.pow(10, -0.678 * H) * Math.pow(Rth, -0.268);
+          const dth = cf / 2 - (H + 2) * th / U[i - 1] * dU[i - 1];
+          const dflux = 0.0306 * U[i - 1] * Math.pow(H1 - 3, -0.6169); // d(Ue θ H1)/ds
+          const flux = U[i - 1] * th * H1 + ds * dflux;
+          th = Math.max(1e-7, th + ds * dth);
+          H1 = Math.max(3.35, flux / (U[i] * th)); H = Math.min(3, hofh1(H1));
+          if (H > 2.4 && out.xSep === null && X[i] < 0.97) out.xSep = X[i]; // potential-flow TE stagnation is unphysical, ignore last 3%
+        }
+      }
+      if (!turb) out.xTr = 1;
+      out.H = turb ? Math.min(H, 2.5) : H;
+      out.cd = 2 * th * Math.pow(U[m - 1], (out.H + 5) / 2);
+      return out;
+    }
+    const up = [], lo = [];
+    for (let i = st; i < n; i++) up.push(i);
+    for (let i = st; i >= 0; i--) lo.push(i);
+    const upper = march(up), lower = march(lo);
+    return { upper, lower, cd: upper.cd + lower.cd, stag: sol.xm[st] };
+  }
+
   /* ---------- Semi-empirical polar model ---------- */
   function cfFlat(Re) {
     const lam = 1.328 / Math.sqrt(Re);
@@ -607,5 +666,5 @@
   }
 
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
-  panel, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
+  panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
   cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtCurve, savoniusCurve };
