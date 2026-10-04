@@ -25,7 +25,8 @@ const S = {
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true,
     cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5, furl: false, vFurl: 11, furlMax: 60, furlRate: 4 },
-  perf: { Vavg: 5.5, k: 2, series: null }
+  perf: { Vavg: 5.5, k: 2, series: null },
+  cost: { mat: null, gen: 30, tower: 3000, fcr: 0.08, om: 0.03 } // mat: blade NT$/kg override (null = material default)
 };
 
 /* ---------- wind resource: Weibull distribution & capacity factor ---------- */
@@ -77,8 +78,8 @@ function noiseEstimate(vTip, D, dist = 50) {
    + tower/foundation (per swept m2); LCOE = (capex x FCR + annual O&M) / AEP. Conceptual unit prices only. */
 const COST_DEFAULT = { gen: 30, tower: 3000, fcr: 0.08, om: 0.03, life: 20 };
 function costEstimate(massKg, matKey, ratedW, sweptA, aepKWh, p = {}) {
-  const c = { ...COST_DEFAULT, ...p }, mat = MATERIALS[matKey] || MATERIALS.gfrp;
-  const blades = massKg * mat.cost, gen = ratedW * c.gen, tower = sweptA * c.tower, capex = blades + gen + tower;
+  const c = { ...COST_DEFAULT, ...Object.fromEntries(Object.entries(p).filter(([, v]) => v != null)) }, mat = MATERIALS[matKey] || MATERIALS.gfrp;
+  const blades = massKg * (c.mat > 0 ? c.mat : mat.cost), gen = ratedW * c.gen, tower = sweptA * c.tower, capex = blades + gen + tower;
   const annual = capex * c.fcr + capex * c.om;
   return { blades, gen, tower, capex, annual, lcoe: aepKWh > 0 ? annual / aepKWh : Infinity, life: c.life };
 }

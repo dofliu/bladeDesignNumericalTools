@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-03 — ROADMAP 7:成本單價可調
+
+- 做了什麼:無開著的 `[autopilot]` PR。新增 `S.cost`(葉片單價覆寫、發電機電控、塔架、固定費率、維運率),性能曲線與方案比較分頁加輸入欄;主畫面摘要、方案比較 LCOE、報告皆使用。`tests/core.test.mjs` 新增自訂單價測試。
+- 驗證:見 PR 內文。
+- 已知限制:設定不存入方案/localStorage。
+- 下一步:ROADMAP 2 仍待使用者決定;其餘為低優先子項(BPM 噪音、變槳/MPPT 調校、動態失速校正)。
+
 ## 2026-10-03 — ROADMAP 7:主畫面摘要顯示 LCOE
 
 - 做了什麼:無開著的 `[autopilot]` PR。左側轉子摘要新增資本支出與 LCOE 概估(`costEstimate` + `snapAEP`)。

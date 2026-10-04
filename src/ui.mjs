@@ -291,7 +291,7 @@ export function updateSummaries() {
     }
     if (S.mode === 'HAWT' && G.cpDesign != null) rows.push([`設計點 Cp(λd=${fmt(S.hawt.tsr, 1)})`, fmt(G.cpDesign, 3)]);
     rows.push(['Cp,max', fmt(G.cpMax, 3)], ['最佳尖速比 λopt', fmt(G.lopt, 2)], [`功率 @ ${fmt(Vd, 1)} m/s`, fmtP(Pd)], ['對應轉速', fmt(G.lopt * Vd / G.R * 30 / Math.PI, 0) + ' rpm']);
-    { const ce = costEstimate(G.mass, S.mode === 'HAWT' ? S.hawt.material : S.vawt.material, S.load.Pmax, G.A, snapAEP({ A: G.A, cpMax: G.cpMax }));
+    { const ce = costEstimate(G.mass, S.mode === 'HAWT' ? S.hawt.material : S.vawt.material, S.load.Pmax, G.A, snapAEP({ A: G.A, cpMax: G.cpMax }), S.cost);
       rows.push(['資本支出(概估)', 'NT$ ' + fmt(ce.capex, 0)], ['LCOE(概估)', isFinite(ce.lcoe) ? 'NT$ ' + fmt(ce.lcoe, 1) + '/kWh' : '–']); }
     kv($('#rotorSummary'), rows);
   }
@@ -378,7 +378,8 @@ export function chartOpts() {
     bind('fullR', 'change', e => { S.af.full = e.target.checked; redrawStatic(); });
   } else if (S.ctab === 'perf') {
     o.innerHTML = `<label>年平均風速 <input id="vavg" type="number" min="2" max="12" step="0.1" value="${S.perf.Vavg}" style="width:60px"> m/s</label>` +
-      `<label title="Weibull 形狀參數 k(2 = Rayleigh 分布,地形起伏越平緩、風速越穩定 k 越大)">Weibull k <input id="wbk" type="number" min="1.2" max="3.5" step="0.1" value="${S.perf.k}" style="width:50px"></label>`;
+      `<label title="Weibull 形狀參數 k(2 = Rayleigh 分布,地形起伏越平緩、風速越穩定 k 越大)">Weibull k <input id="wbk" type="number" min="1.2" max="3.5" step="0.1" value="${S.perf.k}" style="width:50px"></label>` + costInputsHtml();
+    bindCostInputs(o);
     o.querySelector('#vavg').addEventListener('change', e => { S.perf.Vavg = Math.max(1, +e.target.value || 5); redrawStatic(); });
     o.querySelector('#wbk').addEventListener('change', e => { S.perf.k = Math.min(3.5, Math.max(1.2, +e.target.value || 2)); redrawStatic(); });
     const ws = S.perf.series;
@@ -397,8 +398,9 @@ export function chartOpts() {
     const opts = [['tw', '扭角分布'], ['a', '設計點攻角'], ['c', '弦長分布'], ['tc', '厚度分布'], ['pc', '功率曲線']];
     o.innerHTML = `<label>中間圖 <select id="cmpView">${opts.map(([v, t]) => `<option value="${v}" ${(S.cmpView || 'tw') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>` +
       `<label>年平均風速 <input id="vavg2" type="number" min="2" max="12" step="0.1" value="${S.perf.Vavg}" style="width:60px"> m/s</label>` +
-      `<label title="Weibull 形狀參數 k(2 = Rayleigh 分布)">Weibull k <input id="wbk2" type="number" min="1.2" max="3.5" step="0.1" value="${S.perf.k}" style="width:50px"></label>` +
+      `<label title="Weibull 形狀參數 k(2 = Rayleigh 分布)">Weibull k <input id="wbk2" type="number" min="1.2" max="3.5" step="0.1" value="${S.perf.k}" style="width:50px"></label>` + costInputsHtml() +
       `<button class="iconbtn" id="snapSave2">＋ 儲存目前方案</button>`;
+    bindCostInputs(o);
     o.querySelector('#cmpView').addEventListener('change', e => { S.cmpView = e.target.value; redrawStatic(); });
     o.querySelector('#vavg2').addEventListener('change', e => { S.perf.Vavg = Math.max(1, +e.target.value || 5); redrawStatic(); });
     o.querySelector('#wbk2').addEventListener('change', e => { S.perf.k = Math.min(3.5, Math.max(1.2, +e.target.value || 2)); redrawStatic(); });
@@ -410,6 +412,19 @@ export function chartOpts() {
 }
 export const cv = [null, null, null];
 
+export function costInputsHtml(id) {
+  const c = S.cost, f = (k, t, v, st, w, ti) => `<label title="${ti}">${t} <input data-cost="${k}" type="number" min="0" step="${st}" value="${v}" style="width:${w}px"></label>`;
+  return f('mat', '葉片單價', c.mat == null ? '' : c.mat, 50, 60, '葉片材料含加工單價 NT$/kg;留空使用材料預設') +
+    f('gen', '發電機電控', c.gen, 5, 55, '發電機與電控 NT$/W(額定)') + f('tower', '塔架基礎', c.tower, 100, 60, '塔架與基礎 NT$/m²(掃掠面積)') +
+    f('fcr', '固定費率%', +(c.fcr * 100).toFixed(2), 0.5, 50, '年固定費率(資本回收)') + f('om', '維運%', +(c.om * 100).toFixed(2), 0.5, 50, '年維運費率(佔資本支出)');
+}
+export function bindCostInputs(o) {
+  o.querySelectorAll('[data-cost]').forEach(e => e.addEventListener('change', () => {
+    const k = e.dataset.cost, v = parseFloat(e.value), pct = k === 'fcr' || k === 'om';
+    S.cost[k] = isFinite(v) && v >= 0 ? (pct ? v / 100 : v) : (k === 'mat' ? null : S.cost[k]);
+    updateSummaries(); redrawStatic();
+  }));
+}
 /* ---------- design comparison (snapshots) ---------- */
 export const SNAP_COL = ['--c1', '--c2', '--c3', '--c4', '--c5', '--warn', '--good', '--signal'];
 export const SNAPS = [];
@@ -501,7 +516,7 @@ export function drawCompare() {
   const best = k => Math.max(...rows.map(r => r[k] || 0));
   const aeps = rows.map(r => snapAEP(r)), bestAep = Math.max(...aeps);
   const cfs = aeps.map(e => capacityFactor(e, S.load.Pmax)), bestCf = Math.max(...cfs);
-  const lcoes = rows.map((r, i) => r.massTot != null ? costEstimate(r.massTot, r.mat, S.load.Pmax, r.A, aeps[i]).lcoe : NaN), bestL = Math.min(...lcoes.filter(isFinite));
+  const lcoes = rows.map((r, i) => r.massTot != null ? costEstimate(r.massTot, r.mat, S.load.Pmax, r.A, aeps[i], S.cost).lcoe : NaN), bestL = Math.min(...lcoes.filter(isFinite));
   const bw = r => r.band && r.band[0] != null ? r.band[1] - r.band[0] : 0, bestBw = Math.max(...rows.map(bw));
   const cls = (val, b) => Math.abs(val - b) < 1e-9 && rows.length > 1 ? 'best' : '';
   let h = `<table><colgroup><col style="width:27%"><col style="width:11%"><col style="width:8%"><col style="width:17%"><col style="width:12%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、未限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;

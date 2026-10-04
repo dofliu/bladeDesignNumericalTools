@@ -286,6 +286,10 @@ test('成本與 LCOE 粗估:各項加總、與發電量成反比、材料單價�
   assert.ok(Math.abs(a.lcoe / b.lcoe - 2) < 1e-9);
   assert.ok(costEstimate(10, 'cfrp', 3000, 7, 5000).capex > a.capex);
   assert.equal(costEstimate(10, 'gfrp', 3000, 7, 0).lcoe, Infinity);
+  const u = costEstimate(10, 'gfrp', 3000, 7, 5000, { mat: 1000, gen: 50, tower: 0, fcr: 0.1, om: 0 });
+  assert.ok(Math.abs(u.blades - 10000) < 1e-9 && Math.abs(u.gen - 150000) < 1e-9 && u.tower === 0);
+  assert.ok(Math.abs(u.annual - u.capex * 0.1) < 1e-6);
+  assert.deepEqual(costEstimate(10, 'gfrp', 3000, 7, 5000, { mat: null }), a);
   designHAWT(); computePerf();
   const d = costEstimate(G.mass, S.hawt.material, S.load.Pmax, G.A, 4000);
   assert.ok(d.lcoe > 1 && d.lcoe < 100, 'LCOE ' + d.lcoe);
