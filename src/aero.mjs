@@ -274,7 +274,9 @@
     const aL0 = model.aL0 * 0.9;
     const asPos = clamp((9 + 28 * t + 60 * cam) * reF, 5, 22) * D2R;
     const asNeg = clamp((9 + 28 * t - 50 * cam) * reF, 4, 20) * D2R;
-    const cd0 = Math.max(0.004, 2 * cfFlat(Re) * (1 + 2 * t + 60 * Math.pow(t, 4)) * (1 + 0.8 * cam));
+    // 高 Re 時平板摩擦公式配厚度修正偏高(NACA 0012 Re 1e6 實測約 0.006);依邊界層積分比對,Re > 3e5 起逐步下修,最多 30%
+    const reCal = clamp(1 - 0.25 * Math.log10(Math.max(Re, 3e5) / 3e5), 0.7, 1);
+    const cd0 = Math.max(0.004, 2 * cfFlat(Re) * (1 + 2 * t + 60 * Math.pow(t, 4)) * (1 + 0.8 * cam) * reCal);
     const kd = 0.32 * lowRe;
     const aCdMin = 0.4 * aL0;
     const drop = clamp(0.7 + 1.4 * t, 0.72, 0.96);

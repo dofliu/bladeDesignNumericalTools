@@ -107,7 +107,7 @@ test('boundary layer: separation moves forward with angle of attack and lower Re
   assert.ok(cds[0] < cds[1] && cds[1] < cds[2], '阻力隨攻角增加');
 });
 
-test('極曲線 cd 與邊界層積分 cd 比對:低 Re 吻合、高 Re 偏高(已知偏差,校正前的基準)', () => {
+test('極曲線 cd 與邊界層積分 cd 比對:低 Re 吻合、高 Re 校正後仍略偏高(厚翼型最多 1.6 倍)', () => {
   const ratio = (code, Re, a) => {
     const m = A.buildAeroModel(A.naca4(code));
     const pol = A.lookup({ REs: [1], tables: [A.polarAtRe(m, Re)] }, a * A.D2R, Re)[1];
@@ -118,8 +118,8 @@ test('極曲線 cd 與邊界層積分 cd 比對:低 Re 吻合、高 Re 偏高(�
       const lo = ratio(code, 1e5, a), mid = ratio(code, 3e5, a), hi = ratio(code, 2e6, a);
       assert.ok(lo > 0.85 && lo < 1.15, `${code} a${a} Re1e5 比值 ${lo.toFixed(2)}`);
       assert.ok(mid > 0.8 && mid < 1.25, `${code} a${a} Re3e5 比值 ${mid.toFixed(2)}`);
-      // 極曲線的 cd0 在高 Re 偏高(實測 NACA 0012 Re 1e6 cd0 ≈ 0.006);校正時應把此比值拉向 1
-      assert.ok(hi > 1.2 && hi < 2.1, `${code} a${a} Re2e6 比值 ${hi.toFixed(2)}`);
+      // 校正前高 Re 比值 1.5–2 倍;cd0 的 reCal 下修後 NACA 0012 Re 1e6 cd0 ≈ 0.006(文獻值),比值降為 1.17–1.6
+      assert.ok(hi > 0.95 && hi < 1.7, `${code} a${a} Re2e6 比值 ${hi.toFixed(2)}`);
     }
   }
 });
