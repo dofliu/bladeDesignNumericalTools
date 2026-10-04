@@ -381,6 +381,19 @@ export function chartOpts() {
       `<label title="Weibull 形狀參數 k(2 = Rayleigh 分布,地形起伏越平緩、風速越穩定 k 越大)">Weibull k <input id="wbk" type="number" min="1.2" max="3.5" step="0.1" value="${S.perf.k}" style="width:50px"></label>`;
     o.querySelector('#vavg').addEventListener('change', e => { S.perf.Vavg = Math.max(1, +e.target.value || 5); redrawStatic(); });
     o.querySelector('#wbk').addEventListener('change', e => { S.perf.k = Math.min(3.5, Math.max(1.2, +e.target.value || 2)); redrawStatic(); });
+    const cs = S.perf.cost || (S.perf.cost = {}), cv = k => cs[k] != null ? cs[k] : COST_DEFAULT[k];
+    o.insertAdjacentHTML('beforeend', `<span class="hint" title="成本單價為概念性假設,可依實際報價調整;留空的葉片單價採材料預設">成本:</span>` +
+      `<label title="葉片材料單價 NT$/kg(留空 = 材料預設)">葉片單價 <input id="cMat" type="number" min="1" step="10" placeholder="預設" value="${cs.matCost > 0 ? cs.matCost : ''}" style="width:60px"></label>` +
+      `<label title="發電機與電控單價 NT$/W">發電機 <input id="cGen" type="number" min="0" step="1" value="${cv('gen')}" style="width:50px"></label>` +
+      `<label title="塔架與基礎單價 NT$/m² 掃掠面積">塔架 <input id="cTow" type="number" min="0" step="100" value="${cv('tower')}" style="width:60px"></label>` +
+      `<label title="年固定費率(資金回收)">固定費率 <input id="cFcr" type="number" min="0" max="50" step="0.5" value="${+(cv('fcr') * 100).toFixed(2)}" style="width:50px">%</label>` +
+      `<label title="年維運費占資本支出比例">維運 <input id="cOm" type="number" min="0" max="50" step="0.5" value="${+(cv('om') * 100).toFixed(2)}" style="width:50px">%</label>`);
+    const cbind = (id, key, f = x => x) => o.querySelector('#' + id).addEventListener('change', e => {
+      const v = parseFloat(e.target.value);
+      if (isFinite(v) && v >= 0) cs[key] = f(v); else delete cs[key];
+      updateSummaries(); redrawStatic(); chartOpts();
+    });
+    cbind('cMat', 'matCost'); cbind('cGen', 'gen'); cbind('cTow', 'tower'); cbind('cFcr', 'fcr', x => x / 100); cbind('cOm', 'om', x => x / 100);
     const ws = S.perf.series;
     o.insertAdjacentHTML('beforeend', `<label class="iconbtn" title="每行一筆風速(m/s),可為 CSV(取每行最後一個數值);匯入後以實測分布取代 Weibull 計算年發電量"><input id="wsFile" type="file" accept=".csv,.txt,text/plain" style="display:none">匯入風速時間序列</label>` +
       (ws ? `<span class="hint">${String(ws.name).replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`)}:${ws.n} 筆,平均 ${fmt(ws.mean, 2)} m/s</span><button class="iconbtn" id="wsClr">清除</button>` : ''));

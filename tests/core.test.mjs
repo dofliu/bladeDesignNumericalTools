@@ -277,6 +277,21 @@ test('噪音估計:尖速 5 次方律與球面擴散', () => {
   assert.ok(n.Lw > 60 && n.Lw < 100 && n.Lp < n.Lw);
 });
 
+test('成本單價可調:覆寫葉片單價/費率會改變資本支出與 LCOE,預設不變', () => {
+  const base = costEstimate(10, 'gfrp', 3000, 7, 5000, {});
+  assert.ok(Math.abs(costEstimate(10, 'gfrp', 3000, 7, 5000).capex - base.capex) < 1e-9, 'S.perf.cost 預設為空');
+  const m = costEstimate(10, 'gfrp', 3000, 7, 5000, { matCost: 1000 });
+  assert.ok(Math.abs(m.blades - 10000) < 1e-9);
+  const g = costEstimate(10, 'gfrp', 3000, 7, 5000, { gen: 60 });
+  assert.ok(Math.abs(g.gen - 3000 * 60) < 1e-9 && g.lcoe > base.lcoe);
+  const f = costEstimate(10, 'gfrp', 3000, 7, 5000, { fcr: 0.16, om: 0 });
+  assert.ok(Math.abs(f.annual - base.capex * 0.16) < 1e-6);
+  S.perf.cost = { tower: 6000 };
+  const t = costEstimate(10, 'gfrp', 3000, 7, 5000);
+  S.perf.cost = {};
+  assert.ok(Math.abs(t.tower - 7 * 6000) < 1e-9);
+});
+
 test('成本與 LCOE 粗估:各項加總、與發電量成反比、材料單價影響', () => {
   const a = costEstimate(10, 'gfrp', 3000, 7, 5000);
   assert.ok(Math.abs(a.capex - (a.blades + a.gen + a.tower)) < 1e-9);
