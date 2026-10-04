@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-04 — ROADMAP 6:極曲線 cd 與邊界層 cd 的比對基準
+
+- 做了什麼:無開著的 `[autopilot]` PR。ROADMAP 6 下一步是用 `boundaryLayer` 校正極曲線阻力;直接改模型會連動 Cp 參考值(0.477 等),不屬小步,因此先量測差距並寫成回歸測試:`tests/aero.test.mjs` 新增比對(4 種 NACA × α 0/2° × Re 1e5/3e5/2e6)。結果:低 Re 吻合(<15%/<25%),Re 2e6 時極曲線 cd 偏高 1.5–2 倍。未改動任何模型程式碼,dist 無變化。
+- 驗證:`npm run check`、`npm test`、`npm run build`(dist 無差異);離線 e2e 全過(追蹤率 94–97%);無原始碼/UI 變更、dist 與 main 一致,故未另截圖。
+- 已知限制:僅記錄偏差,尚未校正。
+- 下一步:ROADMAP 6 校正 `cd0` 高 Re 段並更新受影響的參考值(PR 內說明新舊數);ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-04 — ROADMAP 6:邊界層積分估計分離點
 
 - 做了什麼:無開著的 `[autopilot]` PR。ROADMAP 1、3、7 與 4、5 的主要子項已完成(剩低優先/需文獻資料項目),2 待使用者決定,改做第 6 項第一步。`aero.mjs` 新增 `boundaryLayer(sol, Re)`(Thwaites 層流 + Michel 轉捩 + Head 紊流 + Squire-Young 阻力);流場工作區翼型圖的分離區改由積分得到的紊流分離點 `xSep` 決定,標題列顯示轉捩與分離位置,說明文字同步。
