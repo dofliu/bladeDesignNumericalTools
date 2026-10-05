@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-05 — ROADMAP 7:單價隨方案儲存
+
+- 做了什麼:無開著的 `[autopilot]` PR。`ui.mjs` 的 `curMetrics()` 新增 `cost`(儲存當下 `S.perf.cost` 的複本),方案比較表以 `costEstimate(..., r.cost)` 計算各方案 LCOE,不再被目前單價覆寫;舊方案無此欄位時沿用目前單價。`tests/core.test.mjs` 新增單價快照獨立性測試。
+- 驗證:`npm run check`、`npm test`、`npm run build`、離線 e2e 與桌面/手機截圖。
+- 已知限制:目前設計列仍用目前單價;額定功率 `S.load.Pmax` 尚未隨方案儲存。
+- 下一步:進階 BPM 噪音、Sandia 資料校正、自由渦尾流;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-05 — ROADMAP 7:主畫面顯示噪音概估
 
 - 做了什麼:無開著的 `[autopilot]` PR;ROADMAP 1–6 剩餘項目需實驗資料、使用者決定或屬大項目,故做 ROADMAP 7 噪音項已知限制「UI 尚未顯示」:`ui.mjs` 轉子摘要新增 HAWT 噪音列(Lw 與 50 m 聲壓級,沿用 `noiseEstimate`)。未改模型。

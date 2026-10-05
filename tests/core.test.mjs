@@ -293,6 +293,15 @@ test('成本單價可調:覆寫葉片單價/費率會改變資本支出與 LCOE,
   assert.ok(Math.abs(t.tower - 7 * 6000) < 1e-9);
 });
 
+test('成本:明確傳入的單價(方案快照)不受目前 S.perf.cost 影響', () => {
+  const snap = { gen: 40 };
+  S.perf.cost = { gen: 200 };
+  const cur = costEstimate(10, 'gfrp', 3000, 7, 5000);
+  const sn = costEstimate(10, 'gfrp', 3000, 7, 5000, snap);
+  S.perf.cost = {};
+  assert.ok(Math.abs(cur.gen - 3000 * 200) < 1e-9 && Math.abs(sn.gen - 3000 * 40) < 1e-9);
+});
+
 test('成本與 LCOE 粗估:各項加總、與發電量成反比、材料單價影響', () => {
   const a = costEstimate(10, 'gfrp', 3000, 7, 5000);
   assert.ok(Math.abs(a.capex - (a.blades + a.gen + a.tower)) < 1e-9);
