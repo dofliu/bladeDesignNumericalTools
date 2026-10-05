@@ -268,12 +268,15 @@
   // Build tabulated polar for one Reynolds number
   function polarAtRe(model, Re) {
     const af = model.af, t = af.t, cam = af.camber;
-    const reF = clamp(0.9 + 0.1 * Math.log10(Re / 1e5), 0.7, 1.12);
+    // 失速角的 Re 項:低 Re 緩升,Re > 1e6 後加速(NACA 0012 Re 3×10⁶ Clmax 約 1.6)
+    const reF = clamp(0.9 + 0.1 * Math.log10(Re / 1e5) + 0.25 * Math.max(0, Math.log10(Re / 1e6)), 0.7, 1.2);
+    // 失速角的厚度項:t ≤ 0.12 隨厚度增加,更厚的翼型(NACA 0018)前緣分離提早,失速角反而下降
+    const tTerm = 28 * Math.min(t, 0.12) - 20 * Math.max(0, t - 0.12);
     const lowRe = clamp(Math.pow(1e6 / Re, 0.28), 0.8, 3.2);
     const a = model.slopeInv * (0.92 - 0.06 * clamp(Math.log10(2e5 / Re), 0, 1.5));
     const aL0 = model.aL0 * 0.9;
-    const asPos = clamp((9 + 28 * t + 60 * cam) * reF, 5, 22) * D2R;
-    const asNeg = clamp((9 + 28 * t - 50 * cam) * reF, 4, 20) * D2R;
+    const asPos = clamp((9 + tTerm + 60 * cam) * reF, 5, 22) * D2R;
+    const asNeg = clamp((9 + tTerm - 50 * cam) * reF, 4, 20) * D2R;
     // 高 Re 時平板摩擦公式配厚度修正偏高(NACA 0012 Re 1e6 實測約 0.006);依邊界層積分比對,Re > 3e5 起逐步下修,最多 30%
     const reCal = clamp(1 - 0.25 * Math.log10(Math.max(Re, 3e5) / 3e5), 0.7, 1);
     const cd0 = Math.max(0.004, 2 * cfFlat(Re) * (1 + 2 * t + 60 * Math.pow(t, 4)) * (1 + 0.8 * cam) * reCal);

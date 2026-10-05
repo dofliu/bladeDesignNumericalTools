@@ -96,8 +96,8 @@ rebuild(geo): designHAWT()/designVAWT() → computePerf() → autoMatchGen() →
 | NACA 4412 零升攻角 | −4.14° |
 | NACA 4412 最大 L/D @Re 3×10⁵ | 81 @ 3.5° |
 | 3 葉 R1.5 m λd 7 轉子 Cp,max | 0.477 @ λ 7;偏航 30° 時 0.309 |
-| H 型 Darrieus(R1 H2 B3 c0.15 NACA0018)| Cp 0.368 @ λ 3 |
-| Φ 型 | Cp 0.385 @ λ 3.5 |
+| H 型 Darrieus(R1 H2 B3 c0.15 NACA0018)| Cp 0.333 @ λ 3.5(失速校正前 0.368 @ λ 3)|
+| Φ 型 | Cp 0.357 @ λ 3.75(校正前 0.385 @ λ 3.5)|
 | 扭角方式比較(三站翼型,λd 7)| BEM 0.478 > Schmitz 0.476 > 線性 20→0° 0.450 |
 
 ## 模型限制(對使用者說明時要誠實)
