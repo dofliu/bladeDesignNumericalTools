@@ -59,6 +59,25 @@ test('cumulativeMoment/cumulativeOutboard match a cantilever under uniform distr
   assert.ok(M[n - 1] < w * dr * dr, 'moment ~0 at the tip');
 });
 
+test('DMST: H-type Cp–λ curve shape vs literature band (dynStall / curvature flags)', () => {
+  // 文獻帶(H 型 Darrieus,實度 Bc/R=0.3、NACA 0018,Paraschivoiu / Castelli 等 DMST 與風洞結果的典型範圍):
+  // Cp,max 約 0.25–0.40、出現在 λ 2.5–4;Cp 降為 0(失控轉速)約在 λ 5–7.5。這裡只釘住模型落在帶內的回歸基準,係數尚未校正。
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('0018')));
+  const cfg = { type: 'H', R: 1, H: 2, B: 3, c: 0.15, pitch: 0, nz: 1, polar: ps, rho: 1.225, mu: 1.81e-5, struts: 2 };
+  const curve = o => { const out = []; for (let l = 1.5; l <= 8.01; l += 0.25) out.push({ l, Cp: A.dmstPoint({ ...cfg, ...o }, 8, l).Cp }); return out; };
+  const runaway = c => { const pk = c.reduce((a, x) => (x.Cp > a.Cp ? x : a)); for (let i = c.indexOf(pk); i < c.length - 1; i++) if (c[i].Cp > 0 && c[i + 1].Cp <= 0) return c[i].l + 0.25 * c[i].Cp / (c[i].Cp - c[i + 1].Cp); return NaN; };
+  const res = {};
+  for (const [n, o] of [['base', {}], ['dyn', { dynStall: true }], ['curv', { curvature: true }], ['both', { dynStall: true, curvature: true }]]) {
+    const c = curve(o), pk = c.reduce((a, x) => (x.Cp > a.Cp ? x : a)), ra = runaway(c);
+    res[n] = { pk, ra };
+    assert.ok(pk.Cp > 0.25 && pk.Cp < 0.40, `${n}: Cp,max ${pk.Cp.toFixed(3)} in 0.25–0.40`);
+    assert.ok(pk.l >= 2.5 && pk.l <= 4, `${n}: λ at Cp,max ${pk.l} in 2.5–4`);
+    assert.ok(ra > 5 && ra < 7.5, `${n}: runaway λ ${ra.toFixed(2)} in 5–7.5`);
+  }
+  assert.ok(res.curv.ra < res.base.ra && res.both.ra < res.dyn.ra, 'curvature lowers the runaway tip-speed ratio');
+  console.log('H curve', Object.entries(res).map(([n, r]) => `${n} ${r.pk.Cp.toFixed(3)}@${r.pk.l} runaway ${r.ra.toFixed(2)}`).join(' | '));
+});
+
 test('DMST: H-type and Φ-type Darrieus', () => {
   const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('0018')));
   const run = type => A.vawtCurve({ type, R: 1, H: 2, B: 3, c: 0.15, pitch: 0, helix: 120, nz: 10, polar: ps, rho: 1.225, mu: 1.81e-5, struts: 2 }, 8, 7)
