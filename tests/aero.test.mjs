@@ -64,8 +64,9 @@ test('DMST: H-type and Φ-type Darrieus', () => {
   const run = type => A.vawtCurve({ type, R: 1, H: 2, B: 3, c: 0.15, pitch: 0, helix: 120, nz: 10, polar: ps, rho: 1.225, mu: 1.81e-5, struts: 2 }, 8, 7)
     .reduce((a, c) => (c.Cp > a.Cp ? c : a));
   const h = run('H'), phi = run('phi');
-  near(h.Cp, 0.368, 0.015, 'H Cp'); near(h.l, 3, 0.5, 'H λopt');
-  near(phi.Cp, 0.385, 0.015, 'Φ Cp');
+  // 2026-10-05 失速模型厚度/Re 校正後:NACA 0018 低 Re 失速角下降,H 0.368@λ3 → 0.333@λ3.5、Φ 0.385@λ3.5 → 0.357@λ3.75
+  near(h.Cp, 0.333, 0.015, 'H Cp'); near(h.l, 3.5, 0.5, 'H λopt');
+  near(phi.Cp, 0.357, 0.015, 'Φ Cp');
 });
 
 test('DMST: simplified dynamic stall is opt-in and mainly affects the stalled low-λ region', () => {
@@ -73,7 +74,7 @@ test('DMST: simplified dynamic stall is opt-in and mainly affects the stalled lo
   const cfg = { type: 'H', R: 1, H: 2, B: 3, c: 0.15, pitch: 0, nz: 1, polar: ps, rho: 1.225, mu: 1.81e-5, struts: 2 };
   const base = A.dmstPoint(cfg, 8, 3), off = A.dmstPoint({ ...cfg, dynStall: false }, 8, 3);
   assert.equal(base.Cp, off.Cp, 'flag off leaves results unchanged');
-  const lo0 = A.dmstPoint(cfg, 8, 1.8).Cp, lo1 = A.dmstPoint({ ...cfg, dynStall: true }, 8, 1.8).Cp;
+  const lo0 = A.dmstPoint(cfg, 8, 2.2).Cp, lo1 = A.dmstPoint({ ...cfg, dynStall: true }, 8, 2.2).Cp;
   assert.ok(Number.isFinite(lo1) && Math.abs(lo1 - lo0) > 0.005, `low-λ Cp changes (${lo0.toFixed(3)} -> ${lo1.toFixed(3)})`);
   const hi1 = A.dmstPoint({ ...cfg, dynStall: true }, 8, 3).Cp;
   assert.ok(Math.abs(hi1 - base.Cp) < 0.06 * Math.max(base.Cp, 0.1) + 0.02, `near λopt change small (${base.Cp.toFixed(3)} -> ${hi1.toFixed(3)})`);
@@ -124,7 +125,7 @@ test('極曲線 cd 與邊界層積分 cd 比對:低 Re 吻合、高 Re 校正後
   }
 });
 
-test('極曲線與文獻實驗值比對基準:升力斜率、cd0 吻合,Clmax 偏低(NACA 0012)、厚翼型偏高(NACA 0018)', () => {
+test('極曲線與文獻實驗值比對基準:升力斜率、cd0 吻合,失速模型厚度/Re 校正後 Clmax 與文獻吻合', () => {
   const stats = (code, Re) => {
     const t = A.polarAtRe(A.buildAeroModel(A.naca4(code)), Re);
     let clmax = -9;
@@ -135,10 +136,9 @@ test('極曲線與文獻實驗值比對基準:升力斜率、cd0 吻合,Clmax �
   const s12 = stats('0012', 3e6);
   near(s12.a, 6.2, 0.3, '0012 升力斜率(/rad)');
   near(s12.cd0, 0.0055, 0.0008, '0012 Re3e6 cd0');
-  assert.ok(s12.clmax > 1.6 * 0.75 && s12.clmax < 1.6 * 1.05, `0012 Re3e6 Clmax ${s12.clmax.toFixed(2)}(文獻 1.6,目前偏低約 16%)`);
-  // Sheldahl & Klimas 1981,NACA 0018 Re 3–4×10⁵:Clmax ≈ 1.1–1.2、cd0 ≈ 0.0075;模型目前 Clmax 高估(厚度項單調上升,文獻厚翼型低 Re Clmax 反而下降)
+  assert.ok(s12.clmax > 1.6 * 0.88 && s12.clmax < 1.6 * 1.05, `0012 Re3e6 Clmax ${s12.clmax.toFixed(2)}(文獻 1.6;校正前 1.34,校正後約 1.49)`);
+  // Sheldahl & Klimas 1981,NACA 0018 Re 3–4×10⁵:Clmax ≈ 1.1–1.2、cd0 ≈ 0.0075;校正前 1.51 高估,現在厚度項 t > 0.12 後遞減
   const s18 = stats('0018', 3e5);
-  assert.ok(s18.clmax > 1.2 && s18.clmax < 1.6, `0018 Re3e5 Clmax ${s18.clmax.toFixed(2)}(文獻約 1.1–1.2,已知高估)`);
+  assert.ok(s18.clmax > 1.05 && s18.clmax < 1.3, `0018 Re3e5 Clmax ${s18.clmax.toFixed(2)}(文獻約 1.1–1.2;校正前 1.51)`);
   near(s18.cd0, 0.0075, 0.0015, '0018 Re3e5 cd0');
-  // 已知偏差基準:若日後校正失速模型,需同步更新這裡的上下限並在 PR 說明
-});
+  });
