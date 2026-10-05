@@ -123,3 +123,22 @@ test('極曲線 cd 與邊界層積分 cd 比對:低 Re 吻合、高 Re 校正後
     }
   }
 });
+
+test('極曲線與文獻實驗值比對基準:升力斜率、cd0 吻合,Clmax 偏低(NACA 0012)、厚翼型偏高(NACA 0018)', () => {
+  const stats = (code, Re) => {
+    const t = A.polarAtRe(A.buildAeroModel(A.naca4(code)), Re);
+    let clmax = -9;
+    for (let k = 0; k < t.al.length; k++) if (t.al[k] > 0 && t.al[k] < 0.5) clmax = Math.max(clmax, t.CL[k]);
+    return { clmax, cd0: t.cd0, a: t.a };
+  };
+  // Abbott & von Doenhoff,NACA 0012 光滑表面 Re 3×10⁶:a₀ ≈ 0.108/°(6.2/rad)、Cd,min ≈ 0.0055、Clmax ≈ 1.6
+  const s12 = stats('0012', 3e6);
+  near(s12.a, 6.2, 0.3, '0012 升力斜率(/rad)');
+  near(s12.cd0, 0.0055, 0.0008, '0012 Re3e6 cd0');
+  assert.ok(s12.clmax > 1.6 * 0.75 && s12.clmax < 1.6 * 1.05, `0012 Re3e6 Clmax ${s12.clmax.toFixed(2)}(文獻 1.6,目前偏低約 16%)`);
+  // Sheldahl & Klimas 1981,NACA 0018 Re 3–4×10⁵:Clmax ≈ 1.1–1.2、cd0 ≈ 0.0075;模型目前 Clmax 高估(厚度項單調上升,文獻厚翼型低 Re Clmax 反而下降)
+  const s18 = stats('0018', 3e5);
+  assert.ok(s18.clmax > 1.2 && s18.clmax < 1.6, `0018 Re3e5 Clmax ${s18.clmax.toFixed(2)}(文獻約 1.1–1.2,已知高估)`);
+  near(s18.cd0, 0.0075, 0.0015, '0018 Re3e5 cd0');
+  // 已知偏差基準:若日後校正失速模型,需同步更新這裡的上下限並在 PR 說明
+});
