@@ -293,6 +293,7 @@ export function updateSummaries() {
     rows.push(['Cp,max', fmt(G.cpMax, 3)], ['最佳尖速比 λopt', fmt(G.lopt, 2)], [`功率 @ ${fmt(Vd, 1)} m/s`, fmtP(Pd)], ['對應轉速', fmt(G.lopt * Vd / G.R * 30 / Math.PI, 0) + ' rpm']);
     { const ce = costEstimate(G.mass, S.mode === 'HAWT' ? S.hawt.material : S.vawt.material, S.load.Pmax, G.A, snapAEP({ A: G.A, cpMax: G.cpMax }));
       rows.push(['資本支出(概估)', 'NT$ ' + fmt(ce.capex, 0)], ['LCOE(概估)', isFinite(ce.lcoe) ? 'NT$ ' + fmt(ce.lcoe, 1) + '/kWh' : '–']); }
+    if (S.mode === 'HAWT') { const nz = noiseEstimate(S.hawt.tsr * S.hawt.Vd, 2 * S.hawt.R, 50); rows.push(['噪音(概估,設計點)', `Lw ${fmt(nz.Lw, 0)} dB(A),${nz.dist} m ${fmt(nz.Lp, 0)} dB(A)`]); }
     kv($('#rotorSummary'), rows);
   }
 }

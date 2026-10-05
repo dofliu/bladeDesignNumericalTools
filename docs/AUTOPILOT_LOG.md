@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-05 — ROADMAP 7:主畫面顯示噪音概估
+
+- 做了什麼:無開著的 `[autopilot]` PR;ROADMAP 1–6 剩餘項目需實驗資料、使用者決定或屬大項目,故做 ROADMAP 7 噪音項已知限制「UI 尚未顯示」:`ui.mjs` 轉子摘要新增 HAWT 噪音列(Lw 與 50 m 聲壓級,沿用 `noiseEstimate`)。未改模型。
+- 驗證:`npm run check`、`npm test`、`npm run build`、離線 e2e 與桌面/手機截圖。
+- 已知限制:經驗式 ±5 dB;僅 HAWT。
+- 下一步:進階 BPM 噪音、Sandia 資料校正、自由渦尾流;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-05 — ROADMAP 5:H 型 Cp–λ 文獻帶回歸基準
 
 - 做了什麼:無開著的 `[autopilot]` PR。`tests/aero.test.mjs` 新增 H 型 Cp–λ 曲線形狀測試,對四種旗標組合(基準/動態失速/流線彎曲/兩者)檢查 Cp,max 0.25–0.40、位於 λ 2.5–4、失控轉速 λ 5–7.5,並確認流線彎曲使失控 λ 下降。實測:base 0.333@3.5/6.23、dyn 0.340@3.25/6.22、curv 0.300@3.25/5.78、both 0.318@3.25/5.87。未改任何模型程式碼,dist 無變化。
