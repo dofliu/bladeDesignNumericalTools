@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -322,4 +322,11 @@ test('成本與 LCOE 粗估:各項加總、與發電量成反比、材料單價�
   designHAWT(); computePerf();
   const d = costEstimate(G.mass, S.hawt.material, S.load.Pmax, G.A, 4000);
   assert.ok(d.lcoe > 1 && d.lcoe < 100, 'LCOE ' + d.lcoe);
+});
+
+test('idealAEP:額定限幅使容量因數 ≤ 1、單調且未限額時等於不限幅', () => {
+  const m = { A: 7, cpMax: 0.45 }, free = idealAEP(m, 0), cap = idealAEP(m, 3000), tiny = idealAEP(m, 1);
+  assert.ok(cap < free && tiny < cap && cap > 0);
+  assert.ok(capacityFactor(tiny, 1) <= 1 + 1e-9 && capacityFactor(cap, 3000) <= 1);
+  assert.ok(Math.abs(idealAEP(m, 1e9) - free) < 1e-6 * free);
 });

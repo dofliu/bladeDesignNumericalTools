@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-06 — ROADMAP 7:AEP 限額定功率
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `idealAEP(m, ratedW)`,每個風速的電功率以額定封頂;`ui.mjs` 的 `snapAEP` 改用它(舊方案沿用 `snapRated`)。方案比較與報告的 AEP、容量因數、LCOE 因此不再高估(高風速區原本無上限)。比較表 tooltip 同步。`tests/core.test.mjs` 新增限幅單調性與容量因數 ≤ 1 測試。
+- 驗證:見 PR 內文。
+- 已知限制:仍為理想 MPPT 穩態,未含保護停機/切出風速;「性能曲線」分頁的年發電量圖(ui.mjs 約 670 行)尚未限額定。
+- 下一步:性能曲線分頁年發電量圖限額定、進階 BPM 噪音、Sandia 校正;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-06 — ROADMAP 7:額定功率隨方案儲存
 
 - 做了什麼:無開著的 `[autopilot]` PR。補上上一筆的已知限制:`curMetrics()` 記錄 `Pmax`,`core.mjs` 新增 `snapRated(m)`(有快照值用快照、舊方案沿用目前 `S.load.Pmax`),方案比較表的容量因數與 LCOE 改用各方案自己的額定功率。`tests/core.test.mjs` 新增 `snapRated` 測試。未改模型。
