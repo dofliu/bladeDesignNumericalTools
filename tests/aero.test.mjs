@@ -161,3 +161,15 @@ test('極曲線與文獻實驗值比對基準:升力斜率、cd0 吻合,失速�
   assert.ok(s18.clmax > 1.05 && s18.clmax < 1.3, `0018 Re3e5 Clmax ${s18.clmax.toFixed(2)}(文獻約 1.1–1.2;校正前 1.51)`);
   near(s18.cd0, 0.0075, 0.0015, '0018 Re3e5 cd0');
   });
+
+test('DMST: 靜止轉子啟動轉矩(vawtStaticTorque)', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('0018')));
+  const cfg = { type: 'H', R: 1, H: 2, B: 3, c: 0.15, pitch: 0, nz: 1, polar: ps, rho: 1.225, mu: 1.81e-5 };
+  const r = A.vawtStaticTorque(cfg, 8);
+  assert.equal(r.tot.length, 72);
+  assert.ok(Number.isFinite(r.mean) && r.max >= r.mean && r.mean >= r.min, 'min ≤ mean ≤ max');
+  console.log('static torque Cq mean/min/max', r.mean.toFixed(3), r.min.toFixed(3), r.max.toFixed(3), 'selfStart', r.selfStart);
+  assert.equal(r.selfStart, false);
+  const r2 = A.vawtStaticTorque(cfg, 12);
+  assert.ok(Math.abs(r2.mean - r.mean) < 0.5 * Math.abs(r.mean) + 0.05, 'Cq roughly V-independent');
+});

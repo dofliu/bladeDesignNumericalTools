@@ -631,6 +631,34 @@
     const P = Qtot * omega, q0 = 0.5 * rho * A * V ** 3;
     return { Q: Qtot, P, Cp: P / q0, Ct: Ttot / (0.5 * rho * A * V * V), qAz, alAz, A, mid };
   }
+  // 靜止轉子(λ=0)的啟動轉矩:每個轉子方位角用 360° 靜態極曲線算 B 片葉片的合轉矩。
+  // 近似:迎風半圈(cosθ>0)吃全風速,背風半圈吃 0.5 倍尾流風速;無誘導/動態失速,只作為能否自行啟動的定性判斷。
+  // 回傳無因次啟動轉矩係數 Cq = Q / (0.5ρ A V² R) 的平均/最小/最大值與是否所有方位角皆為正(可自行啟動)。
+  function vawtStaticTorque(cfg, V, nPsi) {
+    nPsi = nPsi || 72;
+    const { B, c, rho, mu } = cfg, pitch = (cfg.pitch || 0) * D2R, R = cfg.R;
+    const slices = vawtSlices(cfg), A = vawtArea(cfg);
+    const blade = th => { // 單片葉片、全部截面的轉矩 (N·m)
+      let q = 0;
+      for (const s of slices) {
+        const cosd = Math.cos(s.delta), Vl = V * (Math.cos(th) > 0 ? 1 : 0.5);
+        const Wn = Vl * Math.cos(th) * cosd, Wt = -Vl * Math.sin(th);
+        const phi = Math.atan2(Wn, Wt), W2 = Wn * Wn + Wt * Wt;
+        const [cl, cd] = lookup(cfg.polar, phi + pitch, Math.max(1e3, rho * Math.sqrt(W2) * c / mu));
+        q += 0.5 * rho * W2 * c * (s.dz / cosd) * (cl * Math.sin(phi) - cd * Math.cos(phi)) * s.r;
+      }
+      return q;
+    };
+    const tot = [];
+    for (let i = 0; i < nPsi; i++) {
+      let q = 0;
+      for (let b = 0; b < B; b++) q += blade(2 * Math.PI * (i / nPsi + b / B));
+      tot.push(q / (0.5 * rho * A * V * V * R));
+    }
+    const mean = tot.reduce((a, x) => a + x, 0) / nPsi;
+    const min = Math.min(...tot), max = Math.max(...tot);
+    return { mean, min, max, selfStart: min > 0, tot };
+  }
   function vawtCurve(cfg, V, lmax) {
     const pts = [];
     for (let l = 0.25; l <= lmax + 1e-9; l += 0.25) {
@@ -672,4 +700,4 @@
 
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtCurve, savoniusCurve };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve };
