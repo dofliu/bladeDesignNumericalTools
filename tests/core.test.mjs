@@ -94,15 +94,16 @@ test('cut-out wind speed brakes the rotor in high wind and restarts once the win
   for (let t = 0; t < 40; t += 0.004) simStep(0.004);
   assert.ok(SIM.cutout, 'cut-out latch should engage once the mean wind exceeds vCutOut');
   assert.ok(SIM.omega < 0.2 * omega0, `rotor should brake to a near-stop, omega=${SIM.omega.toFixed(2)} vs omega0=${omega0.toFixed(2)}`);
+  const omegaBraked = SIM.omega;
   const trips1 = SIM.trips || 0;
   for (let t = 0; t < 20; t += 0.004) simStep(0.004);
   assert.equal(SIM.trips || 0, trips1, 'no further overspeed trips while cut-out keeps the rotor braked in sustained high wind');
   S.tun.V = 8;
   for (let t = 0; t < 40; t += 0.004) simStep(0.004);
   assert.ok(!SIM.cutout, 'cut-out should release once the mean wind drops below vRestart');
-  const omegaAfterRelease = SIM.omega;
+  // 失速模型校正後起轉更快,釋放當下轉速可能已接近最佳轉速,故改與煞停時的轉速比較
   for (let t = 0; t < 20; t += 0.004) simStep(0.004);
-  assert.ok(SIM.omega > omegaAfterRelease, 'rotor should spin back up again after cut-out clears');
+  assert.ok(SIM.omega > 3 * omegaBraked + 1, `rotor should spin back up again after cut-out clears (${SIM.omega.toFixed(1)} vs braked ${omegaBraked.toFixed(1)})`);
 });
 
 test('gammaFn matches known values (1, 2, 1.5, 0.5)', () => {

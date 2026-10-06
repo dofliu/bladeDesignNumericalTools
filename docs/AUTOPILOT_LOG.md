@@ -2,6 +2,14 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-05 — ROADMAP 6:校正失速模型厚度與 Re 項
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` `polarAtRe`:失速角 Re 項在 Re > 3e5 再加 0.16/decade(厚翼型依 t−0.12 遞減),厚度項在低 Re 對 t > 0.12 扣 28·(t−0.12)、Re 到 1e6 淡出。Clmax:NACA 0012 Re 3e6 1.34 → 1.54(文獻 1.6);0018 Re 3e5 1.51 → 1.33(文獻 1.1–1.2);Re ≤ 3e5 的薄翼型不變。
+- 參考值變動(理由):H 型 Darrieus Cp 0.368@λ3 → 0.354@λ3.25(0018 低 Re 提早失速,測試 ±0.015 與 λopt ±0.5 仍通過,未改),Φ 型測試未改。`tests/aero.test.mjs`:動態失速比較點 λ1.8 → 2.2(λ1.8 已落深失速區、差異 0.004 < 0.005);文獻比對上下限依新結果收緊。`tests/core.test.mjs` 切出重啟測試:起轉變快,釋放時轉速已近最佳轉速,改為與煞停轉速比較(> 3 倍 + 1)。MPPT 門檻未動。
+- 驗證:`npm run check`、`npm test`(46/46)、`npm run build`、離線 e2e(見 PR 內文)。
+- 已知限制:0018 高 Re Clmax 約 1.8 偏高;未比對負攻角與低 Re 薄翼型。
+- 下一步:ROADMAP 5 以文獻資料校正動態失速/流線彎曲係數,或 ROADMAP 7 進階 BPM 噪音;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-05 — ROADMAP 6:極曲線與文獻實驗值比對基準
 
 - 做了什麼:無開著的 `[autopilot]` PR。`tests/aero.test.mjs` 新增文獻比對測試,量測極曲線模型對 Abbott & von Doenhoff(NACA 0012 Re 3×10⁶)與 Sheldahl & Klimas(NACA 0018 Re 3×10⁵)的偏差:升力斜率 6.35 vs 6.2/rad、cd0 吻合;Clmax 0012 Re 3e6 低約 16%(1.34 vs 1.6),0018 Re 3e5 高估(1.51 vs 約 1.1–1.2),根因為失速角厚度項單調上升。未改模型,只把偏差釘成回歸基準(校正會連動 Darrieus Cp 參考值,不屬小步)。
