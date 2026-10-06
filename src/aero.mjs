@@ -274,7 +274,11 @@
     const aL0 = model.aL0 * 0.9;
     const asPos = clamp((9 + 28 * t + 60 * cam) * reF, 5, 22) * D2R;
     const asNeg = clamp((9 + 28 * t - 50 * cam) * reF, 4, 20) * D2R;
-    const cd0 = Math.max(0.004, 2 * cfFlat(Re) * (1 + 2 * t + 60 * Math.pow(t, 4)) * (1 + 0.8 * cam));
+    let cd0 = Math.max(0.004, 2 * cfFlat(Re) * (1 + 2 * t + 60 * Math.pow(t, 4)) * (1 + 0.8 * cam));
+    // 高 Re 時平板經驗式隨 Re 增加(轉捩前移的效應被高估),改與邊界層積分的零攻角阻力混合:
+    // Re ≤ 5e5 全用經驗式(低 Re 沿用既有校正),Re ≥ 1e6 全用 boundaryLayer(對數內插)。
+    const wBL = clamp(Math.log10(Re / 5e5) / Math.log10(2), 0, 1);
+    if (wBL > 0) cd0 = Math.max(0.004, (1 - wBL) * cd0 + wBL * boundaryLayer(model.solve(0), Re).cd);
     const kd = 0.32 * lowRe;
     const aCdMin = 0.4 * aL0;
     const drop = clamp(0.7 + 1.4 * t, 0.72, 0.96);

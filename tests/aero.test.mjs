@@ -106,3 +106,12 @@ test('boundary layer: separation moves forward with angle of attack and lower Re
   const cds = [0, 8, 16].map(a => A.boundaryLayer(A.panel(A.naca4('0012'))(a * A.D2R), 3e5).cd);
   assert.ok(cds[0] < cds[1] && cds[1] < cds[2], '阻力隨攻角增加');
 });
+
+test('polar: zero-lift drag no longer rises with Re above 7e5 (matches boundary layer)', () => {
+  const af = A.naca4('0012'), m = A.buildAeroModel(af);
+  const cd = Re => A.polarAtRe(m, Re).cd0;
+  assert.ok(cd(1e6) < cd(7e5) && cd(2e6) < cd(1e6) && cd(3e6) < cd(2e6), 'cd0 隨 Re 單調下降');
+  near(cd(1e6), 0.0056, 0.0008, 'NACA 0012 Re 1e6 cd0');
+  near(cd(3e6), 0.0050, 0.0008, 'NACA 0012 Re 3e6 cd0');
+  near(cd(3e5), A.polarAtRe(m, 3e5).cd0, 1e-12, '低 Re 不受影響');
+});
