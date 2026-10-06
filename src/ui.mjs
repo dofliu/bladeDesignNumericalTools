@@ -443,7 +443,7 @@ export function curMetrics() {
   const P = G.perf, cm = G.cpMax; let lo = null, hi = null;
   for (let i = 0; i < P.lam.length; i++) if (P.cp[i] >= 0.9 * cm) { if (lo == null) lo = P.lam[i]; hi = P.lam[i]; }
   const H = S.mode === 'HAWT', R = G.R;
-  const m = { mode: S.mode, A: G.A, R, cpMax: cm, lopt: G.lopt, band: [lo, hi], mass: H ? G.bladeMass : G.mass, massTot: G.mass, mat: H ? S.hawt.material : S.vawt.material, cost: { ...(S.perf.cost || {}) }, cpDes: H ? G.cpDesign : null, lamD: H ? S.hawt.tsr : null,
+  const m = { mode: S.mode, A: G.A, R, cpMax: cm, lopt: G.lopt, band: [lo, hi], mass: H ? G.bladeMass : G.mass, massTot: G.mass, mat: H ? S.hawt.material : S.vawt.material, cost: { ...(S.perf.cost || {}) }, Pmax: S.load.Pmax, cpDes: H ? G.cpDesign : null, lamD: H ? S.hawt.tsr : null,
     lam: r4(P.lam), cp: r4(P.cp.map(v => Math.max(-0.2, v))), sub: designSub() };
   if (H) Object.assign(m, { rr: r4(G.rows.map(x => x.r / R)), cR: r4(G.rows.map(x => x.c / R)), tw: r4(G.rows.map(x => x.tw)), aAct: r4(G.rows.map(x => x.aAct)), aD: r4(G.rows.map(x => x.aD)), tc: r4(G.afs.map(a => a.t)) });
   return m;
@@ -514,8 +514,8 @@ export function drawCompare() {
   const rows = [{ ...cur, cur: true }, ...SNAPS];
   const best = k => Math.max(...rows.map(r => r[k] || 0));
   const aeps = rows.map(r => snapAEP(r)), bestAep = Math.max(...aeps);
-  const cfs = aeps.map(e => capacityFactor(e, S.load.Pmax)), bestCf = Math.max(...cfs);
-  const lcoes = rows.map((r, i) => r.massTot != null ? costEstimate(r.massTot, r.mat, S.load.Pmax, r.A, aeps[i], r.cost).lcoe : NaN), bestL = Math.min(...lcoes.filter(isFinite));
+  const cfs = aeps.map((e, i) => capacityFactor(e, snapRated(rows[i]))), bestCf = Math.max(...cfs);
+  const lcoes = rows.map((r, i) => r.massTot != null ? costEstimate(r.massTot, r.mat, snapRated(r), r.A, aeps[i], r.cost).lcoe : NaN), bestL = Math.min(...lcoes.filter(isFinite));
   const bw = r => r.band && r.band[0] != null ? r.band[1] - r.band[0] : 0, bestBw = Math.max(...rows.map(bw));
   const cls = (val, b) => Math.abs(val - b) < 1e-9 && rows.length > 1 ? 'best' : '';
   let h = `<table><colgroup><col style="width:27%"><col style="width:11%"><col style="width:8%"><col style="width:17%"><col style="width:12%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、未限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;

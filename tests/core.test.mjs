@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -300,6 +300,14 @@ test('成本:明確傳入的單價(方案快照)不受目前 S.perf.cost 影響'
   const sn = costEstimate(10, 'gfrp', 3000, 7, 5000, snap);
   S.perf.cost = {};
   assert.ok(Math.abs(cur.gen - 3000 * 200) < 1e-9 && Math.abs(sn.gen - 3000 * 40) < 1e-9);
+});
+
+test('方案快照的額定功率:有記錄用快照、舊方案沿用目前 S.load.Pmax', () => {
+  const keep = S.load.Pmax; S.load.Pmax = 5000;
+  assert.equal(snapRated({ Pmax: 2000 }), 2000);
+  assert.equal(snapRated({}), 5000);
+  assert.equal(snapRated({ Pmax: 0 }), 5000);
+  S.load.Pmax = keep;
 });
 
 test('成本與 LCOE 粗估:各項加總、與發電量成反比、材料單價影響', () => {

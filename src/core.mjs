@@ -64,6 +64,8 @@ function windDensity(v, dv = 0.5) { // measured-series density when imported, el
   const i = Math.round(v / ws.dv) - 1; return i >= 0 && i < ws.pdf.length ? ws.pdf[i] : 0;
 }
 function capacityFactor(aepKWh, ratedW) { return ratedW > 0 ? aepKWh / (ratedW * 8760 / 1000) : 0; }
+// 方案快照儲存當下的發電機額定功率;舊方案無此欄位則沿用目前設定
+function snapRated(m) { return m && m.Pmax > 0 ? m.Pmax : S.load.Pmax; }
 
 /* Tip-speed noise estimate (HAWT), after the Hau/Wagner empirical law Lw = 50 log10(Vtip) + 10 log10(D) - 4 dB(A).
    Far field: hemispherical spreading Lp = Lw - 10 log10(2 pi r^2) minus air absorption (~0.005 dB/m). Rough, +-5 dB. */
@@ -690,4 +692,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
+export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
