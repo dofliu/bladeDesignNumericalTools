@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -276,6 +276,21 @@ test('噪音估計:尖速 5 次方律與球面擴散', () => {
   designHAWT(); computePerf();
   const n = noiseEstimate(S.hawt.tsr * S.hawt.Vd, 2 * S.hawt.R, 50);
   assert.ok(n.Lw > 60 && n.Lw < 100 && n.Lp < n.Lw);
+});
+
+test('BPM 後緣自噪音:轉速 5 次方律、距離平方反比、葉片數能量相加,設計點量級合理', () => {
+  designHAWT(); computePerf();
+  const { rho, mu } = air(), B = S.hawt.B;
+  const n1 = tbleNoise(G.rows, G.desElems, B, rho, mu, 50);
+  // scaling in relative speed: W x 1.5 -> Re also changes (thinner d*), so only require a clear rise
+  const fast = G.desElems.map(e => ({ ...e, W: e.W * 1.5 }));
+  assert.ok(tbleNoise(G.rows, fast, B, rho, mu, 50).Lp > n1.Lp + 3);
+  assert.ok(Math.abs((n1.Lp - tbleNoise(G.rows, G.desElems, B, rho, mu, 100).Lp) - 20 * Math.log10(2)) < 1e-6);
+  assert.ok(Math.abs((tbleNoise(G.rows, G.desElems, 2 * B, rho, mu, 50).Lp - n1.Lp) - 10 * Math.log10(2)) < 1e-6);
+  assert.ok(n1.Lp > 20 && n1.Lp < 90, 'Lp ' + n1.Lp);
+  // higher AoA -> thicker suction-side BL -> louder
+  const hi = G.desElems.map(e => ({ ...e, alpha: e.alpha + 6 }));
+  assert.ok(tbleNoise(G.rows, hi, B, rho, mu, 50).Lp > n1.Lp);
 });
 
 test('成本單價可調:覆寫葉片單價/費率會改變資本支出與 LCOE,預設不變', () => {
