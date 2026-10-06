@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-04 — ROADMAP 6:極曲線 cd0 接上邊界層積分
+
+- 做了什麼:無開著的 `[autopilot]` PR。`polarAtRe` 的最小阻力 `cd0` 在 Re ≥ 1e6 改用 `boundaryLayer`(Squire-Young)在最小阻力攻角的 cd,Re 5e5–1e6 之間 log 混合,Re ≤ 5e5 不變。原平板摩擦式在高 Re 偏高(NACA 0012 Re 3e6:0.0078 vs 0.0050)。
+- 驗證:`npm run check`、`npm test`(45/45,新增高/低 Re cd0 測試;既有 3e5 L/D 81、BEM Cp 0.477 參考值未動)、`npm run build`、離線 e2e;見 PR 內文。
+- 已知限制:只校正 cd0,攻角相依項 `kd` 與失速估計未動;高 Re 下 4412 最大 L/D 由約 90 升至 98,尚未與實驗資料逐點比較。
+- 下一步:ROADMAP 6 校正 `kd`/失速,或自由渦尾流;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-04 — ROADMAP 6:邊界層積分估計分離點
 
 - 做了什麼:無開著的 `[autopilot]` PR。ROADMAP 1、3、7 與 4、5 的主要子項已完成(剩低優先/需文獻資料項目),2 待使用者決定,改做第 6 項第一步。`aero.mjs` 新增 `boundaryLayer(sol, Re)`(Thwaites 層流 + Michel 轉捩 + Head 紊流 + Squire-Young 阻力);流場工作區翼型圖的分離區改由積分得到的紊流分離點 `xSep` 決定,標題列顯示轉捩與分離位置,說明文字同步。

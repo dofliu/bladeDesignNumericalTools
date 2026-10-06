@@ -274,9 +274,16 @@
     const aL0 = model.aL0 * 0.9;
     const asPos = clamp((9 + 28 * t + 60 * cam) * reF, 5, 22) * D2R;
     const asNeg = clamp((9 + 28 * t - 50 * cam) * reF, 4, 20) * D2R;
-    const cd0 = Math.max(0.004, 2 * cfFlat(Re) * (1 + 2 * t + 60 * Math.pow(t, 4)) * (1 + 0.8 * cam));
     const kd = 0.32 * lowRe;
     const aCdMin = 0.4 * aL0;
+    let cd0 = Math.max(0.004, 2 * cfFlat(Re) * (1 + 2 * t + 60 * Math.pow(t, 4)) * (1 + 0.8 * cam));
+    // Re > 5e5: the flat-plate form drag overshoots (NACA 0012 Re 3e6: 0.0078 vs ~0.0052), so blend toward the
+    // integral boundary-layer (Squire-Young) cd at the minimum-drag angle; fully BL above Re 1e6.
+    const wBL = clamp((Math.log10(Re) - 5.7) / 0.3, 0, 1);
+    if (wBL > 0) {
+      const cdBL = boundaryLayer(model.solve(aCdMin), Re).cd;
+      cd0 = (1 - wBL) * cd0 + wBL * Math.max(0.0045, cdBL);
+    }
     const drop = clamp(0.7 + 1.4 * t, 0.72, 0.96);
     const cdMax = model.cdMax;
     const w = 1.4 * D2R;
