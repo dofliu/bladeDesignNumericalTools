@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-06 — ROADMAP 7:額定功率隨方案儲存
+
+- 做了什麼:無開著的 `[autopilot]` PR。補上上一筆的已知限制:`curMetrics()` 記錄 `Pmax`,`core.mjs` 新增 `snapRated(m)`(有快照值用快照、舊方案沿用目前 `S.load.Pmax`),方案比較表的容量因數與 LCOE 改用各方案自己的額定功率。`tests/core.test.mjs` 新增 `snapRated` 測試。未改模型。
+- 驗證:`npm run check`、`npm test`(49/49)、`npm run build`、離線 e2e 全過(追蹤率 93–97%)、桌面/手機載入無頁面錯誤。
+- 已知限制:AEP 仍為理想 MPPT 未限額定(與額定功率無關);報告的方案表尚無容量因數欄。
+- 下一步:進階 BPM 噪音、Sandia 資料校正、自由渦尾流;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-05 — ROADMAP 7:單價隨方案儲存
 
 - 做了什麼:無開著的 `[autopilot]` PR。`ui.mjs` 的 `curMetrics()` 新增 `cost`(儲存當下 `S.perf.cost` 的複本),方案比較表以 `costEstimate(..., r.cost)` 計算各方案 LCOE,不再被目前單價覆寫;舊方案無此欄位時沿用目前單價。`tests/core.test.mjs` 新增單價快照獨立性測試。
