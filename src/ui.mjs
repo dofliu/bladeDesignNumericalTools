@@ -674,7 +674,7 @@ export function drawPerf() {
     const lim = S.load.ospd && wopt > S.load.wmaxRpm * Math.PI / 30;
     Pm.push(lim ? NaN : pm);
     const st = steadyPower(v);
-    Pf.push(S.load.ospd && (st.w > S.load.wmaxRpm * Math.PI / 30 || st.Pout > 1.25 * S.load.Pmax) ? NaN : st.Pout);
+    Pf.push(S.load.ospd && (st.w > S.load.wmaxRpm * Math.PI / 30 || st.Pout > 1.25 * S.load.Pmax) ? NaN : Math.min(st.Pout, S.load.Pmax)); // capped at rated, same as the MPPT curve and the plan table
     const f = windDensity(v);
     wb.push(f);
     aepM += (isFinite(Pm[Pm.length - 1]) ? Pm[Pm.length - 1] : 0) * f * 0.5 * 8760 / 1000;
@@ -684,7 +684,7 @@ export function drawPerf() {
   Plot.draw(cv[2], {
     title: `年發電量 MPPT ${fmt(aepM, 0)} kWh(容量因數 ${fmt(cfM * 100, 0)}%)· 固定D ${fmt(aepF, 0)} kWh(${fmt(cfF * 100, 0)}%)`,
     series: [{ x: Vs, y: wb, color: col('--muted'), axis: 'R', width: 1, fill: col('--grid'), label: '風速機率' },
-      { x: Vs, y: Pm, color: col('--c1'), label: 'MPPT 理想(限額定)' }, { x: Vs, y: Pf, color: col('--c2'), dash: [5, 3], label: `固定 D=${fmt(S.load.D * 100, 0)}%` }],
+      { x: Vs, y: Pm, color: col('--c1'), label: 'MPPT 理想(限額定)' }, { x: Vs, y: Pf, color: col('--c2'), dash: [5, 3], label: `固定 D=${fmt(S.load.D * 100, 0)}%(限額定)` }],
     xlabel: '風速 (m/s)', ylabel: '電功率 (W)', ylabelR: '機率密度', xlim: [0, 25], ylim: [0, 1.15 * Math.max(10, ...Pm.filter(isFinite), ...Pf.filter(isFinite))], ylimR: [0, 1.15 * Math.max(...wb)],
     markers: o.V != null ? [{ x: S.tun.V, y: o.el ? o.el.Pout : 0, color: col('--signal') }] : []
   });
