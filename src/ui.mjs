@@ -476,10 +476,8 @@ export function loadSnap(sn) {
   if (S.mode !== sn.mode) setMode(sn.mode); else { renderPane(); pendingStart = true; rebuild(true); chartOpts(); }
   toast('已載入「' + sn.name + '」');
 }
-export function snapAEP(m) { // ideal MPPT (Cp,max tracking, no rated-power cap), Weibull(Vavg, k) wind distribution
-  const { rho } = air(), Va = S.perf.Vavg, k = S.perf.k || 2, eta = 0.92 * S.load.eta; let e = 0;
-  for (let v = 0.5; v <= 25.001; v += 0.5) { const f = windDensity(v); e += 0.5 * rho * m.A * v ** 3 * m.cpMax * eta * f * 0.5 * 8760 / 1000; }
-  return e;
+export function snapAEP(m) { // ideal MPPT (Cp,max tracking), output capped at the rated power, wind distribution from windDensity
+  return idealAEP(m, snapRated(m));
 }
 export function setCmpLayout(on) {
   const cb = $('#cbody'), box = $('#cmpBox');
@@ -518,7 +516,7 @@ export function drawCompare() {
   const lcoes = rows.map((r, i) => r.massTot != null ? costEstimate(r.massTot, r.mat, snapRated(r), r.A, aeps[i], r.cost).lcoe : NaN), bestL = Math.min(...lcoes.filter(isFinite));
   const bw = r => r.band && r.band[0] != null ? r.band[1] - r.band[0] : 0, bestBw = Math.max(...rows.map(bw));
   const cls = (val, b) => Math.abs(val - b) < 1e-9 && rows.length > 1 ? 'best' : '';
-  let h = `<table><colgroup><col style="width:27%"><col style="width:11%"><col style="width:8%"><col style="width:17%"><col style="width:12%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、未限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;
+  let h = `<table><colgroup><col style="width:27%"><col style="width:11%"><col style="width:8%"><col style="width:17%"><col style="width:12%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、輸出限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;
   rows.forEach((r, i) => {
     const sw = r.cur ? `<span class="sw" style="background:transparent;border:1.5px dashed ${col('--ink')}"></span>` : `<input type="checkbox" data-vis="${r.id}" ${r.vis ? 'checked' : ''} aria-label="顯示"><span class="sw" style="background:${col(SNAP_COL[r.ci])}"></span>`;
     const sub = `${r.sub}${r.cpDes != null ? ` · Cp(λd) ${fmt(r.cpDes, 3)}` : ''} · ${fmt(r.mass, 2)} kg${r.mode === 'HAWT' ? '/葉' : ''}`;
