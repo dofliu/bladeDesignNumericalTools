@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-06 — ROADMAP 7:年發電量圖固定占空比曲線限額定
+
+- 做了什麼:無開著的 `[autopilot]` PR。`ui.mjs` 性能曲線分頁年發電量圖的「固定 D」曲線以額定功率封頂(MPPT 曲線原本已限),圖例標示「限額定」,固定 D 的 AEP 與容量因數不再可能超過額定。未改模型與測試門檻。
+- 驗證:見 PR 內文。
+- 已知限制:仍為穩態準靜態,未含保護停機/切出風速。
+- 下一步:進階 BPM 噪音、Sandia 校正;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-06 — ROADMAP 7:AEP 限額定功率
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `idealAEP(m, ratedW)`,每個風速的電功率以額定封頂;`ui.mjs` 的 `snapAEP` 改用它(舊方案沿用 `snapRated`)。方案比較與報告的 AEP、容量因數、LCOE 因此不再高估(高風速區原本無上限)。比較表 tooltip 同步。`tests/core.test.mjs` 新增限幅單調性與容量因數 ≤ 1 測試。
