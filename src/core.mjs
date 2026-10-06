@@ -85,6 +85,30 @@ function noiseEstimate(vTip, D, dist = 50) {
   return { Lw, Lp, dist };
 }
 
+/* Turbulent-boundary-layer trailing-edge (TBL-TE) self noise, after the Brooks-Pope-Marcolini (BPM, NASA RP-1218) displacement-
+   thickness correlation form and the peak level SPL = 10log10(d* M^5 L Dh / r^2) + K1 - 3, summed over the suction and
+   pressure sides, elements and blades with incoherent (energy) addition. The spectral shape is not resolved: a +5 dB term
+   stands for the one-third-octave band sum. Observer fixed at `dist` in the rotor plane, Dh = 1, no Doppler/azimuth, unweighted.
+   Use for relative comparison between designs; absolute level is +-5 dB or worse. */
+function tbleNoise(rows, elems, B, rho, mu, dist = 50) {
+  const c0 = 340;
+  const dStar = (Rc, a) => { // returns [suction, pressure] displacement thickness / chord
+    const lg = Math.log10(Math.max(Rc, 1e4)), d0 = Math.pow(10, 3.411 - 1.5397 * lg + 0.1059 * lg * lg);
+    const aa = Math.min(Math.abs(a), 20);
+    const s = aa <= 7.5 ? Math.pow(10, 0.0679 * aa) : aa <= 12.5 ? 0.0162 * Math.pow(10, 0.3066 * aa) : 52.42 * Math.pow(10, 0.0258 * aa);
+    const ap = Math.min(aa, 5), p = Math.pow(10, -0.0432 * ap + 0.00113 * ap * ap);
+    return [d0 * s, d0 * p];
+  };
+  let sum = 0;
+  elems.forEach((el, i) => {
+    const x = rows[i], M = el.W / c0, Rc = rho * el.W * x.c / mu, [ds, dp] = dStar(Rc, el.alpha);
+    const K = 125.5 + 5; // K1(Rc>8e5) - 3 + band-sum
+    for (const d of [ds, dp]) sum += Math.pow(10, 0.1 * (10 * Math.log10(d * x.c * Math.pow(M, 5) * x.dr / (dist * dist)) + K));
+  });
+  const Lp = 10 * Math.log10(Math.max(sum * B, 1e-30));
+  return { Lp, dist };
+}
+
 /* Rough cost / LCOE estimate (NT$). Capex = blades (mass x material price) + generator/electronics (per rated W)
    + tower/foundation (per swept m2); LCOE = (capex x FCR + annual O&M) / AEP. Conceptual unit prices only. */
 const COST_DEFAULT = { gen: 30, tower: 3000, fcr: 0.08, om: 0.03, life: 20 };
@@ -702,4 +726,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
+export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };

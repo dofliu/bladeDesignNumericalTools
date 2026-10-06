@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-06 — ROADMAP 7:BPM 式後緣自噪音第一步
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `tbleNoise`(BPM 位移厚度相關式 + 峰值 SPL,能量相加),主畫面轉子摘要與報告新增「後緣自噪音」列;`tests/core.test.mjs` 新增距離平方反比、葉片數 +3 dB、轉速/攻角趨勢測試。
+- 驗證:見 PR 內文。
+- 已知限制:不解析頻譜、無 A 加權與方向性;δ* 為經驗式;預設設計約 31 dB(50 m),低於葉尖速度法的 46 dB(A),因只含後緣自噪音。
+- 下一步:分頻譜 + A 加權、改用 boundaryLayer 的 δ*;Sandia 校正;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-06 — ROADMAP 5:垂直軸靜止啟動轉矩
 
 - 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `vawtStaticTorque(cfg, V)`(λ=0,360° 極曲線,各方位角 B 葉合轉矩的 Cq 平均/最小/最大與 `selfStart`);`ui.mjs` 轉子摘要(非 Savonius 的垂直軸)新增「靜止啟動轉矩」與「可自行啟動」列;`tests/aero.test.mjs` 新增測試(預設 H 型 Cq 0.007/−0.002/0.022,不能自行啟動)。未改既有模型與門檻。
