@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -291,6 +291,20 @@ test('BPM 後緣自噪音:轉速 5 次方律、距離平方反比、葉片數能
   // higher AoA -> thicker suction-side BL -> louder
   const hi = G.desElems.map(e => ({ ...e, alpha: e.alpha + 6 }));
   assert.ok(tbleNoise(G.rows, hi, B, rho, mu, 50).Lp > n1.Lp);
+});
+
+test('BPM 後緣噪音頻譜:距離平方反比、葉片數加成、A 加權與未加權同量級、峰值在中高頻', () => {
+  designHAWT(); computePerf();
+  const { rho, mu } = air(), B = S.hawt.B;
+  const s1 = tbleSpectrum(G.rows, G.desElems, B, rho, mu, 50);
+  assert.ok(Math.abs((s1.Lp - tbleSpectrum(G.rows, G.desElems, B, rho, mu, 100).Lp) - 20 * Math.log10(2)) < 1e-6);
+  assert.ok(Math.abs((tbleSpectrum(G.rows, G.desElems, 2 * B, rho, mu, 50).Lp - s1.Lp) - 10 * Math.log10(2)) < 1e-6);
+  assert.ok(s1.LA < s1.Lp + 3 && s1.LA > s1.Lp - 25, `LA ${s1.LA} Lp ${s1.Lp}`);
+  const pk = s1.bands.reduce((m, b) => b.L > m.L ? b : m);
+  assert.ok(pk.f >= 200 && pk.f <= 5000, 'peak ' + pk.f);
+  // same order of magnitude as the single-number form (which adds +5 dB for the band sum)
+  assert.ok(Math.abs(s1.Lp - tbleNoise(G.rows, G.desElems, B, rho, mu, 50).Lp) < 12);
+  console.log('tbleSpectrum Lp', s1.Lp.toFixed(1), 'LA', s1.LA.toFixed(1), 'peak', pk.f.toFixed(0));
 });
 
 test('成本單價可調:覆寫葉片單價/費率會改變資本支出與 LCOE,預設不變', () => {
