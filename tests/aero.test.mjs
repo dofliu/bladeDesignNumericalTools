@@ -173,3 +173,17 @@ test('DMST: 靜止轉子啟動轉矩(vawtStaticTorque)', () => {
   const r2 = A.vawtStaticTorque(cfg, 12);
   assert.ok(Math.abs(r2.mean - r.mean) < 0.5 * Math.abs(r.mean) + 0.05, 'Cq roughly V-independent');
 });
+
+test('低 Re 修正:Re < 1e5 分離泡使 cd0 上升、Clmax 下降,Re ≥ 1e5 不變', () => {
+  const m = A.buildAeroModel(A.naca4('0012'));
+  const st = Re => {
+    const t = A.polarAtRe(m, Re);
+    let clmax = -9;
+    for (let k = 0; k < t.al.length; k++) if (t.al[k] > 0 && t.al[k] < 0.5) clmax = Math.max(clmax, t.CL[k]);
+    return { clmax, cd0: t.cd0 };
+  };
+  const hi = st(1e5), mid = st(5e4), lo = st(2e4);
+  console.log('低 Re 0012 (Re 1e5/5e4/2e4) cd0', hi.cd0.toFixed(4), mid.cd0.toFixed(4), lo.cd0.toFixed(4), 'Clmax', hi.clmax.toFixed(2), mid.clmax.toFixed(2), lo.clmax.toFixed(2));
+  assert.ok(mid.cd0 > hi.cd0 * 1.1 && lo.cd0 > mid.cd0 * 1.1, 'cd0 隨 Re 降低而上升(含分離泡)');
+  assert.ok(mid.clmax < hi.clmax && lo.clmax < mid.clmax, 'Clmax 隨 Re 降低而下降');
+});

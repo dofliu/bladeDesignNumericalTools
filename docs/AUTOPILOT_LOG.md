@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-07 — ROADMAP 5:低 Re 修正
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 的 `polarAtRe` 在 Re < 1e5 加入分離泡修正(失速角下修、`cd0` 上升);`tests/aero.test.mjs` 新增單調性測試。
+- 驗證:check、npm test 55/55、build、e2e 見 PR 內文。
+- 已知限制:經驗係數、未與實驗比對。
+- 下一步:ROADMAP 5 驗收比對(需實驗資料)、BPM 進階、ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-07 — ROADMAP 5:垂直軸啟動時域模擬
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `startupRun`,`tests/core.test.mjs` 新增啟動行為測試(靜止不能自行加速、輔助起轉可達設計轉速、風速越高越快)。
