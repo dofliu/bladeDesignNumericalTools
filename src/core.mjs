@@ -763,4 +763,19 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
+// 啟動模擬:從初始轉速(設計轉速的 w0Frac 倍,0 = 靜止)在固定風速下跑時域,回傳轉速達設計轉速 50% 的時間
+// (tHalf,未達為 null)、結束時的 λ 與是否超過設計轉速 50%。會直接改動 SIM,呼叫端自行還原。
+function startupRun(V, w0Frac, dur) {
+  S.tun.TI = 0; S.tun.V = V;
+  const w1 = G.lopt * V / G.R;
+  SIM.omega = w1 * w0Frac; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0;
+  SIM.latch = false; SIM.cutout = false; SIM.n = 0; SIM.po.wref = -1; SIM.Vmeas = V; SIM.wPrevObs = null;
+  let tHalf = null;
+  for (let t = 0; t < dur; t += 0.004) {
+    simStep(0.004);
+    if (tHalf === null && SIM.omega > 0.5 * w1) tHalf = t;
+  }
+  return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
+}
+
+export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

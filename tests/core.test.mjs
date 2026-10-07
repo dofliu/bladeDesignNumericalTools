@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -358,4 +358,14 @@ test('idealAEP:額定限幅使容量因數 ≤ 1、單調且未限額時等於�
   assert.ok(cap < free && tiny < cap && cap > 0);
   assert.ok(capacityFactor(tiny, 1) <= 1 + 1e-9 && capacityFactor(cap, 3000) <= 1);
   assert.ok(Math.abs(idealAEP(m, 1e9) - free) < 1e-6 * free);
+});
+
+test('VAWT 啟動模擬:靜止無法自行加速(轉矩死區),輔助起轉後可達設計轉速,風越大越快', () => {
+  setMode('VAWT');
+  const rest = startupRun(4, 0, 40);
+  assert.ok(!rest.started && rest.lambda < 1, `靜止 4 m/s 不應自行啟動,λ=${rest.lambda.toFixed(2)}`);
+  const slow = startupRun(6, 0.3, 80), fast = startupRun(9, 0.3, 80);
+  assert.ok(slow.started && fast.started, '輔助起轉到設計轉速 30% 後 6、9 m/s 都應能加速');
+  assert.ok(fast.tHalf < slow.tHalf, `風速高啟動較快:9 m/s ${fast.tHalf.toFixed(1)} s < 6 m/s ${slow.tHalf.toFixed(1)} s`);
+  assert.ok(startupRun(6, 0, 60).lambda < slow.lambda, '靜止起動比輔助起轉慢');
 });

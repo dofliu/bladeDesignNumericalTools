@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-07 — ROADMAP 5:垂直軸啟動時域模擬
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `startupRun`,`tests/core.test.mjs` 新增啟動行為測試(靜止不能自行加速、輔助起轉可達設計轉速、風速越高越快)。
+- 驗證:見 PR 內文。
+- 已知限制:未含低 Re 修正;只涵蓋預設 H 型。
+- 下一步:ROADMAP 5 低 Re 修正;BPM 進階;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-07 — ROADMAP 7:BPM 後緣噪音頻譜與 A 加權
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `tbleSpectrum`(BPM A 函數頻譜形狀 + 1/3 八度 21 頻帶 + A 加權);主畫面轉子摘要與報告後緣噪音列改顯示 dB(A) 與未加權值;`tests/core.test.mjs` 新增距離/葉片數縮放、A 加權量級、峰值頻率測試。
