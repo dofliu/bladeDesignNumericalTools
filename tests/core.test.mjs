@@ -307,6 +307,17 @@ test('BPM 後緣噪音頻譜:距離平方反比、葉片數加成、A 加權與�
   console.log('tbleSpectrum Lp', s1.Lp.toFixed(1), 'LA', s1.LA.toFixed(1), 'peak', pk.f.toFixed(0));
 });
 
+test('BPM 高攻角 SPL_alpha:攻角升高噪音上升且仍為有限值', () => {
+  designHAWT(); computePerf();
+  const { rho, mu } = air(), B = S.hawt.B;
+  const base = tbleSpectrum(G.rows, G.desElems, B, rho, mu, 50);
+  const hi = G.desElems.map(e => ({ ...e, alpha: e.alpha + 12 * Math.sign(e.alpha || 1) }));
+  const sh = tbleSpectrum(G.rows, hi, B, rho, mu, 50);
+  assert.ok(Number.isFinite(sh.Lp) && Number.isFinite(base.Lp));
+  assert.ok(sh.Lp > base.Lp + 3, `hi ${sh.Lp} base ${base.Lp}`);
+  console.log('SPL_alpha Lp base', base.Lp.toFixed(1), 'hi', sh.Lp.toFixed(1));
+});
+
 test('成本單價可調:覆寫葉片單價/費率會改變資本支出與 LCOE,預設不變', () => {
   const base = costEstimate(10, 'gfrp', 3000, 7, 5000, {});
   assert.ok(Math.abs(costEstimate(10, 'gfrp', 3000, 7, 5000).capex - base.capex) < 1e-9, 'S.perf.cost 預設為空');

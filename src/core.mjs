@@ -132,6 +132,12 @@ function tbleSpectrum(rows, elems, B, rho, mu, dist = 50) {
     const ds = d0 * (aa <= 7.5 ? Math.pow(10, 0.0679 * aa) : aa <= 12.5 ? 0.0162 * Math.pow(10, 0.3066 * aa) : 52.42 * Math.pow(10, 0.0258 * aa));
     const ap = Math.min(aa, 5), dp = d0 * Math.pow(10, -0.0432 * ap + 0.00113 * ap * ap);
     const St1 = 0.02 * Math.pow(Math.max(M, 1e-3), -0.6), St2 = St1 * (aa < 1.33 ? 1 : aa <= 12.5 ? Math.pow(10, 0.0054 * (aa - 1.33) ** 2) : 4.72);
+    // high-angle term SPL_alpha (BPM eq. 44-47), suction side only, peak at St2
+    const gam = 27.094 * M + 3.31, gam0 = 23.43 * M + 4.651, bet = 72.65 * M + 10.74, bet0 = -34.19 * M - 13.82;
+    const K2 = aa < gam0 - gam ? -1000 : aa <= gam0 + gam ? Math.sqrt(Math.max(bet * bet - (bet / gam) ** 2 * (aa - gam0) ** 2, 0)) + bet0 : -12;
+    const Bfun = b => { const a = Math.abs(Math.log10(b)); return a < 0.13 ? Math.sqrt(16.888 - 886.788 * a * a) - 4.109 : a <= 0.145 ? -83.607 * a + 8.138 : -817.81 * a ** 3 + 355.21 * a * a - 135.024 * a + 10.619; };
+    const dsC = ds * x.c, baseA = 10 * Math.log10(dsC * Math.pow(M, 5) * x.dr / (dist * dist)) + K2 + 125.5 - 3;
+    if (K2 > -500) fc.forEach((f, j) => { pw[j] += Math.pow(10, 0.1 * (baseA + Bfun((f * dsC / el.W) / St2))); });
     const sides = [[ds * x.c, St1, (St1 + St2) / 2], [dp * x.c, St1, St1]];
     for (const [d, , stPk] of sides) {
       const base = 10 * Math.log10(d * Math.pow(M, 5) * x.dr / (dist * dist)) + K;
