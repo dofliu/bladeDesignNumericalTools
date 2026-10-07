@@ -138,6 +138,7 @@ export const Report = (function () {
     if (S.load.furl && H) cond.push(['側偏收尾', `${fmt(S.load.vFurl, 1)} m/s 起側偏,上限 ${fmt(S.load.furlMax, 0)}°,速率 ${fmt(S.load.furlRate, 1)}°/s`]);
     if (S.load.cutOut) cond.push(['切出/重啟風速', `${fmt(S.load.vCutOut, 1)} m/s / ${fmt(S.load.vRestart, 1)} m/s(1 秒低通平均風速,含遲滯)`]);
     h += `<table class="kvt">${cond.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>`;
+    if (H) { const a = air(), tb = tbleSpectrum(G.rows, G.desElems, S.hawt.B, a.rho, a.mu, 50), fx = tb.bands.map(b => b.f); h += fig(capture(cv => Plot.draw(cv, { title: `後緣自噪音 1/3 八度頻譜(${tb.dist} m)`, series: [{ x: fx, y: tb.bands.map(b => b.L), color: col('--c1'), label: '未加權 dB', dots: 2 }, { x: fx, y: tb.bands.map(b => b.LA), color: col('--c2'), dash: [4, 3], label: 'A 加權 dB(A)', dots: 2 }], xlabel: '頻率 (Hz)', ylabel: 'dB' }), 760, 260), '圖:BPM 後緣自噪音頻譜(設計點;僅設計間相對比較)'); }
     // 2 airfoils
     if (!sav) {
       h += hN('翼型選擇與極曲線');
