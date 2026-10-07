@@ -109,6 +109,43 @@ function tbleNoise(rows, elems, B, rho, mu, dist = 50) {
   return { Lp, dist };
 }
 
+/* TBL-TE self-noise 1/3-octave spectrum with BPM A-function shape (NASA RP-1218 eqs. 35-38) and A-weighting (IEC 61672).
+   Same geometry/assumptions as tbleNoise: observer at `dist` in the rotor plane, no Doppler/azimuth, K1 simplified to the
+   Rc > 8e5 value, no high-angle (SPL_alpha) term. Strouhal St = f d* / W; pressure side peaks at St1 = 0.02 M^-0.6,
+   suction side at (St1 + St2)/2 with the angle shift St2. Returns {bands:[{f, L, LA}], Lp (unweighted), LA (dB(A)), dist}. */
+function tbleSpectrum(rows, elems, B, rho, mu, dist = 50) {
+  const c0 = 340, K = 125.5;
+  const aMin = a => a < 0.204 ? Math.sqrt(67.552 - 886.788 * a * a) - 8.219 : a <= 0.244 ? -32.665 * a + 3.981 : -142.795 * a ** 3 + 103.656 * a * a - 57.757 * a + 6.006;
+  const aMax = a => a < 0.13 ? Math.sqrt(67.552 - 886.788 * a * a) - 8.219 : a <= 0.321 ? -15.901 * a + 1.098 : -4.669 * a ** 3 + 3.491 * a * a - 16.699 * a + 1.149;
+  const a0f = Rc => Rc < 9.52e4 ? 0.57 : Rc < 8.57e5 ? -9.57e-13 * (Rc - 8.57e5) ** 2 + 1.13 : 1.13;
+  const Afun = (a, Rc) => {
+    const a0 = a0f(Rc), lo = aMin(a0), hi = aMax(a0), AR = (-20 - lo) / (hi - lo);
+    return aMin(a) + AR * (aMax(a) - aMin(a));
+  };
+  const aw = f => { const f2 = f * f; return 20 * Math.log10(12194 ** 2 * f2 * f2 / ((f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2))) + 2.0; };
+  const fc = []; for (let k = 0; k <= 20; k++) fc.push(100 * Math.pow(10, k / 10));
+  const pw = new Array(fc.length).fill(0);
+  elems.forEach((el, i) => {
+    const x = rows[i], M = el.W / c0, Rc = rho * el.W * x.c / mu;
+    const lg = Math.log10(Math.max(Rc, 1e4)), d0 = Math.pow(10, 3.411 - 1.5397 * lg + 0.1059 * lg * lg);
+    const aa = Math.min(Math.abs(el.alpha), 20);
+    const ds = d0 * (aa <= 7.5 ? Math.pow(10, 0.0679 * aa) : aa <= 12.5 ? 0.0162 * Math.pow(10, 0.3066 * aa) : 52.42 * Math.pow(10, 0.0258 * aa));
+    const ap = Math.min(aa, 5), dp = d0 * Math.pow(10, -0.0432 * ap + 0.00113 * ap * ap);
+    const St1 = 0.02 * Math.pow(Math.max(M, 1e-3), -0.6), St2 = St1 * (aa < 1.33 ? 1 : aa <= 12.5 ? Math.pow(10, 0.0054 * (aa - 1.33) ** 2) : 4.72);
+    const sides = [[ds * x.c, St1, (St1 + St2) / 2], [dp * x.c, St1, St1]];
+    for (const [d, , stPk] of sides) {
+      const base = 10 * Math.log10(d * Math.pow(M, 5) * x.dr / (dist * dist)) + K;
+      fc.forEach((f, j) => {
+        const a = Math.abs(Math.log10((f * d / el.W) / stPk));
+        pw[j] += Math.pow(10, 0.1 * (base + Afun(a, Rc)));
+      });
+    }
+  });
+  const bands = fc.map((f, j) => { const L = 10 * Math.log10(Math.max(pw[j] * B, 1e-30)); return { f, L, LA: L + aw(f) }; });
+  const sumDb = k => 10 * Math.log10(Math.max(bands.reduce((s, b) => s + Math.pow(10, 0.1 * b[k]), 0), 1e-30));
+  return { bands, Lp: sumDb('L'), LA: sumDb('LA'), dist };
+}
+
 /* Rough cost / LCOE estimate (NT$). Capex = blades (mass x material price) + generator/electronics (per rated W)
    + tower/foundation (per swept m2); LCOE = (capex x FCR + annual O&M) / AEP. Conceptual unit prices only. */
 const COST_DEFAULT = { gen: 30, tower: 3000, fcr: 0.08, om: 0.03, life: 20 };
@@ -726,4 +763,4 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
-export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };
+export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq };

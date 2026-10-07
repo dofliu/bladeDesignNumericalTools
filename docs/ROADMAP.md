@@ -90,7 +90,8 @@
   - [x] 葉尖速度法(2026-10-03):`core.mjs` 新增 `noiseEstimate(vTip, D, dist)`(Hau/Wagner 經驗式 Lw = 50log10(Vtip)+10log10(D)-4 dB(A),遠場半球擴散 + 空氣吸收),報告「設計條件」新增 HAWT 噪音估計列。限制:經驗式 ±5 dB、不含音調/調幅、僅 HAWT。
   - [x] 主畫面轉子摘要顯示噪音概估(2026-10-05):`ui.mjs` 轉子摘要新增「噪音(概估,設計點)」列(Lw 與 50 m 處聲壓級,僅 HAWT)。
   - [x] BPM 式後緣自噪音第一步(2026-10-06):`core.mjs` 新增 `tbleNoise(rows, elems, B, rho, mu, dist)`:BPM 位移厚度相關式(攻角修正)+ 峰值 SPL = 10log10(δ*M⁵LDh/r²)+K1−3,吸力/壓力面、各截面、各葉片能量相加;主畫面轉子摘要與報告「設計條件」新增一列。限制:不解析頻譜(+5 dB 代表頻帶加總)、無方向性/都卜勒/A 加權、位移厚度用經驗式而非 `boundaryLayer`、不含入流紊流/葉尖/鈍後緣噪音,只適合設計間相對比較。
-  - [ ] 進階 BPM:分頻譜(A/B 函數)與 A 加權、改用 `boundaryLayer` 的 δ*、葉尖渦噪音。
+  - [x] BPM 分頻譜與 A 加權(2026-10-07):`core.mjs` 新增 `tbleSpectrum`(BPM A 函數頻譜形狀、1/3 八度 100 Hz–10 kHz 共 21 頻帶、IEC A 加權),回傳各頻帶 `L`/`LA` 與總 `Lp`/`LA`;主畫面轉子摘要與報告改顯示 dB(A) 與未加權值。預設設計 50 m 處未加權 33.5 dB、34.0 dB(A),峰值約 2 kHz。限制:SPL_α(高攻角 B 函數)與 ΔK1 修正未含,K1 取 Rc>8e5 值,無方向性。
+  - [ ] 進階 BPM:改用 `boundaryLayer` 的 δ*、高攻角 SPL_α、葉尖渦噪音、頻譜圖顯示。
 - 場址風況:匯入風速時間序列或 Weibull 參數,計算年發電量與容量因數。
   - [x] Weibull 參數法:`core.js` 新增 `gammaFn`(Lanczos 近似)、`weibullPdf(v, meanV, k)`、`capacityFactor(aepKWh, ratedW)`;`S.perf.k`(預設 2,等於原本的 Rayleigh 分布)可在「性能曲線」「方案比較」分頁調整(1.2–3.5);年發電量圖表、方案比較表格、報告摘要卡都新增容量因數。
   - [x] 匯入實測風速時間序列(2026-10-03):`core.mjs` 新增 `parseWindSeries`(每行取最後一個數值,可含標題/時間戳 CSV)、`windSeriesPdf`(0.5 m/s 直方圖密度)、`windDensity(v)`(有匯入則用實測分布,否則 Weibull);`S.perf.series`;「性能曲線」分頁新增匯入/清除,年發電量圖與方案比較 AEP 皆改用 `windDensity`。限制:超過 25 m/s 的風速不計入發電(仍計入總筆數);不依風向/時序;匯入資料不存入方案(`localStorage`)。

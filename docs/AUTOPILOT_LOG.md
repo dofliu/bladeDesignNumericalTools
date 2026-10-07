@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-07 — ROADMAP 7:BPM 後緣噪音頻譜與 A 加權
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `tbleSpectrum`(BPM A 函數頻譜形狀 + 1/3 八度 21 頻帶 + A 加權);主畫面轉子摘要與報告後緣噪音列改顯示 dB(A) 與未加權值;`tests/core.test.mjs` 新增距離/葉片數縮放、A 加權量級、峰值頻率測試。
+- 驗證:見 PR 內文。
+- 已知限制:無高攻角 SPL_α、ΔK1,無方向性;絕對值 ±5 dB 以上。
+- 下一步:改用 boundaryLayer 的 δ*、頻譜圖顯示、葉尖渦噪音;Sandia 校正;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-06 — ROADMAP 7:BPM 式後緣自噪音第一步
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `tbleNoise`(BPM 位移厚度相關式 + 峰值 SPL,能量相加),主畫面轉子摘要與報告新增「後緣自噪音」列;`tests/core.test.mjs` 新增距離平方反比、葉片數 +3 dB、轉速/攻角趨勢測試。
