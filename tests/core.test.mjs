@@ -288,6 +288,11 @@ test('BPM 後緣自噪音:轉速 5 次方律、距離平方反比、葉片數能
   assert.ok(Math.abs((n1.Lp - tbleNoise(G.rows, G.desElems, B, rho, mu, 100).Lp) - 20 * Math.log10(2)) < 1e-6);
   assert.ok(Math.abs((tbleNoise(G.rows, G.desElems, 2 * B, rho, mu, 50).Lp - n1.Lp) - 10 * Math.log10(2)) < 1e-6);
   assert.ok(n1.Lp > 20 && n1.Lp < 90, 'Lp ' + n1.Lp);
+  // A-weighted spectrum level: same distance/blade-count scaling, finite and within a plausible band of the unweighted level
+  assert.ok(Number.isFinite(n1.LpA) && Math.abs(n1.LpA - n1.Lp) < 15, 'LpA ' + n1.LpA + ' Lp ' + n1.Lp);
+  assert.ok(Math.abs((n1.LpA - tbleNoise(G.rows, G.desElems, B, rho, mu, 100).LpA) - 20 * Math.log10(2)) < 1e-6);
+  assert.ok(Math.abs((tbleNoise(G.rows, G.desElems, 2 * B, rho, mu, 50).LpA - n1.LpA) - 10 * Math.log10(2)) < 1e-6);
+  assert.ok(tbleNoise(G.rows, fast, B, rho, mu, 50).LpA > n1.LpA + 3);
   // higher AoA -> thicker suction-side BL -> louder
   const hi = G.desElems.map(e => ({ ...e, alpha: e.alpha + 6 }));
   assert.ok(tbleNoise(G.rows, hi, B, rho, mu, 50).Lp > n1.Lp);

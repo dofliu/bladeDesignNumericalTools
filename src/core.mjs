@@ -88,7 +88,8 @@ function noiseEstimate(vTip, D, dist = 50) {
 /* Turbulent-boundary-layer trailing-edge (TBL-TE) self noise, after the Brooks-Pope-Marcolini (BPM, NASA RP-1218) displacement-
    thickness correlation form and the peak level SPL = 10log10(d* M^5 L Dh / r^2) + K1 - 3, summed over the suction and
    pressure sides, elements and blades with incoherent (energy) addition. The spectral shape is not resolved: a +5 dB term
-   stands for the one-third-octave band sum. Observer fixed at `dist` in the rotor plane, Dh = 1, no Doppler/azimuth, unweighted.
+   stands for the one-third-octave band sum. Observer fixed at `dist` in the rotor plane, Dh = 1, no Doppler/azimuth. `Lp` is the unweighted level;
+   `LpA` is the A-weighted level from the simplified spectrum below.
    Use for relative comparison between designs; absolute level is +-5 dB or worse. */
 function tbleNoise(rows, elems, B, rho, mu, dist = 50) {
   const c0 = 340;
@@ -99,14 +100,26 @@ function tbleNoise(rows, elems, B, rho, mu, dist = 50) {
     const ap = Math.min(aa, 5), p = Math.pow(10, -0.0432 * ap + 0.00113 * ap * ap);
     return [d0 * s, d0 * p];
   };
+  // Simplified one-third-octave spectrum: BPM A-function (Amin branch only, no Rc blending) around the Strouhal peak
+  // St1 = 0.02 M^-0.6 (suction side shifted by the BPM St2 angle factor), then A-weighted (IEC 61672) and energy-summed over 100 Hz-10 kHz.
+  const aMin = a => a < 0.204 ? Math.sqrt(67.552 - 886.788 * a * a) - 8.219 : a <= 0.244 ? -32.665 * a + 3.981 : -142.795 * a ** 3 + 103.656 * a * a - 57.757 * a + 6.006;
+  const aW = f => { const f2 = f * f; return 20 * Math.log10(12194 ** 2 * f2 * f2 / ((f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2))) + 2.0; };
+  const bands = []; for (let k = 0; k <= 20; k++) bands.push(100 * Math.pow(10, 0.1 * k));
+  const spec = bands.map(() => 0);
   let sum = 0;
   elems.forEach((el, i) => {
-    const x = rows[i], M = el.W / c0, Rc = rho * el.W * x.c / mu, [ds, dp] = dStar(Rc, el.alpha);
+    const x = rows[i], M = el.W / c0, Rc = rho * el.W * x.c / mu, al = Math.min(Math.abs(el.alpha), 20), [ds, dp] = dStar(Rc, el.alpha);
     const K = 125.5 + 5; // K1(Rc>8e5) - 3 + band-sum
-    for (const d of [ds, dp]) sum += Math.pow(10, 0.1 * (10 * Math.log10(d * x.c * Math.pow(M, 5) * x.dr / (dist * dist)) + K));
+    const St1 = 0.02 * Math.pow(M, -0.6), St2 = St1 * (al < 1.33 ? 1 : al <= 12.5 ? Math.pow(10, 0.0054 * (al - 1.33) ** 2) : 4.72);
+    [[ds, St2], [dp, St1]].forEach(([d, Stp]) => {
+      const base = 10 * Math.log10(d * x.c * Math.pow(M, 5) * x.dr / (dist * dist));
+      sum += Math.pow(10, 0.1 * (base + K));
+      bands.forEach((f, k) => { spec[k] += Math.pow(10, 0.1 * (base + 125.5 + aMin(Math.abs(Math.log10(f * d * x.c / (el.W * Stp)))) + aW(f))); });
+    });
   });
   const Lp = 10 * Math.log10(Math.max(sum * B, 1e-30));
-  return { Lp, dist };
+  const LpA = 10 * Math.log10(Math.max(spec.reduce((a, b) => a + b, 0) * B, 1e-30));
+  return { Lp, LpA, dist };
 }
 
 /* Rough cost / LCOE estimate (NT$). Capex = blades (mass x material price) + generator/electronics (per rated W)
