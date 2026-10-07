@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-07 — ROADMAP 7:BPM 高攻角 SPL_α
+
+- 做了什麼:無開著的 `[autopilot]` PR。`tbleSpectrum` 吸力面新增 BPM 高攻角項(K2、B(b));`tests/core.test.mjs` 新增攻角升高噪音上升的測試。設計點總量不變。
+- 驗證:check、npm test 56/56、build、e2e 見 PR 內文。
+- 已知限制:係數憑 BPM 公式實作、未與實驗比對;無 ΔK1、方向性。
+- 下一步:改用 boundaryLayer 的 δ*、葉尖渦噪音;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-07 — ROADMAP 7:報告新增 BPM 噪音頻譜圖
 
 - 做了什麼:無開著的 `[autopilot]` PR。`report.mjs` 在設計條件表後新增 1/3 八度頻譜圖(未加權與 A 加權,僅 HAWT),不改模型與測試。
