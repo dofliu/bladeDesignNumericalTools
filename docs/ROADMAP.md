@@ -95,7 +95,7 @@
   - [x] 頻譜圖顯示(2026-10-07):報告「設計條件」後新增 BPM 後緣自噪音 1/3 八度頻譜圖(未加權與 A 加權,僅 HAWT)。
   - [x] 高攻角 SPL_α(2026-10-07):`tbleSpectrum` 吸力面加入 BPM 高攻角項(K2、B(b),峰值在 St2);設計點攻角下貢獻可忽略(總量不變 33.8 dB),攻角 +12° 時升高約 11 dB。`tests/core.test.mjs` 新增測試。
   - [x] 改用 `boundaryLayer` 的 δ*(2026-10-08):`aero.mjs` 的 `boundaryLayer` 各表面新增 `dStar`(尾緣 θ·H);`core.mjs` 新增 `blDstarFn(afs)`,`tbleNoise`/`tbleSpectrum` 新增選用參數 `dstarFn`(預設仍用 BPM 經驗式,主畫面數字不變);報告以邊界層 δ* 交叉驗證(預設設計 33.8 → 34.1 dB 未加權)。限制:無尾流、勢流尾緣、層流段不含壓力面分離。
-  - [ ] 葉尖渦噪音。
+  - [x] 葉尖渦噪音(2026-10-08):`core.mjs` 新增 `tipVortexNoise`(BPM 圓弧葉尖:黏性核心尺寸 l=0.008·α·c、Umax=U(1+0.036α)、1/3 八度頻譜、A 加權);報告「設計條件」新增一列並與後緣自噪音能量相加。限制:只取最外側站、無葉尖形狀選項、無方向性。
 - 場址風況:匯入風速時間序列或 Weibull 參數,計算年發電量與容量因數。
   - [x] Weibull 參數法:`core.js` 新增 `gammaFn`(Lanczos 近似)、`weibullPdf(v, meanV, k)`、`capacityFactor(aepKWh, ratedW)`;`S.perf.k`(預設 2,等於原本的 Rayleigh 分布)可在「性能曲線」「方案比較」分頁調整(1.2–3.5);年發電量圖表、方案比較表格、報告摘要卡都新增容量因數。
   - [x] 匯入實測風速時間序列(2026-10-03):`core.mjs` 新增 `parseWindSeries`(每行取最後一個數值,可含標題/時間戳 CSV)、`windSeriesPdf`(0.5 m/s 直方圖密度)、`windDensity(v)`(有匯入則用實測分布,否則 Weibull);`S.perf.series`;「性能曲線」分頁新增匯入/清除,年發電量圖與方案比較 AEP 皆改用 `windDensity`。限制:超過 25 m/s 的風速不計入發電(仍計入總筆數);不依風向/時序;匯入資料不存入方案(`localStorage`)。

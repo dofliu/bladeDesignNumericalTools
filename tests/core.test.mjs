@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -392,4 +392,18 @@ test('BPM 後緣噪音:改用邊界層 δ* 仍為合理量級,攻角升高 δ* �
   const lo = G.desElems.map(e => ({ ...e, alpha: 2 })), hi = G.desElems.map(e => ({ ...e, alpha: 10 }));
   assert.ok(tbleNoise(G.rows, hi, B, rho, mu, 50, fn).Lp > tbleNoise(G.rows, lo, B, rho, mu, 50, fn).Lp);
   console.log('BL δ* spectrum Lp', bl.Lp.toFixed(1), 'empirical', emp.Lp.toFixed(1));
+});
+
+test('BPM 葉尖渦噪音:距離/葉片數縮放、攻角升高噪音上升、量級合理', () => {
+  designHAWT(); computePerf();
+  const { rho, mu } = air(), B = S.hawt.B;
+  const t1 = tipVortexNoise(G.rows, G.desElems, B, rho, mu, 50);
+  assert.ok(Number.isFinite(t1.Lp) && Number.isFinite(t1.LA) && t1.bands.length === 21);
+  assert.ok(Math.abs((t1.Lp - tipVortexNoise(G.rows, G.desElems, B, rho, mu, 100).Lp) - 20 * Math.log10(2)) < 1e-6);
+  assert.ok(Math.abs((tipVortexNoise(G.rows, G.desElems, 2 * B, rho, mu, 50).Lp - t1.Lp) - 10 * Math.log10(2)) < 1e-6);
+  const mk = a => G.desElems.map((e, i, arr) => i === arr.length - 1 ? { ...e, alpha: a } : e);
+  assert.ok(tipVortexNoise(G.rows, mk(10), B, rho, mu, 50).Lp > tipVortexNoise(G.rows, mk(3), B, rho, mu, 50).Lp);
+  const te = tbleSpectrum(G.rows, G.desElems, B, rho, mu, 50);
+  assert.ok(t1.Lp < te.Lp + 10, `tip ${t1.Lp} TE ${te.Lp}`);
+  console.log('tip vortex Lp', t1.Lp.toFixed(1), 'LA', t1.LA.toFixed(1), 'TE Lp', te.Lp.toFixed(1));
 });
