@@ -187,3 +187,22 @@ test('低 Re 修正:Re < 1e5 分離泡使 cd0 上升、Clmax 下降,Re ≥ 1e5 �
   assert.ok(mid.cd0 > hi.cd0 * 1.1 && lo.cd0 > mid.cd0 * 1.1, 'cd0 隨 Re 降低而上升(含分離泡)');
   assert.ok(mid.clmax < hi.clmax && lo.clmax < mid.clmax, 'Clmax 隨 Re 降低而下降');
 });
+
+test('葉尖渦螺旋尾流:遠尾流節距 2π(1−2a)/λ、半徑膨脹 √((1−a)/(1−2a))、葉片間相位差', () => {
+  const B = 3, lam = 7, a = 0.3, per = 64;
+  const w = A.tipVortexWake(B, lam, a, { turns: 12, perTurn: per });
+  assert.equal(w.length, B);
+  const p = w[0], n = p.length - 1;
+  // 最後一圈的軸向前進量 ≈ 遠尾流節距
+  const pitch = p[n].x - p[n - per].x, ref = 2 * Math.PI * (1 - 2 * a) / lam;
+  near(pitch / ref, 1, 0.03, '遠尾流節距比');
+  near(p[n].r, Math.sqrt((1 - a) / (1 - 2 * a)), 0.02, '遠尾流半徑');
+  near(p[0].r, 1, 1e-9, '轉子盤處半徑');
+  // 軸向位置單調增加;第 k 片與第 0 片起始角差 2π/B
+  for (let i = 1; i <= n; i++) assert.ok(p[i].x > p[i - 1].x);
+  near(Math.abs(w[1][0].th - w[0][0].th), 2 * Math.PI / B, 1e-9, '葉片相位差');
+  // a=0 時沒有膨脹、節距 2π/λ(無誘導)
+  const w0 = A.tipVortexWake(1, lam, 0, { turns: 2, perTurn: per })[0];
+  near(w0[w0.length - 1].r, 1, 1e-9, 'a=0 半徑');
+  near(w0[per].x, 2 * Math.PI / lam, 1e-9, 'a=0 節距');
+});
