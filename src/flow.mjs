@@ -1,6 +1,6 @@
 /* ===== Flow-field visualisation: airfoil section (panel method) + rotor (actuator / DMST streamtubes) ===== */
 export const Flow = (function () {
-  const F = { rr: 0.7, alpha: null, mode: 'speed', lines: true, lam: null, follow: false };
+  const F = { rr: 0.7, alpha: null, mode: 'speed', lines: true, lam: null, follow: false, tipv: false };
   let built = '', pcache = { key: '', solve: null }, lastFollow = 0;
   const $f = id => document.getElementById(id);
 
@@ -171,7 +171,7 @@ export const Flow = (function () {
       return Math.max(0.08, 1 - aAt(rd) * f(x));
     };
     let num = 0, den = 0; res.elems.forEach(e => { num += e.a * e.r * (e.dr || 1); den += e.r * (e.dr || 1); });
-    return { uf, aMean: num / den, Cp: res.Cp, Ct: res.Ct };
+    return { uf, aMean: num / den, Cp: res.Cp, Ct: res.Ct, elems: res.elems };
   }
   function drawRotor(cv, lam) {
     const Fc = fitCv(cv); if (!Fc) return; const { g, W, H } = Fc;
@@ -185,6 +185,17 @@ export const Flow = (function () {
       const ink = Plot.css('--ink');
       fluxLines(g, (x, y) => fd.uf(x, y), x0, x1, 0, ym, 90, seeds, true, T, ink);
       fluxLines(g, (x, y) => fd.uf(x, -y), x0, x1, 0, ym, 90, seeds, true, (x, y) => T(x, -y), ink);
+      if (F.tipv) {
+        const tipE = fd.elems.filter(e => e.r / G.R > 0.85), aT = tipE.length ? tipE.reduce((m, e) => m + A.clamp(e.a, 0, 0.5), 0) / tipE.length : fd.aMean;
+        const wk = A.tipVortexWake(S.hawt.B, lam, aT, { turns: 3, perTurn: 48 });
+        g.lineWidth = 1.5;
+        wk.forEach(pts => { for (let i = 1; i < pts.length; i++) {
+          const q = pts[i], q0 = pts[i - 1]; if (q.x > x1) break;
+          const u = T(q0.x, q0.y), v = T(q.x, q.y); g.strokeStyle = Plot.css(q.z >= 0 ? '--c2' : '--muted'); g.globalAlpha = q.z >= 0 ? 0.9 : 0.5;
+          g.beginPath(); g.moveTo(u[0], u[1]); g.lineTo(v[0], v[1]); g.stroke();
+        } });
+        g.globalAlpha = 1;
+      }
       // rotor disk & nacelle
       const a = T(0, 1), b = T(0, -1); g.strokeStyle = Plot.css('--signal'); g.lineWidth = 3; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
       const n0 = T(-0.08, 0.07), n1 = T(0.45, -0.07); g.fillStyle = Plot.css('--panel2'); g.strokeStyle = Plot.css('--ink'); g.lineWidth = 1; g.fillRect(n0[0], n0[1], n1[0] - n0[0], n1[1] - n0[1]); g.strokeRect(n0[0], n0[1], n1[0] - n0[0], n1[1] - n0[1]);
@@ -239,10 +250,10 @@ export const Flow = (function () {
       <div class="bgrid">
         ${card('翼型剖面流場(面板法位勢流)', '<canvas id="fSec" style="height:360px"></canvas>', 'span2')}
         ${card('翼面壓力分布', '<canvas id="fCp" style="height:360px"></canvas>')}
-        ${S.mode === 'VAWT' && S.vawt.type === 'sav' ? '' : `<div class="card span3"><div class="ctrlbar"><label>轉子尖速比 λ <input type="range" id="fLam" min="0.5" max="${lmax.toFixed(1)}" step="0.05"><output id="fLamo"></output></label><button class="iconbtn" id="fLd">${H ? '設計點' : '最佳 λ'}</button><label><input type="checkbox" id="fFol"> 跟隨目前運轉點</label></div></div>
+        ${S.mode === 'VAWT' && S.vawt.type === 'sav' ? '' : `<div class="card span3"><div class="ctrlbar"><label>轉子尖速比 λ <input type="range" id="fLam" min="0.5" max="${lmax.toFixed(1)}" step="0.05"><output id="fLamo"></output></label><button class="iconbtn" id="fLd">${H ? '設計點' : '最佳 λ'}</button><label><input type="checkbox" id="fFol"> 跟隨目前運轉點</label>${H ? '<label><input type="checkbox" id="fTv"> 葉尖渦(螺旋尾流)</label>' : ''}</div></div>
         ${card(H ? '轉子流場(致動盤 + BEM 誘導)' : '轉子流場(雙重多流管)', '<canvas id="fRot" style="height:340px"></canvas>', 'span2')}
         ${card('速度剖面', '<canvas id="fProf" style="height:340px"></canvas>')}`}
-        ${card('模型說明', `<p class="hint">翼型剖面:Hess-Smith 面板法(源 + 均勻渦,Kutta 條件)求無黏位勢流,流線以速度場積分。位勢流不含邊界層與分離;分離點由表面速度做 Thwaites(層流)+ Michel 轉捩 + Head(紊流)積分邊界層估計,紅色分離區只是示意,Cl 會高於實際值;實際升阻力請以「極曲線」分頁的黏性修正模型為準。<br>水平軸轉子:以 BEM 求得各截面軸向誘導因子 a(r),搭配致動盤渦柱理論 u = V∞[1 − a(1 + x/√(x²+R²))] 近似軸向速度,流線由各流管質量守恆求得;未顯示尾流旋轉與葉尖渦。<br>垂直軸轉子:以雙重多流管法的上、下風誘導速度組合成俯視流場,示意上風半圈先減速、下風葉片再次取能的特性。</p>`, 'span3', null, false)}
+        ${card('模型說明', `<p class="hint">翼型剖面:Hess-Smith 面板法(源 + 均勻渦,Kutta 條件)求無黏位勢流,流線以速度場積分。位勢流不含邊界層與分離;分離點由表面速度做 Thwaites(層流)+ Michel 轉捩 + Head(紊流)積分邊界層估計,紅色分離區只是示意,Cl 會高於實際值;實際升阻力請以「極曲線」分頁的黏性修正模型為準。<br>水平軸轉子:以 BEM 求得各截面軸向誘導因子 a(r),搭配致動盤渦柱理論 u = V∞[1 − a(1 + x/√(x²+R²))] 近似軸向速度,流線由各流管質量守恆求得;尾流旋轉未計入;勾選「葉尖渦」會疊上預設螺旋尾流(依葉尖誘導 a 對流、流管膨脹,實線為近側、灰線為遠側),不是自由渦尾流。<br>垂直軸轉子:以雙重多流管法的上、下風誘導速度組合成俯視流場,示意上風半圈先減速、下風葉片再次取能的特性。</p>`, 'span3', null, false)}
       </div>`;
     $f('flowInner').innerHTML = h;
     const on = (id, ev, fn) => { const e = $f(id); if (e) e.addEventListener(ev, fn); };
@@ -253,6 +264,7 @@ export const Flow = (function () {
     on('fL', 'change', e => { F.lines = e.target.checked; renderSection(); });
     on('fLam', 'input', e => { F.lam = +e.target.value; F.follow = false; const c = $f('fFol'); if (c) c.checked = false; render(); });
     on('fLd', 'click', () => { F.lam = null; F.follow = false; const c = $f('fFol'); if (c) c.checked = false; render(); });
+    on('fTv', 'change', e => { F.tipv = e.target.checked; renderRotor(); });
     on('fFol', 'change', e => { F.follow = e.target.checked; render(); });
     document.querySelectorAll('#flowInner details').forEach(d => d.addEventListener('toggle', () => { if (d.open) render(); }));
   }

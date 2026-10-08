@@ -703,6 +703,25 @@
     return pts;
   }
 
+  /* Prescribed helical tip-vortex wake (lengths in R, speeds in V∞). Each vortex is convected at the local axial speed
+     u(x)=1-a(1+x/√(x²+1)) (same actuator-disk blend the flow view uses) and the streamtube expands by continuity,
+     r(x)=rTip·√((1-a)/(1-a·f(x))) (f from 0 at the disk to 2 far downstream). Not a free wake: no vortex-vortex interaction. */
+  function tipVortexWake(B, lam, aTip, opts = {}) {
+    const turns = opts.turns || 3, per = opts.perTurn || 48, phase0 = opts.phase || 0, rTip = opts.rTip || 1;
+    const a = clamp(aTip, 0, 0.45), f = x => 1 + x / Math.sqrt(x * x + 1);
+    const out = [], dth = 2 * Math.PI / per, dt = dth / Math.max(lam, 1e-6); // dimensionless time per step: ωt = λτ
+    for (let k = 0; k < B; k++) {
+      const pts = [], th0 = phase0 + 2 * Math.PI * k / B; let x = 0;
+      for (let i = 0; i <= turns * per; i++) {
+        const r = rTip * Math.sqrt((1 - a) / Math.max(0.05, 1 - a * f(x))), th = th0 - i * dth;
+        pts.push({ x, r, th, y: r * Math.cos(th), z: r * Math.sin(th) });
+        x += (1 - a * f(x)) * dt;
+      }
+      out.push(pts);
+    }
+    return out;
+  }
+
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, tipVortexWake };

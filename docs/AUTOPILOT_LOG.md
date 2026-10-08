@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-08 — ROADMAP 6:預設螺旋尾流葉尖渦
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `tipVortexWake(B, λ, aTip, opts)`(各葉片葉尖渦依軸向速度 1−a·f(x) 對流、流管質量守恆膨脹,輸出螺旋線點列);流場工作區 HAWT 側視圖新增「葉尖渦(螺旋尾流)」勾選(預設關閉),近側實線、遠側灰線。`tests/aero.test.mjs` 以解析值驗證遠尾流節距 2π(1−2a)/λ、半徑 √((1−a)/(1−2a))、葉片相位差與 a=0 極限。
+- 驗證:check、npm test、build、e2e 見 PR 內文。
+- 已知限制:預設尾流而非自由渦尾流,無渦-渦交互作用、無渦強度,僅示意幾何;未與 BEM Cp 比對。
+- 下一步:自由渦尾流(ROADMAP 6 剩餘子項)或變槳/MPPT 調校;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-08 — ROADMAP 7:BPM 葉尖渦噪音
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `tipVortexNoise`(BPM 圓弧葉尖經驗式,1/3 八度頻譜、A 加權);報告「設計條件」新增一列並與後緣自噪音能量相加;`tests/core.test.mjs` 新增距離/葉片數縮放與攻角單調性測試。預設設計 50 m 處約 0 dB(A)(遠小於後緣自噪音 34 dB(A),因黏性核心 l 僅毫米級)。
