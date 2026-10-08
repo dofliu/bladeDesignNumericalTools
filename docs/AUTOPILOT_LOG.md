@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-08 — ROADMAP 7:BPM 後緣噪音改用 boundaryLayer 的 δ*
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 的 `boundaryLayer` 新增回傳 `dstar`;`core.mjs` 新增 `blDeltaStar`、`tbleSpectrum` 新增選項 `{bl, afs}`;報告後緣自噪音列附邊界層版交叉檢查值。ROADMAP 4 剩餘子項(低優先調校、被動收尾)與 5 的 Sandia 校正需實驗資料或較大改動,故先做此項。
+- 驗證:check、npm test 57/57(新增測試)、build(199 KB)、e2e 全過(追蹤率 93–97%)。
+- 已知限制:位勢流 Ue、未黏性耦合;攻角限 ±12°。
+- 下一步:葉尖渦噪音;Sandia 校正;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-07 — ROADMAP 7:BPM 高攻角 SPL_α
 
 - 做了什麼:無開著的 `[autopilot]` PR。`tbleSpectrum` 吸力面新增 BPM 高攻角項(K2、B(b));`tests/core.test.mjs` 新增攻角升高噪音上升的測試。設計點總量不變。

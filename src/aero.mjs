@@ -242,6 +242,7 @@
       if (!turb) out.xTr = 1;
       out.H = turb ? Math.min(H, 2.5) : H;
       out.cd = 2 * th * Math.pow(U[m - 1], (out.H + 5) / 2);
+      out.dstar = out.H * th; // TE displacement thickness (chords, potential-flow Ue; BL not coupled)
       return out;
     }
     const up = [], lo = [];

@@ -113,7 +113,15 @@ function tbleNoise(rows, elems, B, rho, mu, dist = 50) {
    Same geometry/assumptions as tbleNoise: observer at `dist` in the rotor plane, no Doppler/azimuth, K1 simplified to the
    Rc > 8e5 value, no high-angle (SPL_alpha) term. Strouhal St = f d* / W; pressure side peaks at St1 = 0.02 M^-0.6,
    suction side at (St1 + St2)/2 with the angle shift St2. Returns {bands:[{f, L, LA}], Lp (unweighted), LA (dB(A)), dist}. */
-function tbleSpectrum(rows, elems, B, rho, mu, dist = 50) {
+const blSolveCache = new WeakMap();
+// TE displacement thickness / chord (suction, pressure) from the integral boundary layer of the panel solution at the element's angle of attack.
+function blDeltaStar(af, alphaDeg, Rc) {
+  if (!blSolveCache.has(af)) blSolveCache.set(af, A.buildAeroModel(af).solve);
+  const a = Math.max(-12, Math.min(12, alphaDeg)), bl = A.boundaryLayer(blSolveCache.get(af)(a * A.D2R), Math.max(Rc, 2e4));
+  const [s, p] = a >= 0 ? [bl.upper, bl.lower] : [bl.lower, bl.upper];
+  return [s.dstar, p.dstar];
+}
+function tbleSpectrum(rows, elems, B, rho, mu, dist = 50, opts = {}) {
   const c0 = 340, K = 125.5;
   const aMin = a => a < 0.204 ? Math.sqrt(67.552 - 886.788 * a * a) - 8.219 : a <= 0.244 ? -32.665 * a + 3.981 : -142.795 * a ** 3 + 103.656 * a * a - 57.757 * a + 6.006;
   const aMax = a => a < 0.13 ? Math.sqrt(67.552 - 886.788 * a * a) - 8.219 : a <= 0.321 ? -15.901 * a + 1.098 : -4.669 * a ** 3 + 3.491 * a * a - 16.699 * a + 1.149;
@@ -129,8 +137,10 @@ function tbleSpectrum(rows, elems, B, rho, mu, dist = 50) {
     const x = rows[i], M = el.W / c0, Rc = rho * el.W * x.c / mu;
     const lg = Math.log10(Math.max(Rc, 1e4)), d0 = Math.pow(10, 3.411 - 1.5397 * lg + 0.1059 * lg * lg);
     const aa = Math.min(Math.abs(el.alpha), 20);
-    const ds = d0 * (aa <= 7.5 ? Math.pow(10, 0.0679 * aa) : aa <= 12.5 ? 0.0162 * Math.pow(10, 0.3066 * aa) : 52.42 * Math.pow(10, 0.0258 * aa));
-    const ap = Math.min(aa, 5), dp = d0 * Math.pow(10, -0.0432 * ap + 0.00113 * ap * ap);
+    let ds = d0 * (aa <= 7.5 ? Math.pow(10, 0.0679 * aa) : aa <= 12.5 ? 0.0162 * Math.pow(10, 0.3066 * aa) : 52.42 * Math.pow(10, 0.0258 * aa));
+    const ap = Math.min(aa, 5);
+    let dp = d0 * Math.pow(10, -0.0432 * ap + 0.00113 * ap * ap);
+    if (opts.bl && opts.afs && opts.afs[i]) [ds, dp] = blDeltaStar(opts.afs[i], el.alpha, Rc); // opts.bl: δ* from boundaryLayer instead of the BPM correlation
     const St1 = 0.02 * Math.pow(Math.max(M, 1e-3), -0.6), St2 = St1 * (aa < 1.33 ? 1 : aa <= 12.5 ? Math.pow(10, 0.0054 * (aa - 1.33) ** 2) : 4.72);
     // high-angle term SPL_alpha (BPM eq. 44-47), suction side only, peak at St2
     const gam = 27.094 * M + 3.31, gam0 = 23.43 * M + 4.651, bet = 72.65 * M + 10.74, bet0 = -34.19 * M - 13.82;
@@ -784,4 +794,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, blDeltaStar, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

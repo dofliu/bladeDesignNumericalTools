@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, blDeltaStar, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -316,6 +316,19 @@ test('BPM 高攻角 SPL_alpha:攻角升高噪音上升且仍為有限值', () =>
   assert.ok(Number.isFinite(sh.Lp) && Number.isFinite(base.Lp));
   assert.ok(sh.Lp > base.Lp + 3, `hi ${sh.Lp} base ${base.Lp}`);
   console.log('SPL_alpha Lp base', base.Lp.toFixed(1), 'hi', sh.Lp.toFixed(1));
+});
+
+test('BPM 後緣噪音可改用 boundaryLayer 的 δ*(opts.bl),預設不變且量級相近', () => {
+  designHAWT(); computePerf();
+  const { rho, mu } = air(), B = S.hawt.B;
+  const base = tbleSpectrum(G.rows, G.desElems, B, rho, mu, 50);
+  assert.ok(Math.abs(tbleSpectrum(G.rows, G.desElems, B, rho, mu, 50, {}).Lp - base.Lp) < 1e-12);
+  const bl = tbleSpectrum(G.rows, G.desElems, B, rho, mu, 50, { bl: true, afs: G.afs });
+  assert.ok(Number.isFinite(bl.Lp) && Number.isFinite(bl.LA));
+  assert.ok(Math.abs(bl.Lp - base.Lp) < 12, `bl ${bl.Lp} base ${base.Lp}`);
+  const [s0, p0] = blDeltaStar(G.afs[3], 0, 5e5), [s6, p6] = blDeltaStar(G.afs[3], 6, 5e5);
+  assert.ok(s0 > 0 && p0 > 0 && s6 > s0 && p6 < p0 * 1.01, `δ* ${s0} ${s6} ${p0} ${p6}`);
+  console.log('BL δ* Lp', bl.Lp.toFixed(1), 'vs BPM', base.Lp.toFixed(1));
 });
 
 test('成本單價可調:覆寫葉片單價/費率會改變資本支出與 LCOE,預設不變', () => {
