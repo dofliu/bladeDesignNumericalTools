@@ -195,7 +195,7 @@
 
   /* ---------- Integral boundary layer (Thwaites + Michel transition + Head) ---------- */
   // Marches both surfaces of an inviscid panel solution (the result of solve(alpha)). Lengths in chords.
-  // Per surface returns { xTr, xLam, xSep, cd, H }: transition x/c, laminar-separation x/c (assumed to
+  // Per surface returns { xTr, xLam, xSep, cd, H, dStar }: transition x/c, laminar-separation x/c (assumed to
   // reattach turbulent, i.e. a short bubble), turbulent-separation x/c (null = attached to the TE),
   // Squire-Young cd of that surface, TE shape factor.
   function boundaryLayer(sol, Re) {
@@ -242,6 +242,7 @@
       if (!turb) out.xTr = 1;
       out.H = turb ? Math.min(H, 2.5) : H;
       out.cd = 2 * th * Math.pow(U[m - 1], (out.H + 5) / 2);
+      out.dStar = th * out.H; // TE displacement thickness / chord (theta x H)
       return out;
     }
     const up = [], lo = [];

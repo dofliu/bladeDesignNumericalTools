@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-08 — ROADMAP 7:BPM 改用邊界層 δ*
+
+- 做了什麼:無開著的 `[autopilot]` PR。`boundaryLayer` 新增 `dStar`;`blDstarFn` 供 `tbleNoise`/`tbleSpectrum` 選用;報告加上邊界層 δ* 交叉驗證值;`tests/core.test.mjs` 新增測試。主畫面預設不變。
+- 驗證:check、npm test 57/57、build、e2e 見 PR 內文。
+- 已知限制:勢流尾緣、無尾流;未與實驗比對。
+- 下一步:葉尖渦噪音;變槳與 MPPT 調校;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-07 — ROADMAP 7:BPM 高攻角 SPL_α
 
 - 做了什麼:無開著的 `[autopilot]` PR。`tbleSpectrum` 吸力面新增 BPM 高攻角項(K2、B(b));`tests/core.test.mjs` 新增攻角升高噪音上升的測試。設計點總量不變。

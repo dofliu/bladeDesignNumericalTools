@@ -8,7 +8,7 @@ import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -379,4 +379,17 @@ test('VAWT 啟動模擬:靜止無法自行加速(轉矩死區),輔助起轉後�
   assert.ok(slow.started && fast.started, '輔助起轉到設計轉速 30% 後 6、9 m/s 都應能加速');
   assert.ok(fast.tHalf < slow.tHalf, `風速高啟動較快:9 m/s ${fast.tHalf.toFixed(1)} s < 6 m/s ${slow.tHalf.toFixed(1)} s`);
   assert.ok(startupRun(6, 0, 60).lambda < slow.lambda, '靜止起動比輔助起轉慢');
+});
+
+test('BPM 後緣噪音:改用邊界層 δ* 仍為合理量級,攻角升高 δ* 與噪音上升', () => {
+  designHAWT(); computePerf();
+  const { rho, mu } = air(), B = S.hawt.B, fn = blDstarFn(G.afs);
+  const emp = tbleSpectrum(G.rows, G.desElems, B, rho, mu, 50), bl = tbleSpectrum(G.rows, G.desElems, B, rho, mu, 50, fn);
+  assert.ok(Number.isFinite(bl.Lp) && Math.abs(bl.Lp - emp.Lp) < 15, `bl ${bl.Lp} emp ${emp.Lp}`);
+  assert.ok(Math.abs((bl.Lp - tbleSpectrum(G.rows, G.desElems, B, rho, mu, 100, fn).Lp) - 20 * Math.log10(2)) < 1e-6);
+  const d = (a) => fn(Math.floor(G.rows.length / 2), 5e5, a);
+  assert.ok(d(10)[0] > d(2)[0], '高攻角吸力面 δ* 較厚');
+  const lo = G.desElems.map(e => ({ ...e, alpha: 2 })), hi = G.desElems.map(e => ({ ...e, alpha: 10 }));
+  assert.ok(tbleNoise(G.rows, hi, B, rho, mu, 50, fn).Lp > tbleNoise(G.rows, lo, B, rho, mu, 50, fn).Lp);
+  console.log('BL δ* spectrum Lp', bl.Lp.toFixed(1), 'empirical', emp.Lp.toFixed(1));
 });
