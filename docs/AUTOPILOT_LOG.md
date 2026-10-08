@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-08 — ROADMAP 7:BPM 葉尖渦噪音
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `tipVortexNoise`(BPM 圓弧葉尖經驗式,1/3 八度頻譜、A 加權);報告「設計條件」新增一列並與後緣自噪音能量相加;`tests/core.test.mjs` 新增距離/葉片數縮放與攻角單調性測試。預設設計 50 m 處約 0 dB(A)(遠小於後緣自噪音 34 dB(A),因黏性核心 l 僅毫米級)。
+- 驗證:check、npm test 58/58、build、e2e 見 PR 內文。
+- 已知限制:只取最外側站、無葉尖形狀選項、無方向性,未與實驗比對。
+- 下一步:變槳與 MPPT 調校(低優先)、側偏收尾進階;ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-08 — ROADMAP 7:BPM 改用邊界層 δ*
 
 - 做了什麼:無開著的 `[autopilot]` PR。`boundaryLayer` 新增 `dStar`;`blDstarFn` 供 `tbleNoise`/`tbleSpectrum` 選用;報告加上邊界層 δ* 交叉驗證值;`tests/core.test.mjs` 新增測試。主畫面預設不變。
