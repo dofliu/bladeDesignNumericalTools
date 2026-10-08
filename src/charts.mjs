@@ -48,7 +48,13 @@ export function draw(cv, o) {
   g.strokeStyle = line; g.lineWidth = 1; g.fillStyle = muted;
   const xs = niceStep(x1 - x0, Math.max(3, pw / 70)), ys = niceStep(y1 - y0, Math.max(3, ph / 40));
   g.textAlign = 'center'; g.textBaseline = 'top';
-  for (let v = Math.ceil(x0 / xs) * xs; v <= x1 + 1e-9; v += xs) {
+  if (o.xticks) { // custom ticks [{v, label}] (e.g. log-frequency axis plotted as log10 f)
+    for (const t of o.xticks) {
+      if (t.v < x0 - 1e-9 || t.v > x1 + 1e-9) continue;
+      const px = X(t.v); g.beginPath(); g.moveTo(px, padT); g.lineTo(px, padT + ph); g.stroke();
+      if (!o.noXTicks) g.fillText(t.label, px, padT + ph + 4);
+    }
+  } else for (let v = Math.ceil(x0 / xs) * xs; v <= x1 + 1e-9; v += xs) {
     const px = X(v); g.beginPath(); g.moveTo(px, padT); g.lineTo(px, padT + ph); g.stroke();
     if (!o.noXTicks) g.fillText(fmt(v, xs), px, padT + ph + 4);
   }

@@ -138,6 +138,11 @@ export const Report = (function () {
     if (S.load.furl && H) cond.push(['側偏收尾', `${fmt(S.load.vFurl, 1)} m/s 起側偏,上限 ${fmt(S.load.furlMax, 0)}°,速率 ${fmt(S.load.furlRate, 1)}°/s`]);
     if (S.load.cutOut) cond.push(['切出/重啟風速', `${fmt(S.load.vCutOut, 1)} m/s / ${fmt(S.load.vRestart, 1)} m/s(1 秒低通平均風速,含遲滯)`]);
     h += `<table class="kvt">${cond.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>`;
+    if (H) { // BPM trailing-edge noise spectrum chart
+      const a = air(), tb = tbleSpectrum(G.rows, G.desElems, S.hawt.B, a.rho, a.mu, 50), lf = tb.bands.map(b => Math.log10(b.f));
+      const xt = [100, 200, 500, 1000, 2000, 5000, 10000].map(f => ({ v: Math.log10(f), label: f >= 1000 ? f / 1000 + 'k' : String(f) }));
+      h += fig(capture(cv => Plot.draw(cv, { title: `後緣自噪音 1/3 八度頻譜(${tb.dist} m)`, series: [{ x: lf, y: tb.bands.map(b => b.L), color: col('--c1'), label: '未加權 dB' }, { x: lf, y: tb.bands.map(b => b.LA), color: col('--c2'), label: 'dB(A)' }], xlim: [lf[0], lf[lf.length - 1]], xticks: xt, xlabel: '頻率 (Hz)', ylabel: 'SPL (dB)' }), 760, 240), '圖:BPM 後緣自噪音頻譜(設計點;僅相對比較)');
+    }
     // 2 airfoils
     if (!sav) {
       h += hN('翼型選擇與極曲線');
