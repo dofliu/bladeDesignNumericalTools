@@ -206,3 +206,17 @@ test('葉尖渦螺旋尾流:遠尾流節距 2π(1−2a)/λ、半徑膨脹 √((1
   near(w0[w0.length - 1].r, 1, 1e-9, 'a=0 半徑');
   near(w0[per].x, 2 * Math.PI / lam, 1e-9, 'a=0 節距');
 });
+
+test('biotSavart:圓形渦環軸上誘導速度對照解析解 Γ R²/(2(R²+x²)^1.5)', () => {
+  const N = 720, ring = [];
+  for (let i = 0; i <= N; i++) { const th = 2 * Math.PI * i / N; ring.push({ x: 0, y: Math.cos(th), z: Math.sin(th) }); }
+  for (const x of [0, 0.5, 2]) {
+    const q = A.biotSavart([ring], { x, y: 0, z: 0 }, 1, 1e-4);
+    near(q.u / (1 / (2 * Math.pow(1 + x * x, 1.5))), 1, 0.005, `軸上 x=${x}`);
+    assert.ok(Math.abs(q.v) < 1e-6 && Math.abs(q.w) < 1e-6);
+  }
+  // 反向繞行符號相反;Γ 線性
+  const q1 = A.biotSavart([ring], { x: 1, y: 0, z: 0 }, 2, 1e-4), q2 = A.biotSavart([ring.slice().reverse()], { x: 1, y: 0, z: 0 }, 2, 1e-4);
+  near(q1.u, -q2.u, 1e-9, '反向');
+  near(q1.u, 2 * A.biotSavart([ring], { x: 1, y: 0, z: 0 }, 1, 1e-4).u, 1e-9, 'Γ 線性');
+});

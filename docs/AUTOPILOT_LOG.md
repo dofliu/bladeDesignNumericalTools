@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-08 — ROADMAP 6:Biot-Savart 渦線誘導速度
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `biotSavart`(渦線段誘導速度,核心正規化);`tests/aero.test.mjs` 以圓形渦環軸上解析解驗證。純函式,尚未接 UI。
+- 驗證:check、npm test、build、e2e 見 PR 內文。
+- 已知限制:尚未用於尾流演化,無渦強度模型;O(N²) 成本未最佳化。
+- 下一步:自由渦尾流(渦點隨誘導速度對流、葉尖渦強度、與 BEM Cp 比對);ROADMAP 2 仍待使用者決定。
+
 ## 2026-10-08 — ROADMAP 6:預設螺旋尾流葉尖渦
 
 - 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `tipVortexWake(B, λ, aTip, opts)`(各葉片葉尖渦依軸向速度 1−a·f(x) 對流、流管質量守恆膨脹,輸出螺旋線點列);流場工作區 HAWT 側視圖新增「葉尖渦(螺旋尾流)」勾選(預設關閉),近側實線、遠側灰線。`tests/aero.test.mjs` 以解析值驗證遠尾流節距 2π(1−2a)/λ、半徑 √((1−a)/(1−2a))、葉片相位差與 a=0 極限。
