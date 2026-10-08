@@ -168,6 +168,23 @@ function tbleSpectrum(rows, elems, B, rho, mu, dist = 50, dstarFn = null) {
   return { bands, Lp: sumDb('L'), LA: sumDb('LA'), dist };
 }
 
+/* Tip-vortex formation noise 1/3-octave spectrum, simplified BPM (NASA RP-1218 eqs. 61-63, rounded tip): the spectrum is
+   SPL = 10log10(M^2 Mmax^3 l^2 Dh / r^2) - 30.5 (log10 St'' + 0.3)^2 + 126, St'' = f l / Umax, with separated-region length
+   l = 0.008 alpha_tip c_tip and Mmax = M (1 + 0.036 alpha_tip). Uses the outermost element of the design BEM solution, Dh = 1,
+   observer at `dist` in the rotor plane, no Doppler/azimuth. Same band grid and A-weighting as tbleSpectrum. Returns {bands, Lp, LA, dist}. */
+function tipVortexSpectrum(rows, elems, B, dist = 50) {
+  const c0 = 340, el = elems[elems.length - 1], x = rows[elems.length - 1];
+  const aw = f => { const f2 = f * f; return 20 * Math.log10(12194 ** 2 * f2 * f2 / ((f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2))) + 2.0; };
+  const aa = Math.min(Math.abs(el.alpha), 20), M = el.W / c0, Mmax = M * (1 + 0.036 * aa), Umax = Mmax * c0, l = Math.max(0.008 * aa * x.c, 1e-6);
+  const bands = []; for (let k = 0; k <= 20; k++) {
+    const f = 100 * Math.pow(10, k / 10), St = f * l / Umax;
+    const L = 10 * Math.log10(Math.max(B * M * M * Math.pow(Mmax, 3) * l * l / (dist * dist), 1e-30)) - 30.5 * Math.pow(Math.log10(St) + 0.3, 2) + 126;
+    bands.push({ f, L, LA: L + aw(f) });
+  }
+  const sumDb = k => 10 * Math.log10(Math.max(bands.reduce((s, b) => s + Math.pow(10, 0.1 * b[k]), 0), 1e-30));
+  return { bands, Lp: sumDb('L'), LA: sumDb('LA'), dist };
+}
+
 /* Rough cost / LCOE estimate (NT$). Capex = blades (mass x material price) + generator/electronics (per rated W)
    + tower/foundation (per swept m2); LCOE = (capex x FCR + annual O&M) / AEP. Conceptual unit prices only. */
 const COST_DEFAULT = { gen: 30, tower: 3000, fcr: 0.08, om: 0.03, life: 20 };
@@ -800,4 +817,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
