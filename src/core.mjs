@@ -90,7 +90,7 @@ function noiseEstimate(vTip, D, dist = 50) {
    pressure sides, elements and blades with incoherent (energy) addition. The spectral shape is not resolved: a +5 dB term
    stands for the one-third-octave band sum. Observer fixed at `dist` in the rotor plane, Dh = 1, no Doppler/azimuth, unweighted.
    Use for relative comparison between designs; absolute level is +-5 dB or worse. */
-function tbleNoise(rows, elems, B, rho, mu, dist = 50) {
+function tbleNoise(rows, elems, B, rho, mu, dist = 50, dstarFn = null) {
   const c0 = 340;
   const dStar = (Rc, a) => { // returns [suction, pressure] displacement thickness / chord
     const lg = Math.log10(Math.max(Rc, 1e4)), d0 = Math.pow(10, 3.411 - 1.5397 * lg + 0.1059 * lg * lg);
@@ -101,7 +101,7 @@ function tbleNoise(rows, elems, B, rho, mu, dist = 50) {
   };
   let sum = 0;
   elems.forEach((el, i) => {
-    const x = rows[i], M = el.W / c0, Rc = rho * el.W * x.c / mu, [ds, dp] = dStar(Rc, el.alpha);
+    const x = rows[i], M = el.W / c0, Rc = rho * el.W * x.c / mu, [ds, dp] = (dstarFn && dstarFn(i, Rc, el.alpha)) || dStar(Rc, el.alpha);
     const K = 125.5 + 5; // K1(Rc>8e5) - 3 + band-sum
     for (const d of [ds, dp]) sum += Math.pow(10, 0.1 * (10 * Math.log10(d * x.c * Math.pow(M, 5) * x.dr / (dist * dist)) + K));
   });
@@ -109,11 +109,26 @@ function tbleNoise(rows, elems, B, rho, mu, dist = 50) {
   return { Lp, dist };
 }
 
+/* Displacement-thickness provider for tbleNoise/tbleSpectrum from the integral boundary layer (Thwaites + Michel + Head) on
+   the panel solution of each section's airfoil: returns (i, Rc, alphaDeg) -> [suction, pressure] delta* per chord, or null if the
+   result is not finite (caller then falls back to the BPM empirical form). Positive alpha: upper surface is the suction side.
+   Potential-flow TE, turbulent-only march, no wake: gives a cheaper but physically derived alternative to the BPM correlation. */
+const blSolveCache = new WeakMap();
+function blDstarFn(afs) {
+  return (i, Rc, alphaDeg) => {
+    const af = afs[i]; if (!af) return null;
+    let solve = blSolveCache.get(af); if (!solve) { solve = A.panel(af); blSolveCache.set(af, solve); }
+    const bl = A.boundaryLayer(solve(alphaDeg * A.D2R), Math.max(Rc, 1e4));
+    const [suc, prs] = alphaDeg >= 0 ? [bl.upper, bl.lower] : [bl.lower, bl.upper];
+    return Number.isFinite(suc.dStar) && Number.isFinite(prs.dStar) && suc.dStar > 0 && prs.dStar > 0 ? [suc.dStar, prs.dStar] : null;
+  };
+}
+
 /* TBL-TE self-noise 1/3-octave spectrum with BPM A-function shape (NASA RP-1218 eqs. 35-38) and A-weighting (IEC 61672).
    Same geometry/assumptions as tbleNoise: observer at `dist` in the rotor plane, no Doppler/azimuth, K1 simplified to the
    Rc > 8e5 value, no high-angle (SPL_alpha) term. Strouhal St = f d* / W; pressure side peaks at St1 = 0.02 M^-0.6,
    suction side at (St1 + St2)/2 with the angle shift St2. Returns {bands:[{f, L, LA}], Lp (unweighted), LA (dB(A)), dist}. */
-function tbleSpectrum(rows, elems, B, rho, mu, dist = 50) {
+function tbleSpectrum(rows, elems, B, rho, mu, dist = 50, dstarFn = null) {
   const c0 = 340, K = 125.5;
   const aMin = a => a < 0.204 ? Math.sqrt(67.552 - 886.788 * a * a) - 8.219 : a <= 0.244 ? -32.665 * a + 3.981 : -142.795 * a ** 3 + 103.656 * a * a - 57.757 * a + 6.006;
   const aMax = a => a < 0.13 ? Math.sqrt(67.552 - 886.788 * a * a) - 8.219 : a <= 0.321 ? -15.901 * a + 1.098 : -4.669 * a ** 3 + 3.491 * a * a - 16.699 * a + 1.149;
@@ -129,8 +144,9 @@ function tbleSpectrum(rows, elems, B, rho, mu, dist = 50) {
     const x = rows[i], M = el.W / c0, Rc = rho * el.W * x.c / mu;
     const lg = Math.log10(Math.max(Rc, 1e4)), d0 = Math.pow(10, 3.411 - 1.5397 * lg + 0.1059 * lg * lg);
     const aa = Math.min(Math.abs(el.alpha), 20);
-    const ds = d0 * (aa <= 7.5 ? Math.pow(10, 0.0679 * aa) : aa <= 12.5 ? 0.0162 * Math.pow(10, 0.3066 * aa) : 52.42 * Math.pow(10, 0.0258 * aa));
-    const ap = Math.min(aa, 5), dp = d0 * Math.pow(10, -0.0432 * ap + 0.00113 * ap * ap);
+    let ds = d0 * (aa <= 7.5 ? Math.pow(10, 0.0679 * aa) : aa <= 12.5 ? 0.0162 * Math.pow(10, 0.3066 * aa) : 52.42 * Math.pow(10, 0.0258 * aa));
+    const ap = Math.min(aa, 5); let dp = d0 * Math.pow(10, -0.0432 * ap + 0.00113 * ap * ap);
+    const bl = dstarFn && dstarFn(i, Rc, el.alpha); if (bl) [ds, dp] = bl;
     const St1 = 0.02 * Math.pow(Math.max(M, 1e-3), -0.6), St2 = St1 * (aa < 1.33 ? 1 : aa <= 12.5 ? Math.pow(10, 0.0054 * (aa - 1.33) ** 2) : 4.72);
     // high-angle term SPL_alpha (BPM eq. 44-47), suction side only, peak at St2
     const gam = 27.094 * M + 3.31, gam0 = 23.43 * M + 4.651, bet = 72.65 * M + 10.74, bet0 = -34.19 * M - 13.82;
@@ -784,4 +800,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
