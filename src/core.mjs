@@ -25,7 +25,9 @@ const S = {
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true,
     cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5, furl: false, vFurl: 11, furlMax: 60, furlRate: 4 },
-  perf: { Vavg: 5.5, k: 2, series: null, cost: {} }
+  perf: { Vavg: 5.5, k: 2, series: null, cost: {} },
+  // Imported Cp-lambda rotor (vawt.type 'custom', ROADMAP 8A): performance comes entirely from user data (pts from A.parseCpCurve)
+  custom: { axis: 'v', R: 1.0, H: 2.0, area: 0, mass: 20, J: 0, pts: null, name: '' }
 };
 
 /* ---------- wind resource: Weibull distribution & capacity factor ---------- */
@@ -461,6 +463,11 @@ function vawtCfg() {
 function designVAWT() {
   const v = S.vawt, cfg = vawtCfg(), mat = MATERIALS[v.material];
   G.vcfg = cfg; G.R = v.R; G.loads = null; // spanwise structural loads: HAWT only for now (see ROADMAP 3)
+  if (v.type === 'custom') { // no geometry model: swept area / mass / inertia come straight from S.custom
+    const c = S.custom;
+    G.R = c.R; G.A = c.area > 0 ? c.area : 2 * c.R * c.H; G.mass = c.mass; G.bladeMass = c.mass; G.J = c.J > 0 ? c.J : Math.max(1e-3, 0.5 * c.mass * c.R * c.R);
+    return;
+  }
   if (v.type === 'sav') {
     G.A = 2 * v.R * v.H;
     const d = 2 * v.R / (2 - v.overlap), t = Math.max(0.0015, 0.004 * v.R);
@@ -504,6 +511,10 @@ function computePerf() {
     G.perf.step = DLAM;
     G.yawCurves = { 0: G.perf };
     scheduleYawBuckets(G.gen);
+  } else if (S.vawt.type === 'custom') {
+    if (!S.custom.pts) throw new Error('自訂性能曲線尚未匯入資料');
+    G.perf = curveArrays(A.customCurve({ pts: S.custom.pts }));
+    G.perf.step = 0.05;
   } else if (S.vawt.type === 'sav') {
     G.perf = curveArrays(A.savoniusCurve({ B: Math.round(S.vawt.B), overlap: S.vawt.overlap, endPlates: S.vawt.endPlates }));
     G.perf.step = 0.05;
