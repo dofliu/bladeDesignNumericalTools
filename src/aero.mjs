@@ -721,7 +721,26 @@
     }
     return out;
   }
+  /* Biot-Savart induced velocity at point p={x,y,z} from vortex polylines (each an array of {x,y,z}) of circulation gamma,
+     straight-segment formula with a Rankine-type core (denominator regularised by core²) so nearby points stay finite.
+     Units follow the geometry (gamma [L²/T] → velocity [L/T]); the sign follows the polyline direction (right-hand rule). */
+  function biotSavart(lines, p, gamma = 1, core = 0.02) {
+    let u = 0, v = 0, w = 0; const c2 = core * core;
+    for (const L of lines) for (let i = 0; i < L.length - 1; i++) {
+      const a = L[i], b = L[i + 1];
+      const r1x = p.x - a.x, r1y = p.y - a.y, r1z = p.z - a.z, r2x = p.x - b.x, r2y = p.y - b.y, r2z = p.z - b.z;
+      const cx = r1y * r2z - r1z * r2y, cy = r1z * r2x - r1x * r2z, cz = r1x * r2y - r1y * r2x;
+      const c = cx * cx + cy * cy + cz * cz, n1 = Math.hypot(r1x, r1y, r1z), n2 = Math.hypot(r2x, r2y, r2z);
+      if (n1 < 1e-12 || n2 < 1e-12) continue;
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+      const k = gamma / (4 * Math.PI) / (c + c2 * (dx * dx + dy * dy + dz * dz)) *
+        ((dx * (r1x / n1 - r2x / n2) + dy * (r1y / n1 - r2y / n2) + dz * (r1z / n1 - r2z / n2)));
+      u += k * cx; v += k * cy; w += k * cz;
+    }
+    return { u, v, w };
+  }
+
 
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, tipVortexWake };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, tipVortexWake, biotSavart };

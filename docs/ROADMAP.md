@@ -84,7 +84,8 @@
   - (原項目)與文獻實驗值比較失速估計與厚翼型(NACA 0018)cd0;原項目:依上述比對,把極曲線的 `cd0` 高 Re 段(`cfFlat` 之後的厚度修正)往 `boundaryLayer` 校正,同步更新 aero/core 測試的參考值並在 PR 說明新舊數值;再與文獻實驗值比較失速估計。
 - 轉子:自由渦尾流(prescribed / free wake)顯示葉尖渦;
   - [x] 預設螺旋尾流葉尖渦(2026-10-08):`aero.mjs` 新增 `tipVortexWake`(依葉尖誘導 a 對流 + 流管膨脹,遠尾流節距 2π(1−2a)/λ),流場工作區 HAWT 側視圖可勾選疊圖;`tests/aero.test.mjs` 解析值驗證。
-  - [ ] 自由渦尾流(渦-渦交互作用、與 BEM Cp 比對 < 5%)與 OpenFOAM 匯出。
+  - [x] Biot-Savart 渦線誘導速度(2026-10-08):`aero.mjs` 新增 `biotSavart(lines, p, gamma, core)`(直線段公式 + 核心正規化),`tests/aero.test.mjs` 以圓形渦環軸上解析解 Γ R²/(2(R²+x²)^1.5) 驗證(誤差 < 0.5%)。尚未接到尾流演化。
+  - [ ] 自由渦尾流(以 `biotSavart` 讓 `tipVortexWake` 的渦點隨誘導速度對流、設定葉尖渦強度 Γ、與 BEM Cp 比對 < 5%)與 OpenFOAM 匯出。
   - (原項目)或匯出幾何給 OpenFOAM 做 CFD,並把結果讀回。
 - 驗收:分離點隨攻角移動趨勢合理;BEM 與渦尾流 Cp 差異 < 5%。
 
