@@ -25,7 +25,7 @@ export const Report = (function () {
   async function runTests(onProg) {
     const keepSim = simState(), keepTun = { ...S.tun }, keepCtab = S.ctab;
     S.tun.running = false;
-    const H = S.mode === 'HAWT', darr = !H && S.vawt.type !== 'sav';
+    const H = S.mode === 'HAWT', darr = !H && !noAirfoil(S.vawt);
     const dt = 0.004, R = G.R, { rho } = air();
     const res = { curve: [], yaw: [], turb: null, gust: null, start: [] };
     const Vmax = S.load.cutOut ? Math.min(25, Math.max(15, Math.ceil(S.load.vCutOut) + 2)) : 15;
@@ -93,7 +93,7 @@ export const Report = (function () {
       const st = stSorted(), rootT = getAf(st[0].k).t; if (rootT < 0.18) out.push(`根部翼型相對厚度僅 ${(rootT * 100).toFixed(0)}%,根部彎矩最大,建議改用 t/c ≥ 18–21% 的翼型或加厚根部結構。`);
       if (S.hawt.twMode === 'linear') out.push('目前採用線性扭角,部分截面偏離最佳攻角;若製造允許,可比較「BEM 數值最佳化」扭角的 Cp 差異(方案比較分頁)。');
       const al = (G.rows || []).map(r => r.aAct), mx = Math.max(...al); if (mx > 11) out.push(`設計點最大攻角約 ${fmt(mx, 1)}°,靠近失速,低風速或陣風時可能提早失速。`);
-    } else if (S.vawt.type !== 'sav') {
+    } else if (!noAirfoil(S.vawt)) {
       const sol = S.vawt.B * S.vawt.c / S.vawt.R; out.push(`實度 Bc/R = ${fmt(sol, 3)};最佳尖速比 ${fmt(G.lopt, 2)}、Cp,max ${fmt(G.cpMax, 3)}。實度越高最佳尖速比越低、啟動越容易但最高效率下降。`);
     }
     if (t) {
@@ -117,9 +117,9 @@ export const Report = (function () {
     return out;
   }
   function build(t) {
-    const H = S.mode === 'HAWT', sav = !H && S.vawt.type === 'sav', { rho, mu } = air();
+    const H = S.mode === 'HAWT', sav = !H && noAirfoil(S.vawt), { rho, mu } = air();
     const now = new Date(), dateS = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const title = R0.name || (H ? `${Math.round(S.hawt.B)} 葉水平軸風力機 R ${fmt(S.hawt.R, 2)} m` : `${VAWT_TYPES[S.vawt.type]} R ${fmt(S.vawt.R, 2)} m`);
+    const title = R0.name || (H ? `${Math.round(S.hawt.B)} 葉水平軸風力機 R ${fmt(S.hawt.R, 2)} m` : `${VAWT_TYPES[S.vawt.type]} R ${fmt(S.vawt.type === 'custom' ? S.custom.R : S.vawt.R, 2)} m`);
     const col = n => Plot.css(n);
     let sec = 0; const hN = t => `<h2>${++sec}. ${t}</h2>`;
     let h = `<div class="rh"><div class="rk">設計規劃與虛擬風洞測試報告</div><h1>${esc(title)}</h1><div class="meta">${dateS}${R0.author ? ' · ' + esc(R0.author) : ''} · 由風力機葉片設計工具產生</div></div>`;
@@ -130,6 +130,7 @@ export const Report = (function () {
     // 1 design conditions
     h += hN('設計條件');
     const cond = H ? [['型式', `水平軸,${Math.round(S.hawt.B)} 葉`], ['轉子半徑 / 輪轂半徑', `${fmt(S.hawt.R, 2)} m / ${fmt(G.Rhub, 3)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['設計風速 / 設計尖速比', `${fmt(S.hawt.Vd, 1)} m/s / ${fmt(S.hawt.tsr, 1)}`], ['扭角設計方式', { bem: 'BEM 數值最佳化', opt: 'Schmitz 解析解', linear: `線性 ${fmt(S.hawt.twRoot, 1)}° → ${fmt(S.hawt.twTip, 1)}°` }[S.hawt.twMode]], ['槳距角', fmt(S.hawt.pitch, 1) + '°'], ['材料 / 單葉質量', `${MATERIALS[S.hawt.material].name} / ${fmt(G.bladeMass, 2)} kg`]]
+      : S.vawt.type === 'custom' ? [['型式', VAWT_TYPES.custom], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts.length} 筆)`], ['特徵半徑 / 高度', `${fmt(S.custom.R, 2)} m / ${fmt(S.custom.H, 2)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']]
       : [['型式', VAWT_TYPES[S.vawt.type]], ['葉片數', Math.round(S.vawt.B)], ['半徑 / 高度', `${fmt(S.vawt.R, 2)} m / ${fmt(S.vawt.H, 2)} m`], ...(sav ? [['重疊比', fmt(S.vawt.overlap, 2)]] : [['弦長 / 翼型', `${fmt(S.vawt.c * 1000, 0)} mm / ${afLabel(S.af.vawt)}`], ['實度 Bc/R', fmt(S.vawt.B * S.vawt.c / S.vawt.R, 3)]]), ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']];
     cond.push(['空氣條件', `${fmt(S.tun.T, 0)} °C,海拔 ${fmt(S.tun.alt, 0)} m,ρ = ${fmt(rho, 3)} kg/m³`], ['負載', S.load.kind === 'bat' ? `電池充電 ${S.load.Vbat} V(升降壓轉換器)` : `電阻負載 ${fmt(S.load.RL, 1)} Ω`], ['MPPT 控制', { po: '擾動觀察法 P&O', tsr: '最佳尖速比控制', ot: '最佳轉矩控制', manual: '固定占空比' }[S.load.ctrl]], ['發電機', `ke ${fmt(S.load.ke, 3)} V·s/rad,Rs ${fmt(S.load.Rs, 3)} Ω,額定 ${fmtP(S.load.Pmax)},轉速上限 ${S.load.wmaxRpm} rpm`]);
     if (H) { const nz = noiseEstimate(S.hawt.tsr * S.hawt.Vd, 2 * S.hawt.R, 50); cond.push(['噪音估計(設計點,葉尖速度法)', `葉尖速度 ${fmt(S.hawt.tsr * S.hawt.Vd, 1)} m/s,聲功率級約 ${fmt(nz.Lw, 0)} dB(A),${nz.dist} m 處約 ${fmt(nz.Lp, 0)} dB(A)(經驗式,誤差約 ±5 dB,不含音調/調幅噪音)`]); }
@@ -232,7 +233,7 @@ export const Report = (function () {
     h += hN('結論與建議');
     h += `<ul>${conclusions(t).map(x => `<li>${x}</li>`).join('')}</ul>`;
     h += hN('模型說明與限制');
-    h += `<ul class="muted"><li>翼型極曲線:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依摩擦阻力、失速估算與 Viterna 失速後外推;精度低於 XFOIL 或風洞實測,可在工具中匯入實測極曲線取代。</li><li>水平軸:葉片元素動量理論(BEM),含 Prandtl 葉尖/輪轂損失與 Buhl 高誘導修正;偏航以分區方位角計算。</li><li>垂直軸:雙重多流管法(DMST),含展弦比修正與支撐臂阻力,未含動態失速與流線彎曲,高尖速比結果偏樂觀。Savonius 為經驗曲線。</li><li>電氣系統:永磁發電機 + 整流 + 升降壓轉換器的準穩態模型;虛擬風洞測試為時域模擬,不含結構振動、塔影與地面邊界層。</li><li>本報告數值適合概念設計與方案比較;製造前建議以 CFD 或實體風洞驗證。</li></ul>`;
+    h += `<ul class="muted"><li>翼型極曲線:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依摩擦阻力、失速估算與 Viterna 失速後外推;精度低於 XFOIL 或風洞實測,可在工具中匯入實測極曲線取代。</li><li>水平軸:葉片元素動量理論(BEM),含 Prandtl 葉尖/輪轂損失與 Buhl 高誘導修正;偏航以分區方位角計算。</li><li>垂直軸:雙重多流管法(DMST),含展弦比修正與支撐臂阻力,未含動態失速與流線彎曲,高尖速比結果偏樂觀。Savonius 為經驗曲線。</li>${S.mode === 'VAWT' && S.vawt.type === 'custom' ? '<li><b>本設計的性能來源為「匯入曲線(使用者提供)」</b>:本工具不計算此轉子的氣動性能,Cp–λ 的準確度完全取決於資料來源(論文、CFD 或實驗),所有發電量與控制結果都以該曲線為前提。</li>' : ''}<li>電氣系統:永磁發電機 + 整流 + 升降壓轉換器的準穩態模型;虛擬風洞測試為時域模擬,不含結構振動、塔影與地面邊界層。</li><li>本報告數值適合概念設計與方案比較;製造前建議以 CFD 或實體風洞驗證。</li></ul>`;
     return { title, body: h, date: dateS };
   }
   const CSS = `.rpt{font:14px/1.6 "IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#15242C;background:#fff;max-width:960px;margin:0 auto;padding:28px 32px;font-variant-numeric:tabular-nums}

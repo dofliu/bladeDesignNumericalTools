@@ -15,7 +15,15 @@ const MATERIALS = {
   pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, cost: 800, fill: 0.42, E: 2.3e9, allow: 20e6, su: 50e6, m: 8 },
   cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, cost: 2000, fill: 0.22, E: 70e9, allow: 250e6, su: 600e6, m: 14 }
 };
-const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型' };
+const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型', custom: '自訂性能曲線(匯入 Cp–λ)' };
+// rotors without a blade geometry / airfoil model (Savonius empirical curve, imported curve)
+const noAirfoil = v => v.type === 'sav' || v.type === 'custom';
+// Schematic example curves for the imported-curve rotor. NOT measured data (lambda, Cp[, Cq] per line).
+const CUSTOM_EXAMPLES = {
+  lift: { name: '示意:升力型(Cp,max 約 0.32 @ λ 3.5,非實測)', text: '# 示意曲線,非實測資料\n# lambda, Cp\n' + Array.from({ length: 15 }, (_, i) => { const l = 0.5 * (i + 1), x = l / 3.5; return l.toFixed(1) + ', ' + (0.32 * x * Math.exp(1 - x)).toFixed(4); }).join('\n') },
+  drag: { name: '示意:阻力型(Cp,max 約 0.18 @ λ 0.8,非實測)', text: '# 示意曲線,非實測資料\n# lambda, Cp\n' + Array.from({ length: 16 }, (_, i) => { const l = 0.1 * (i + 1), x = l / 0.8; return l.toFixed(1) + ', ' + Math.max(0, 0.18 * x * (2 - x)).toFixed(4); }).join('\n') },
+};
+
 
 const S = {
   mode: 'HAWT', step: 'af', ctab: 'airfoil',
@@ -27,7 +35,7 @@ const S = {
     cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5, furl: false, vFurl: 11, furlMax: 60, furlRate: 4 },
   perf: { Vavg: 5.5, k: 2, series: null, cost: {} },
   // Imported Cp-lambda rotor (vawt.type 'custom', ROADMAP 8A): performance comes entirely from user data (pts from A.parseCpCurve)
-  custom: { axis: 'v', R: 1.0, H: 2.0, area: 0, mass: 20, J: 0, pts: null, name: '' }
+  custom: { axis: 'v', R: 1.0, H: 2.0, area: 0, mass: 20, J: 0, pts: null, text: '', warn: [], name: '' }
 };
 
 /* ---------- wind resource: Weibull distribution & capacity factor ---------- */
@@ -830,4 +838,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

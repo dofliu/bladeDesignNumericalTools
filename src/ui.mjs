@@ -1,5 +1,6 @@
 /* ===== UI ===== */
 export const $ = s => document.querySelector(s);
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 export const fmt = (v, d = 1) => (v == null || !isFinite(v)) ? '–' : (+v).toFixed(d);
 export function fmtP(w) { const a = Math.abs(w); return a >= 1e6 ? (w / 1e6).toFixed(2) + ' MW' : a >= 1e4 ? (w / 1e3).toFixed(1) + ' kW' : a >= 1e3 ? (w / 1e3).toFixed(2) + ' kW' : w.toFixed(a < 10 ? 1 : 0) + ' W'; }
 export function getP(path) { return path.split('.').reduce((o, k) => o[k], S); }
@@ -44,7 +45,7 @@ export function paneAirfoil() {
   const H = S.mode === 'HAWT';
   let h = '';
   h += grp(H ? '沿展長的翼型分布' : '翼型選擇', H ? stationEditor()
-    : (S.vawt.type === 'sav' ? `<p class="note">Savonius 為阻力型轉子,由半圓筒葉片構成,不使用翼型;請到「轉子」設定重疊比與端板。</p>` : sel('af.vawt', '葉片翼型', afOptions(), { kind: 'af' }) +
+    : (S.vawt.type === 'custom' ? `<p class="note">自訂性能曲線轉子沒有葉片幾何模型,不使用翼型;性能完全來自「轉子」分頁匯入的 Cp–λ 資料。</p>` : S.vawt.type === 'sav' ? `<p class="note">Savonius 為阻力型轉子,由半圓筒葉片構成,不使用翼型;請到「轉子」設定重疊比與端板。</p>` : sel('af.vawt', '葉片翼型', afOptions(), { kind: 'af' }) +
       `<p class="note">垂直軸葉片會經歷正負攻角交替,常用對稱翼型(NACA 00xx)。厚翼型失速較緩和、有助於啟動。</p>`));
   h += grp('自訂 NACA 翼型', `<div class="row wide"><label for="nacaIn">4 或 5 位數</label><div style="display:flex;gap:6px"><input class="txt" id="nacaIn" placeholder="例:2418、23015" inputmode="numeric"><button class="btn" id="nacaAdd">加入</button></div></div>`);
   h += grp('匯入翼型資料庫座標', `<p class="note">支援 Selig 與 Lednicer 格式的 .dat 座標檔,可直接使用 UIUC Airfoil Coordinates Database、Airfoil Tools 下載的檔案(例如 S809、SG6043、FX 63-137、DU 93-W-210)。</p>
@@ -81,7 +82,16 @@ export function paneRotor() {
   } else {
     const v = S.vawt;
     h += grp('型式', sel('vawt.type', '轉子結構', Object.entries(VAWT_TYPES), { kind: 'type' }));
-    if (v.type === 'sav') {
+    if (v.type === 'custom') {
+      const c = S.custom;
+      h += grp('性能曲線(匯入資料)', `<p class="note">此轉子沒有葉片幾何模型:性能完全由你提供的 Cp–λ 資料決定(論文、CFD、風洞實驗),準確度取決於資料來源;Cp 請以下方「掃掠面積」為基準。每行一組「λ, Cp[, Cq]」,可含標題或 # 註解,λ 須遞增。</p>
+        <div class="row wide"><label for="cpEx">示意範例(非實測)</label><div style="display:flex;gap:6px"><select class="txt" id="cpEx">${Object.entries(CUSTOM_EXAMPLES).map(([k, e]) => `<option value="${k}">${e.name}</option>`).join('')}</select><button class="btn" id="cpExLoad">載入</button></div></div>
+        <textarea id="cpText" class="txt" style="min-height:110px" aria-label="Cp–λ 資料" placeholder="lambda, Cp&#10;0.5, 0.05&#10;1.0, 0.12&#10;...">${esc(c.text || '')}</textarea>
+        <div class="btns"><button class="btn" id="cpApply">套用資料</button><button class="btn ghost" id="cpFileBtn">匯入 CSV 檔</button></div><div class="kv" id="cpInfo"></div>`);
+      h += grp('幾何與質量(包絡)', rng('custom.R', '特徵半徑 R(λ 基準)', 0.1, 10, 0.01, 'm') + rng('custom.H', '高度 / 軸向長度 H', 0.1, 10, 0.05, 'm') +
+        rng('custom.area', '掃掠面積(0 = 自動)', 0, 60, 0.05, 'm²') + rng('custom.mass', '轉子質量', 1, 400, 0.5, 'kg') + rng('custom.J', '轉動慣量 J(0 = 自動)', 0, 200, 0.05, 'kg·m²') +
+        `<p class="note">自動掃掠面積 = 2R·H(垂直軸投影);若轉子是水平軸圓盤等其他外形,請直接輸入掃掠面積(迎風投影面積)。λ = 最外緣速度 / 風速,以特徵半徑 R 計。3D 只畫簡化的垂直軸圓柱包絡,不是真實外形。</p>`);
+    } else if (v.type === 'sav') {
       h += grp('幾何', rng('vawt.B', '葉片數', 2, 3, 1, '片') + rng('vawt.R', '轉子半徑 R', 0.1, 3, 0.01, 'm') + rng('vawt.H', '高度 H', 0.2, 6, 0.05, 'm') +
         rng('vawt.overlap', '重疊比 e/d', 0, 0.4, 0.01, '') + chk('vawt.endPlates', '上下端板') +
         sel('vawt.material', '材料', Object.entries(MATERIALS).map(([k, m]) => [k, m.name])) +
@@ -190,6 +200,10 @@ export function bindPane(p) {
     if (!S.af.custom.includes(key) && !AF_LIB.some(g => g.k.includes(key))) S.af.custom.push(key);
     assignNewAirfoil(key); toast('已加入 NACA ' + v);
   });
+  on('cpExLoad', () => { const e = CUSTOM_EXAMPLES[p.querySelector('#cpEx').value]; loadCpText(e.text, e.name); renderPane(); });
+  on('cpApply', () => { loadCpText(p.querySelector('#cpText').value, '使用者貼上的資料'); renderPane(); });
+  on('cpFileBtn', () => $('#cpFileIn').click());
+  cpInfo(p);
   on('datFile', () => $('#fileIn').click());
   on('datAdd', () => { const t = p.querySelector('#datText').value; if (t.trim()) importDat(t, null); });
   on('polApply', () => {
@@ -232,8 +246,22 @@ export function importDat(text, fname) {
     assignNewAirfoil(key); toast('已匯入 ' + af.name + ',厚度 ' + (af.t * 100).toFixed(1) + '%');
   } catch (e) { toast('匯入失敗:' + e.message); }
 }
+export function loadCpText(text, name, quiet) {
+  try {
+    const r = A.parseCpCurve(text);
+    S.custom.pts = r.pts; S.custom.text = text; S.custom.name = name; S.custom.warn = r.warnings;
+    if (!quiet) { toast('已套用 ' + r.pts.length + ' 筆資料' + (r.warnings.length ? ';' + r.warnings[0] : '')); scheduleRebuild(true); }
+  } catch (e) { toast('匯入失敗:' + e.message); }
+}
+function cpInfo(p) {
+  const box = p.querySelector('#cpInfo'); if (!box) return;
+  const c = S.custom, pts = c.pts;
+  if (!pts) { kv(box, [['資料', '尚未匯入']]); return; }
+  const mx = pts.reduce((m, q) => q.Cp > m.Cp ? q : m, pts[0]);
+  kv(box, [['資料來源', esc(c.name || '匯入資料') + '(使用者提供)'], ['資料點數', pts.length + ' 筆,λ ' + fmt(pts[0].l, 2) + '–' + fmt(pts[pts.length - 1].l, 2)], ['資料中 Cp,max', fmt(mx.Cp, 3) + ' @ λ ' + fmt(mx.l, 2)], ...(c.warn || []).map(w => ['警告', esc(w)])]);
+}
 export function onChange(path, kind, el) {
-  if (kind === 'type' || kind === 'pane') { if (kind === 'type') { pendingStart = true; scheduleRebuild(true); } renderPane(); if (path === 'load.ctrl' && S.load.ctrl === 'manual') SIM.D = S.load.D; return; }
+  if (kind === 'type' || kind === 'pane') { if (kind === 'type') { if (path === 'vawt.type' && S.vawt.type === 'custom' && !S.custom.pts) loadCpText(CUSTOM_EXAMPLES.lift.text, CUSTOM_EXAMPLES.lift.name, true); pendingStart = true; scheduleRebuild(true); } renderPane(); if (path === 'load.ctrl' && S.load.ctrl === 'manual') SIM.D = S.load.D; return; }
   if (kind === 'geoPane') { renderPane(); scheduleRebuild(true); return; }
   if (path === 'hawt.aMode') { renderPane(); }
   if (path === 'load.D' && S.load.ctrl === 'manual') SIM.D = S.load.D;
@@ -268,7 +296,7 @@ export function updateSummaries() {
   const { rho, mu } = air();
   kv($('#airKv'), [['空氣密度 ρ', fmt(rho, 3) + ' kg/m³'], ['動黏度 μ', (mu * 1e5).toFixed(3) + '×10⁻⁵ Pa·s']]);
   const afKey = viewKey();
-  if ($('#afSummary') && !(S.mode === 'VAWT' && S.vawt.type === 'sav')) {
+  if ($('#afSummary') && !(S.mode === 'VAWT' && noAirfoil(S.vawt))) {
     const af = getAf(afKey), m = getModel(afKey), ps = getPS(afKey), Re = PS_RES[S.af.reIdx];
     const b = A.bestLD(ps, Re, [-5, 16]);
     let clmax = -9, aClmax = 0; for (let d = -5; d <= 25; d += 0.25) { const c = A.lookup(ps, d * A.D2R, Re)[0]; if (c > clmax) { clmax = c; aClmax = d; } }
@@ -286,7 +314,7 @@ export function updateSummaries() {
       rows.push(['掃掠面積', fmt(G.A, 2) + ' m²'], ['實度', fmt(sol, 3)], ['單葉質量', fmt(G.bladeMass, 2) + ' kg'], ['轉動慣量 J', fmt(G.J, 3) + ' kg·m²']);
     } else {
       const v = S.vawt;
-      if (v.type !== 'sav') rows.push(['實度 Bc/R', fmt(v.B * v.c / v.R, 3)], ['展弦比 H/c', fmt(v.H / v.c, 1)]);
+      if (!noAirfoil(v)) rows.push(['實度 Bc/R', fmt(v.B * v.c / v.R, 3)], ['展弦比 H/c', fmt(v.H / v.c, 1)]);
       rows.push(['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg'], ['轉動慣量 J', fmt(G.J, 3) + ' kg·m²']);
     }
     if (S.mode === 'HAWT' && G.cpDesign != null) rows.push([`設計點 Cp(λd=${fmt(S.hawt.tsr, 1)})`, fmt(G.cpDesign, 3)]);
@@ -294,7 +322,7 @@ export function updateSummaries() {
     { const ce = costEstimate(G.mass, S.mode === 'HAWT' ? S.hawt.material : S.vawt.material, S.load.Pmax, G.A, snapAEP({ A: G.A, cpMax: G.cpMax }));
       rows.push(['資本支出(概估)', 'NT$ ' + fmt(ce.capex, 0)], ['LCOE(概估)', isFinite(ce.lcoe) ? 'NT$ ' + fmt(ce.lcoe, 1) + '/kWh' : '–']); }
     if (S.mode === 'HAWT') { const nz = noiseEstimate(S.hawt.tsr * S.hawt.Vd, 2 * S.hawt.R, 50); rows.push(['噪音(概估,設計點)', `Lw ${fmt(nz.Lw, 0)} dB(A),${nz.dist} m ${fmt(nz.Lp, 0)} dB(A)`]); const a = air(), tb = tbleSpectrum(G.rows, G.desElems, S.hawt.B, a.rho, a.mu, 50); rows.push(['後緣自噪音(BPM 頻譜)', `${tb.dist} m 約 ${fmt(tb.LA, 0)} dB(A)(未加權 ${fmt(tb.Lp, 0)} dB),僅供設計間相對比較`]); }
-    if (S.mode === 'VAWT' && S.vawt.type !== 'sav' && G.vcfg) { const st = A.vawtStaticTorque(G.vcfg, 8); rows.push(['靜止啟動轉矩(概估)', `Cq 平均 ${fmt(st.mean, 3)},最小 ${fmt(st.min, 3)}`], ['可自行啟動', st.selfStart ? '是' : '否(有轉矩死區,需輔助起轉)']); }
+    if (S.mode === 'VAWT' && !noAirfoil(S.vawt) && G.vcfg) { const st = A.vawtStaticTorque(G.vcfg, 8); rows.push(['靜止啟動轉矩(概估)', `Cq 平均 ${fmt(st.mean, 3)},最小 ${fmt(st.min, 3)}`], ['可自行啟動', st.selfStart ? '是' : '否(有轉矩死區,需輔助起轉)']); }
     kv($('#rotorSummary'), rows);
   }
 }
@@ -305,7 +333,7 @@ export function fmtRe(r) { return r >= 1e6 ? (r / 1e6) + '×10⁶' : (r / 1e3) +
 let rbTimer = null, rbGeo = false, pendingStart = false;
 // Darrieus rotors have a dead band at low tip-speed ratio and usually need an assisted start (motoring)
 export function assistStart() {
-  const darrieus = S.mode === 'VAWT' && S.vawt.type !== 'sav';
+  const darrieus = S.mode === 'VAWT' && !noAirfoil(S.vawt);
   SIM.omega = G.lopt * S.tun.V / G.R * (darrieus ? 0.8 : 0.3);
   SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.po.wref = -1; SIM.latch = false; SIM.cutout = false; SIM.pitch = 0; SIM.furlAng = 0;
 }
@@ -331,6 +359,7 @@ export function buildScene() {
     const v = S.vawt, y0 = Math.max(0.35, 0.3 * v.H);
     Scene3D.setScale(v.R, y0, 'VAWT', v.H);
     G.y0 = y0;
+    if (v.type === 'custom') { const c = S.custom, y1 = Math.max(0.35, 0.3 * c.H); Scene3D.setScale(c.R, y1, 'VAWT', c.H); G.y0 = y1; Scene3D.buildEnvelope({ R: c.R, H: c.H, y0: y1 }); return; }
     if (v.type === 'sav') { Scene3D.buildSavonius({ R: v.R, H: v.H, B: Math.round(v.B), overlap: v.overlap, y0, endPlates: v.endPlates }); return; }
     const af = getAf(S.af.vawt), B = Math.round(v.B);
     const sf = f => {
@@ -358,6 +387,7 @@ export function buildScene() {
 export function updateBadge() {
   let t;
   if (S.mode === 'HAWT') t = `<b>水平軸 ${Math.round(S.hawt.B)} 葉</b>,R ${fmt(S.hawt.R, 2)} m,${stSorted().map(s => afLabel(s.k).replace('NACA ', '')).join(' → ')},${{ bem: 'BEM 扭角', opt: 'Schmitz 扭角', linear: '線性扭角' }[S.hawt.twMode]},λd ${fmt(S.hawt.tsr, 1)}`;
+  else if (S.vawt.type === 'custom') t = `<b>${VAWT_TYPES.custom}</b>,${S.custom.name || '匯入資料'},R ${fmt(S.custom.R, 2)} m,A ${fmt(G.A, 2)} m²`;
   else if (S.vawt.type === 'sav') t = `<b>${VAWT_TYPES.sav}</b>,${Math.round(S.vawt.B)} 葉,D ${fmt(2 * S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m`;
   else t = `<b>${VAWT_TYPES[S.vawt.type]}</b>,${Math.round(S.vawt.B)} 葉,R ${fmt(S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m,${afLabel(S.af.vawt)}`;
   $('#badge').innerHTML = t;
@@ -434,7 +464,7 @@ export const r4 = a => Array.from(a, v => +(+v).toFixed(4));
 export function twLabel() { return { bem: 'BEM 扭角', opt: 'Schmitz 扭角', linear: `線性扭角 ${fmt(S.hawt.twRoot, 1)}→${fmt(S.hawt.twTip, 1)}°` }[S.hawt.twMode]; }
 export function designName() {
   if (S.mode === 'HAWT') return `${stSorted().map(s => afLabel(s.k).replace('NACA ', '')).join('→')} · ${twLabel()}`;
-  return `${VAWT_TYPES[S.vawt.type]}${S.vawt.type === 'sav' ? '' : ' · ' + afLabel(S.af.vawt).replace('NACA ', '')}`;
+  return `${VAWT_TYPES[S.vawt.type]}${noAirfoil(S.vawt) ? '' : ' · ' + afLabel(S.af.vawt).replace('NACA ', '')}`;
 }
 export function designSub() {
   if (S.mode === 'HAWT') { const h = S.hawt; return `水平軸 ${Math.round(h.B)} 葉 R ${fmt(h.R, 2)} m λd ${fmt(h.tsr, 1)}`; }
@@ -548,9 +578,9 @@ export function redrawStatic() {
   else drawLive();
 }
 export function drawAirfoil() {
-  if (S.mode === 'VAWT' && S.vawt.type === 'sav') {
+  if (S.mode === 'VAWT' && noAirfoil(S.vawt)) {
     const P = G.perf;
-    Plot.draw(cv[0], { title: 'Savonius 為阻力型轉子,沒有翼型極曲線', series: [{ x: P.lam, y: P.cp, color: col('--c1'), label: 'Cp' }, { x: P.lam, y: P.cq, color: col('--c2'), axis: 'R', label: 'Cq' }], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Cq' });
+    Plot.draw(cv[0], { title: (S.vawt.type === 'custom' ? '自訂性能曲線轉子' : 'Savonius 為阻力型轉子') + ',沒有翼型極曲線', series: [{ x: P.lam, y: P.cp, color: col('--c1'), label: 'Cp' }, { x: P.lam, y: P.cq, color: col('--c2'), axis: 'R', label: 'Cq' }], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Cq' });
     Plot.draw(cv[1], { title: '改到「性能曲線」與「葉片分析」看轉矩特性', series: [], xlim: [0, 1], ylim: [0, 1] });
     Plot.draw(cv[2], { series: [], xlim: [0, 1], ylim: [0, 1] });
     return;
@@ -620,8 +650,8 @@ export function drawBlade() {
   const P = G.perf, N2 = 2 * A.NTH, az = Array.from({ length: N2 }, (_, j) => (j + 0.5) * 360 / N2);
   const lam = Math.max(0, SIM.out.lam || G.lopt);
   const i = Math.min(P.lam.length - 1, Math.round(lam / P.step));
-  if (S.vawt.type === 'sav') {
-    Plot.draw(cv[0], { title: 'Savonius Cp 與轉矩係數', series: [{ x: P.lam, y: P.cp, color: col('--c1'), label: 'Cp' }, { x: P.lam, y: P.cq, color: col('--c2'), axis: 'R', label: 'Cq' }], markers: [{ x: lam, y: interpCurve(P, 'cp', lam), color: col('--signal') }], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Cq' });
+  if (noAirfoil(S.vawt)) {
+    Plot.draw(cv[0], { title: (S.vawt.type === 'custom' ? '匯入曲線' : 'Savonius') + ' Cp 與轉矩係數', series: [{ x: P.lam, y: P.cp, color: col('--c1'), label: 'Cp' }, { x: P.lam, y: P.cq, color: col('--c2'), axis: 'R', label: 'Cq' }], markers: [{ x: lam, y: interpCurve(P, 'cp', lam), color: col('--signal') }], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Cq' });
   } else {
     const as = getPS(S.af.vawt).tables[5] ? getPS(S.af.vawt).tables[5].asPos * A.R2D : 14;
     Plot.draw(cv[0], {
@@ -719,6 +749,7 @@ let downloads = null;
 export function csvGeometry() {
   if (S.mode === 'HAWT') return 'r_m,r_over_R,chord_m,twist_deg,pitch_deg,t_over_c,airfoil_station_index\n' + G.rows.map((x, i) => [x.r.toFixed(5), (x.r / S.hawt.R).toFixed(5), x.c.toFixed(5), x.tw.toFixed(3), S.hawt.pitch, G.afs[i].t.toFixed(4), x.w.toFixed(3)].join(',')).join('\n');
   const v = S.vawt;
+  if (v.type === 'custom') return 'type,axis,R_m,H_m,swept_area_m2,mass_kg\ncustom,' + [S.custom.axis, S.custom.R, S.custom.H, G.A.toFixed(4), S.custom.mass].join(',');
   if (v.type === 'sav') return 'type,B,R_m,H_m,overlap\nSavonius,' + [v.B, v.R, v.H, v.overlap].join(',');
   return 'z_m,r_m,inclination_deg,helix_offset_deg,chord_m,pitch_deg\n' + A.vawtSlices(G.vcfg).map(s => [s.z.toFixed(4), s.r.toFixed(4), (s.delta * A.R2D).toFixed(2), (s.helixOff * A.R2D).toFixed(2), v.c, v.pitch].join(',')).join('\n');
 }
@@ -732,7 +763,7 @@ export function csvPerf() { const P = G.perf; return `# V_ref=${G.Vref} m/s\nlam
 export function afCoords(af) { return af.name + '\n' + GEO.loop(af).map(([x, y]) => x.toFixed(6) + ' ' + y.toFixed(6)).join('\n'); }
 export function stlText() {
   if (S.mode === 'HAWT') return GEO.stl(GEO.hawtBlade(G.rows, G.afs, G.Rhub, 0), 'hawt_blade_mm');
-  const v = S.vawt; if (v.type === 'sav') return null;
+  const v = S.vawt; if (noAirfoil(v)) return null;
   const sf = f => v.type === 'phi' ? { r: v.R * Math.max(0.06, 1 - (2 * f - 1) ** 2), off: 0 } : v.type === 'V' ? { r: v.R * Math.max(0.05, f), off: 0 } : { r: v.R, off: v.type === 'helical' ? v.helix * A.D2R * f : 0 };
   return GEO.stl(GEO.vawtBlade(sf, getAf(S.af.vawt), v.c, v.pitch, 0, v.H, 0), 'vawt_blade_mm');
 }
@@ -756,7 +787,7 @@ async function save(filename, data) {
 }
 export function openExport() {
   const m = document.createElement('div'); m.className = 'modal';
-  const stlOk = !(S.mode === 'VAWT' && S.vawt.type === 'sav');
+  const stlOk = !(S.mode === 'VAWT' && noAirfoil(S.vawt));
   m.innerHTML = `<div role="dialog" aria-label="匯出"><h3 style="margin:0 0 6px">匯出設計</h3><p class="note">STL 單位為 mm(單一葉片,槳距 0°),可直接送 3D 列印或 CAD。CSV 可在試算表或 MATLAB 中使用。</p>
     <div class="btns">${stlOk ? '<button class="btn" data-x="zip">完整設計包 ZIP(STL + CSV + 翼型座標)</button>' : ''}<button class="btn ghost" data-x="geo">截面幾何 CSV</button><button class="btn ghost" data-x="pol">極曲線 CSV</button><button class="btn ghost" data-x="perf">性能曲線 CSV</button></div>
     <textarea id="expTxt" class="hidden" style="min-height:220px"></textarea>
@@ -865,6 +896,7 @@ export function init() {
   });
   try { const t = localStorage.getItem('wt-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { Scene3D.applyTheme(); redrawStatic(); });
+  $('#cpFileIn').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { loadCpText(t, f.name); renderPane(); }); e.target.value = ''; });
   $('#fileIn').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => importDat(t, f.name)); e.target.value = ''; });
   new ResizeObserver(() => { if (S.ws === 'tunnel') redrawStatic(); }).observe($('#cbody'));
   S.ws = 'tunnel'; markNav();
