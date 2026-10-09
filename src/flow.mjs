@@ -207,7 +207,7 @@ export const Flow = (function () {
       colorbar(g, W - 170, H - 26, 150, 8, map, 'u/V∞', { min: 0, max: 1.4, v: [[0, '0'], [0.5, '0.5'], [1, '1']] });
       return fd;
     }
-    if (noAirfoil(S.vawt)) { g.fillStyle = Plot.css('--muted'); g.textAlign = 'center'; g.fillText(S.vawt.type === 'custom' ? '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' : 'Savonius 使用經驗性能曲線,沒有流管模型可視化。', W / 2, H / 2); return null; }
+    if (noAirfoil(S.vawt)) { g.fillStyle = Plot.css('--muted'); g.textAlign = 'center'; g.fillText(VAWT_FAMILIES[S.vawt.type].flowNote, W / 2, H / 2); return null; }
     const res = Bench.vawtAt(lam), mid = res.mid || [];
     const x0 = -2.2, x1 = 4.2, ym = 1.8, s = Math.min(W / (x1 - x0), H / (2 * ym)), ox = (W - (x1 - x0) * s) / 2;
     const T = (x, y) => [ox + (x - x0) * s, H / 2 - y * s], Ti = (px, py) => [x0 + (px - ox) / s, (H / 2 - py) / s];

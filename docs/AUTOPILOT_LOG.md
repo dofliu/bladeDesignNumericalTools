@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-09 — ROADMAP 8C-1:轉子家族註冊表(1/N)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `VAWT_FAMILIES` 註冊表與 `rotorSource()`;`VAWT_TYPES`、`noAirfoil` 由註冊表衍生;ui 性能來源列、Cp 圖標題、單葉片 Cp 標題、流場說明改查註冊表。外觀不變。
+- 驗證:見 PR 內文。
+- 已知限制:設計、3D、參數面板、報告、STL 的型式分支尚未搬入註冊表。
+- 下一步:8C-1 續:將 designVAWT / buildScene / 面板 / 報告摘要列的型式分支逐一搬入註冊表。
+
 ## 2026-10-09 — ROADMAP 8A:轉子摘要標示性能來源
 
 - 做了什麼:無開著的 `[autopilot]` PR。主畫面轉子摘要新增「性能來源」列(BEM / DMST / Savonius 經驗曲線 / 匯入曲線);報告與單葉片/流場說明先前已完成,8A 全部完成。

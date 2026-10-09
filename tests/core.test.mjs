@@ -460,6 +460,7 @@ test('自訂性能曲線轉子:內建示意範例可解析、無警告,Cp,max/λ
         assert.ok(track >= 0.9, `${key} ${ctrl} ${V} m/s tracking ${(track * 100).toFixed(1)}%`);
       }
     }
+    for (const [k, f] of Object.entries(core.VAWT_FAMILIES)) { assert.equal(core.VAWT_TYPES[k], f.name); assert.ok(f.source); if (f.noAirfoil) assert.ok(f.curveTitle && f.flowNote, k); }
     assert.ok(core.noAirfoil({ type: 'custom' }) && core.noAirfoil({ type: 'sav' }) && !core.noAirfoil({ type: 'H' }));
   } finally {
     S.mode = saved.mode; S.vawt.type = saved.type; Object.assign(S.tun, saved.tun); Object.assign(S.load, saved.load); Object.assign(S.custom, saved.custom);
