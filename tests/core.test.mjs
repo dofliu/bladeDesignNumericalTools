@@ -467,6 +467,37 @@ test('自訂性能曲線轉子:內建示意範例可解析、無警告,Cp,max/λ
   }
 });
 
+test('家族註冊表:3D 場景規格(shape / struts)與重構前的內嵌公式一致', () => {
+  const F = core.VAWT_FAMILIES, near = (a, b, k) => assert.ok(Math.abs(a - b) < 1e-12, `${k}: ${a} vs ${b}`);
+  for (const [k, f] of Object.entries(F)) {
+    assert.ok(['blades', 'savonius', 'envelope'].includes(f.scene), k + ' scene');
+    if (f.scene === 'blades') assert.ok(typeof f.shape === 'function' && typeof f.struts === 'function', k + ' shape/struts');
+  }
+  const v = { R: 1.2, H: 2.5, c: 0.15, helix: 120, struts: 2 }, y0 = 0.75, ph = 0.4;
+  const run = (k, vv = v) => { const sf = x => F[k].shape(vv, x); return { sf, st: F[k].struts(vv, ph, y0, sf) }; };
+  // H: straight blade, arm struts at [0.22, 0.78] for 2 per blade
+  let { sf, st } = run('H');
+  near(sf(0.3).r, v.R, 'H r'); near(sf(0.3).off, 0, 'H off');
+  assert.deepEqual(st.map(s => s.y), [y0 + 0.22 * v.H, y0 + 0.78 * v.H]);
+  st.forEach(s => { near(s.r, v.R, 'H strut r'); near(s.w, 0.6 * v.c, 'H strut w'); near(s.ang, ph, 'H strut ang'); });
+  for (const [n, len] of [[0, 0], [1, 1], [3, 3]]) assert.equal(run('H', { ...v, struts: n }).st.length, len, 'H struts ' + n);
+  // helical: twist grows linearly with height; 3 struts -> [0.02, 0.98, 0.5]
+  ({ sf, st } = run('helical', { ...v, struts: 3 }));
+  near(sf(1).off, v.helix * Math.PI / 180, 'helical off');
+  assert.deepEqual(st.map(s => +((s.y - y0) / v.H).toFixed(6)), [0.02, 0.98, 0.5]);
+  near(st[1].ang, ph + v.helix * Math.PI / 180 * 0.98, 'helical strut ang');
+  assert.equal(run('helical', { ...v, struts: 0 }).st.length, 0);
+  // phi: troposkien-like parabola, hub struts top and bottom
+  ({ sf, st } = run('phi'));
+  near(sf(0.5).r, v.R, 'phi mid'); near(sf(0).r, 0.06 * v.R, 'phi end');
+  assert.deepEqual(st.map(s => s.y), [y0 + 0.01 * v.H, y0 + 0.99 * v.H]);
+  st.forEach(s => { near(s.r, 0.08 * v.R, 'phi strut r'); near(s.w, 0.5 * v.c, 'phi strut w'); });
+  // V: radius grows with height, one hub strut at the bottom
+  ({ sf, st } = run('V'));
+  near(sf(0).r, 0.05 * v.R, 'V root'); near(sf(0.5).r, 0.5 * v.R, 'V mid');
+  assert.equal(st.length, 1); near(st[0].y, y0 + 0.02 * v.H, 'V strut y');
+});
+
 test('家族註冊表:每個垂直軸型式都有 badge 與 csv,內容含型式名稱與表頭', () => {
   const fmt = (v, d = 1) => (+v).toFixed(d), label = k => k;
   const keep = { mode: S.mode, type: S.vawt.type };

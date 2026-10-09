@@ -360,26 +360,15 @@ export function buildScene() {
     const v = S.vawt, y0 = Math.max(0.35, 0.3 * v.H);
     Scene3D.setScale(v.R, y0, 'VAWT', v.H);
     G.y0 = y0;
-    if (v.type === 'custom') { const c = S.custom, y1 = Math.max(0.35, 0.3 * c.H); Scene3D.setScale(c.R, y1, 'VAWT', c.H); G.y0 = y1; Scene3D.buildEnvelope({ R: c.R, H: c.H, y0: y1 }); return; }
-    if (v.type === 'sav') { Scene3D.buildSavonius({ R: v.R, H: v.H, B: Math.round(v.B), overlap: v.overlap, y0, endPlates: v.endPlates }); return; }
-    const af = getAf(S.af.vawt), B = Math.round(v.B);
-    const sf = f => {
-      if (v.type === 'phi') return { r: v.R * Math.max(0.06, 1 - (2 * f - 1) ** 2), off: 0 };
-      if (v.type === 'V') return { r: v.R * Math.max(0.05, f), off: 0 };
-      if (v.type === 'helical') return { r: v.R, off: v.helix * A.D2R * f };
-      return { r: v.R, off: 0 };
-    };
+    const fam = VAWT_FAMILIES[v.type];
+    if (fam.scene === 'envelope') { const c = S.custom, y1 = Math.max(0.35, 0.3 * c.H); Scene3D.setScale(c.R, y1, 'VAWT', c.H); G.y0 = y1; Scene3D.buildEnvelope({ R: c.R, H: c.H, y0: y1 }); return; }
+    if (fam.scene === 'savonius') { Scene3D.buildSavonius({ R: v.R, H: v.H, B: Math.round(v.B), overlap: v.overlap, y0, endPlates: v.endPlates }); return; }
+    const af = getAf(S.af.vawt), B = Math.round(v.B), sf = f => fam.shape(v, f);
     const meshes = [], struts = [];
     for (let b = 0; b < B; b++) {
       const ph = 2 * Math.PI * b / B;
       meshes.push(GEO.vawtBlade(sf, af, v.c, v.pitch, ph, v.H, y0));
-      if (v.type === 'H' || v.type === 'helical') {
-        const n = Math.round(v.struts);
-        const fs = v.type === 'helical' ? (n ? [0.02, 0.98].slice(0, Math.max(1, Math.min(2, n))).concat(n > 2 ? [0.5] : []) : []) : [[], [0.5], [0.22, 0.78], [0.15, 0.5, 0.85]][n];
-        for (const f of fs) struts.push({ ang: ph + sf(f).off, y: y0 + f * v.H, r: v.R, w: 0.6 * v.c });
-      }
-      if (v.type === 'phi') { struts.push({ ang: ph, y: y0 + 0.01 * v.H, r: 0.08 * v.R, w: 0.5 * v.c }); struts.push({ ang: ph, y: y0 + 0.99 * v.H, r: 0.08 * v.R, w: 0.5 * v.c }); }
-      if (v.type === 'V') struts.push({ ang: ph, y: y0 + 0.02 * v.H, r: 0.08 * v.R, w: 0.5 * v.c });
+      struts.push(...fam.struts(v, ph, y0, sf));
     }
     const top = sf(1);
     Scene3D.buildVAWT(meshes, { H: v.H, R: v.R, y0, struts, markPos: [top.r * Math.cos(top.off), y0 + v.H, -top.r * Math.sin(top.off)] });
