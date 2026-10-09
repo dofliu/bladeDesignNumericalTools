@@ -220,3 +220,28 @@ test('biotSavart:圓形渦環軸上誘導速度對照解析解 Γ R²/(2(R²+x²
   near(q1.u, -q2.u, 1e-9, '反向');
   near(q1.u, 2 * A.biotSavart([ring], { x: 1, y: 0, z: 0 }, 1, 1e-4).u, 1e-9, 'Γ 線性');
 });
+
+test('parseCpCurve:標題/分隔符號、缺 Cq 推得、λ 遞增、Betz 警告與錯誤', () => {
+  const r = A.parseCpCurve('lambda,Cp\n# 註解\n0.5, 0.10\n1.0;0.20\n1.5\t0.25 0.2\n');
+  assert.equal(r.pts.length, 3);
+  near(r.pts[0].Cq, 0.2, 1e-12, 'Cq=Cp/λ'); near(r.pts[2].Cq, 0.2, 1e-12, '明列 Cq');
+  assert.equal(r.warnings.length, 0);
+  assert.ok(A.parseCpCurve('0.5 0.2\n1 0.7\n2 0.3').warnings.some(w => w.includes('Betz')));
+  assert.throws(() => A.parseCpCurve('1 0.1\n1 0.2\n2 0.1'), /遞增/);
+  assert.throws(() => A.parseCpCurve('1 0.1\n2 0.2'), /3 筆/);
+});
+
+test('customCurve:取樣內建 Savonius 曲線再匯入,Cp、λopt 與原曲線一致(< 2%)', () => {
+  const sav = A.savoniusCurve({ B: 2, overlap: 0.18, endPlates: true });
+  const text = sav.map(p => `${p.l.toFixed(4)}, ${p.Cp.toFixed(5)}`).join('\n');
+  const { pts } = A.parseCpCurve(text);
+  const cur = A.customCurve({ pts, step: 0.05 });
+  const best = c => c.reduce((b, p) => p.Cp > b.Cp ? p : b);
+  const b0 = best(sav), b1 = best(cur);
+  near(b1.Cp / b0.Cp, 1, 0.02, 'Cp,max'); near(b1.l / b0.l, 1, 0.02, 'λopt');
+  assert.equal(cur[0].l, 0); assert.ok(cur[0].Cq > 0, '外插啟動轉矩');
+  assert.ok(cur.every(p => p.rel && p.tot.length === 2 * A.NTH && p.Cp >= 0));
+  // 明列 λ=0 的 Cq 時不外插
+  const c2 = A.customCurve({ pts: A.parseCpCurve('0,0,0.3\n1,0.2,0.2\n2,0.1,0.05').pts });
+  near(c2[0].Cq, 0.3, 1e-12, 'λ=0 Cq');
+});

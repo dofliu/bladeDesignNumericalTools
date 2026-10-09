@@ -703,6 +703,54 @@
     return pts;
   }
 
+  /* ---------- Imported Cp-lambda curve (custom rotor, ROADMAP 8A) ---------- */
+  const BETZ = 16 / 27;
+  /* Parse pasted/CSV text: one "lambda, Cp[, Cq]" per line (comma / semicolon / tab / space separated); lines whose first two
+     fields are not numbers (headers, comments) are skipped. lambda must strictly increase. Missing Cq is derived as Cp/lambda
+     (null at lambda = 0; customCurve extrapolates it). Returns { pts:[{l,Cp,Cq}], warnings:[...] }; throws on unusable input. */
+  function parseCpCurve(text) {
+    const pts = [], warnings = [];
+    for (const line of String(text).split(/\r?\n/)) {
+      const f = line.trim().split(/[\s,;]+/).filter(x => x !== '');
+      if (f.length < 2) continue;
+      const l = Number(f[0]), Cp = Number(f[1]);
+      if (!Number.isFinite(l) || !Number.isFinite(Cp) || f[0] === '' || f[1] === '') continue;
+      let Cq = f.length > 2 && Number.isFinite(Number(f[2])) ? Number(f[2]) : (l > 0 ? Cp / l : null);
+      if (l < 0) throw new Error('λ 不可為負值');
+      if (pts.length && l <= pts[pts.length - 1].l) throw new Error('λ 必須嚴格遞增(第 ' + (pts.length + 1) + ' 筆資料)');
+      pts.push({ l, Cp, Cq });
+    }
+    if (pts.length < 3) throw new Error('至少需要 3 筆 λ, Cp 資料');
+    if (pts.some(p => p.Cp < 0)) warnings.push('含負的 Cp,模擬時以 0 處理');
+    const mx = Math.max(...pts.map(p => p.Cp));
+    if (mx > BETZ) warnings.push('Cp 最大值 ' + mx.toFixed(3) + ' 超過 Betz 極限 0.593,請確認資料(Cp 應以掃掠面積為基準)');
+    return { pts, warnings };
+  }
+  /* Resample an imported curve onto the uniform lambda grid used by the other rotor types (same point format as
+     savoniusCurve). cfg: { pts, step=0.05, ct=0.9 }. Beyond the data range Cp is not extrapolated (grid ends at the last lambda).
+     Starting torque Cq(0) is taken from the data if given, else linearly extrapolated from the first two points (>= 0).
+     No azimuthal data → uniform torque ripple (tot = 1). */
+  function customCurve(cfg) {
+    const src = cfg.pts, step = cfg.step || 0.05, ct = cfg.ct == null ? 0.9 : cfg.ct, n = src.length;
+    const cq = src.map(p => p.Cq);
+    if (cq[0] == null) {
+      const i = cq.findIndex(v => v != null), j = i + 1 < n ? i + 1 : i;
+      const slope = j > i ? (cq[j] - cq[i]) / (src[j].l - src[i].l) : 0;
+      cq[0] = Math.max(0, cq[i] - slope * src[i].l);
+    }
+    const at = (arr, l) => {
+      if (l <= src[0].l) return arr[0];
+      for (let k = 1; k < n; k++) if (l <= src[k].l) { const t = (l - src[k - 1].l) / (src[k].l - src[k - 1].l); return arr[k - 1] + t * (arr[k] - arr[k - 1]); }
+      return arr[n - 1];
+    };
+    const cp = src.map(p => p.Cp), lmax = src[n - 1].l, pts = [];
+    for (let k = 0; k * step <= lmax + 1e-9; k++) {
+      const l = k * step, Cp = Math.max(0, at(cp, l));
+      pts.push({ l, Cp, Ct: ct, Cq: Math.max(0, at(cq, l)), tot: new Float64Array(2 * NTH).fill(1), rel: true });
+    }
+    return pts;
+  }
+
   /* Prescribed helical tip-vortex wake (lengths in R, speeds in V∞). Each vortex is convected at the local axial speed
      u(x)=1-a(1+x/√(x²+1)) (same actuator-disk blend the flow view uses) and the streamtube expands by continuity,
      r(x)=rTip·√((1-a)/(1-a·f(x))) (f from 0 at the disk to 2 far downstream). Not a free wake: no vortex-vortex interaction. */
@@ -743,4 +791,4 @@
 
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, tipVortexWake, biotSavart };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart };
