@@ -2,6 +2,14 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-09 — ROADMAP 8A:自訂性能曲線介面(1/2)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`VAWT_TYPES` 新增 `custom`;轉子分頁新增「性能曲線(匯入資料)」面板(貼上 / 匯入 CSV、2 組示意範例〔標示非實測〕、資料摘要與 Betz 警告)與「幾何與質量(包絡)」滑桿;`scene.mjs` 新增 `buildEnvelope`(簡化圓柱包絡);新增 `noAirfoil()` 判斷,讓 Savonius 與自訂轉子共用「無翼型」分支(翼型分頁、摘要、單葉片、流場、STL 匯出、報告);報告列出性能來源與模型限制。
+- 驗證:check、npm test 65/65(新增範例曲線測試)、build、e2e 全過;桌面 1440×900 與手機 390×844 截圖確認無破版、無頁面錯誤。
+- 備註:阻力型示意範例在 6 m/s 以下因轉速低、發電機損失占比高,各控制器追蹤率約 89%(屬範例曲線尺度,非控制器問題),新測試改在 9 m/s 檢查,未改動既有門檻。
+- 已知限制:水平軸圓盤包絡未做;e2e 尚未加入自訂轉子;方案比較未儲存 `S.custom`。
+- 下一步:8A 介面 2/2(e2e 追蹤率、方案比較),然後 8C-1 註冊表重構。
+
 ## 2026-10-09 — ROADMAP 8A:自訂性能曲線轉子接上 core(2/2)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `S.custom`(軸向、R、H、掃掠面積、質量、J、曲線點)與 `vawt.type === 'custom'`:`designVAWT` 直接採用 `S.custom` 的面積/質量/慣量,`computePerf` 以 `A.customCurve` 產生性能曲線(未匯入資料時丟出明確錯誤)。`tests/core.test.mjs` 新增 2 項:Savonius 曲線取樣匯入後 Cp,max/λopt 誤差 < 2% 且 P&O MPPT 追蹤 ≥ 90%;未匯入資料/area 預設 2RH。

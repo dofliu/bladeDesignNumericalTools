@@ -207,7 +207,7 @@ export const Flow = (function () {
       colorbar(g, W - 170, H - 26, 150, 8, map, 'u/V∞', { min: 0, max: 1.4, v: [[0, '0'], [0.5, '0.5'], [1, '1']] });
       return fd;
     }
-    if (S.vawt.type === 'sav') { g.fillStyle = Plot.css('--muted'); g.textAlign = 'center'; g.fillText('Savonius 使用經驗性能曲線,沒有流管模型可視化。', W / 2, H / 2); return null; }
+    if (noAirfoil(S.vawt)) { g.fillStyle = Plot.css('--muted'); g.textAlign = 'center'; g.fillText(S.vawt.type === 'custom' ? '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' : 'Savonius 使用經驗性能曲線,沒有流管模型可視化。', W / 2, H / 2); return null; }
     const res = Bench.vawtAt(lam), mid = res.mid || [];
     const x0 = -2.2, x1 = 4.2, ym = 1.8, s = Math.min(W / (x1 - x0), H / (2 * ym)), ox = (W - (x1 - x0) * s) / 2;
     const T = (x, y) => [ox + (x - x0) * s, H / 2 - y * s], Ti = (px, py) => [x0 + (px - ox) / s, (H / 2 - py) / s];
@@ -250,7 +250,7 @@ export const Flow = (function () {
       <div class="bgrid">
         ${card('翼型剖面流場(面板法位勢流)', '<canvas id="fSec" style="height:360px"></canvas>', 'span2')}
         ${card('翼面壓力分布', '<canvas id="fCp" style="height:360px"></canvas>')}
-        ${S.mode === 'VAWT' && S.vawt.type === 'sav' ? '' : `<div class="card span3"><div class="ctrlbar"><label>轉子尖速比 λ <input type="range" id="fLam" min="0.5" max="${lmax.toFixed(1)}" step="0.05"><output id="fLamo"></output></label><button class="iconbtn" id="fLd">${H ? '設計點' : '最佳 λ'}</button><label><input type="checkbox" id="fFol"> 跟隨目前運轉點</label>${H ? '<label><input type="checkbox" id="fTv"> 葉尖渦(螺旋尾流)</label>' : ''}</div></div>
+        ${S.mode === 'VAWT' && noAirfoil(S.vawt) ? '' : `<div class="card span3"><div class="ctrlbar"><label>轉子尖速比 λ <input type="range" id="fLam" min="0.5" max="${lmax.toFixed(1)}" step="0.05"><output id="fLamo"></output></label><button class="iconbtn" id="fLd">${H ? '設計點' : '最佳 λ'}</button><label><input type="checkbox" id="fFol"> 跟隨目前運轉點</label>${H ? '<label><input type="checkbox" id="fTv"> 葉尖渦(螺旋尾流)</label>' : ''}</div></div>
         ${card(H ? '轉子流場(致動盤 + BEM 誘導)' : '轉子流場(雙重多流管)', '<canvas id="fRot" style="height:340px"></canvas>', 'span2')}
         ${card('速度剖面', '<canvas id="fProf" style="height:340px"></canvas>')}`}
         ${card('模型說明', `<p class="hint">翼型剖面:Hess-Smith 面板法(源 + 均勻渦,Kutta 條件)求無黏位勢流,流線以速度場積分。位勢流不含邊界層與分離;分離點由表面速度做 Thwaites(層流)+ Michel 轉捩 + Head(紊流)積分邊界層估計,紅色分離區只是示意,Cl 會高於實際值;實際升阻力請以「極曲線」分頁的黏性修正模型為準。<br>水平軸轉子:以 BEM 求得各截面軸向誘導因子 a(r),搭配致動盤渦柱理論 u = V∞[1 − a(1 + x/√(x²+R²))] 近似軸向速度,流線由各流管質量守恆求得;尾流旋轉未計入;勾選「葉尖渦」會疊上預設螺旋尾流(依葉尖誘導 a 對流、流管膨脹,實線為近側、灰線為遠側),不是自由渦尾流。<br>垂直軸轉子:以雙重多流管法的上、下風誘導速度組合成俯視流場,示意上風半圈先減速、下風葉片再次取能的特性。</p>`, 'span3', null, false)}

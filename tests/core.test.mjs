@@ -439,3 +439,29 @@ test('自訂性能曲線轉子:未匯入資料時 computePerf 丟出明確錯誤
     assert.throws(() => computePerf(), /尚未匯入/);
   } finally { S.vawt.type = savedType; S.mode = savedMode; S.custom.pts = savedPts; }
 });
+
+test('自訂性能曲線轉子:內建示意範例可解析、無警告,Cp,max/λopt 符合範例標示,MPPT 追蹤 >= 90%', () => {
+  const saved = { mode: S.mode, type: S.vawt.type, tun: { ...S.tun }, load: { ...S.load }, custom: { ...S.custom } };
+  try {
+    S.mode = 'VAWT'; S.vawt.type = 'custom';
+    for (const [key, cpMax, lopt, V] of [['lift', 0.32, 3.5, 6], ['drag', 0.18, 0.8, 9]]) {
+      const ex = core.CUSTOM_EXAMPLES[key];
+      assert.match(ex.name, /非實測/);
+      const { pts, warnings } = A.parseCpCurve(ex.text);
+      assert.equal(warnings.length, 0);
+      Object.assign(S.custom, { R: 1, H: 2, area: 0, mass: 20, J: 0, pts });
+      designVAWT(); computePerf();
+      assert.ok(Math.abs(G.cpMax - cpMax) < 0.01, `${key} Cp,max ${G.cpMax}`);
+      assert.ok(Math.abs(G.lopt - lopt) < 0.15, `${key} λopt ${G.lopt}`);
+      autoMatchGen();
+      // drag-type example: below ~7 m/s the low rotor speed puts generator losses at ~11% (all controllers ~89%), so it is checked at 9 m/s
+      for (const ctrl of ['po', 'tsr']) {
+        const track = trackingRatio(ctrl, V, 70);
+        assert.ok(track >= 0.9, `${key} ${ctrl} ${V} m/s tracking ${(track * 100).toFixed(1)}%`);
+      }
+    }
+    assert.ok(core.noAirfoil({ type: 'custom' }) && core.noAirfoil({ type: 'sav' }) && !core.noAirfoil({ type: 'H' }));
+  } finally {
+    S.mode = saved.mode; S.vawt.type = saved.type; Object.assign(S.tun, saved.tun); Object.assign(S.load, saved.load); Object.assign(S.custom, saved.custom);
+  }
+});

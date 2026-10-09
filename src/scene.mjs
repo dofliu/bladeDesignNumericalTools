@@ -176,6 +176,24 @@
     const mark = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.015, R * 0.03), 8, 6), new THREE.MeshBasicMaterial({ color: 0xd23c2a }));
     mark.position.set(R, y0 + H, 0); rotor.add(mark);
   }
+  // simplified envelope for rotors without a geometry model (imported Cp-lambda curve): wire cylinder + striped spokes
+  function buildEnvelope(o) {
+    clearTurbine(); nacelle = null;
+    const { R, H, y0 } = o;
+    rotor = new THREE.Group(); turbineRoot.add(rotor);
+    const shaftR = Math.max(0.015, R * 0.03);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(shaftR, shaftR, y0 + H * 1.1, 16), metalMat); shaft.position.y = (y0 + H * 1.1) / 2; turbineRoot.add(shaft);
+    const env = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 36, 4, true), new THREE.MeshStandardMaterial({ color: 0x7aa7c7, transparent: true, opacity: 0.22, side: THREE.DoubleSide, roughness: 0.6 }));
+    env.position.y = y0 + H / 2; rotor.add(env);
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(R, R, H, 24, 1, true)), new THREE.LineBasicMaterial({ color: 0x5b7f9a }));
+    wire.position.y = y0 + H / 2; rotor.add(wire);
+    for (let k = 0; k < 4; k++) { // rotating stripes so the spin is visible
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(R, Math.max(0.01, H * 0.01), Math.max(0.02, R * 0.04)), bladeMat);
+      bar.position.set(R / 2, y0 + H / 2, 0); const g = new THREE.Group(); g.rotation.y = k * Math.PI / 2; g.add(bar); rotor.add(g);
+    }
+    const mark = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.015, R * 0.03), 8, 6), new THREE.MeshBasicMaterial({ color: 0xd23c2a }));
+    mark.position.set(R, y0 + H, 0); rotor.add(mark);
+  }
   // per-frame update
   function frame(st, dt) {
     // st: {rotorAngle, yawDeg, windDeg, V, induction a, kind}
@@ -264,4 +282,4 @@
     else if (name === 'top') { orbit.th = -Math.PI / 2; orbit.ph = 1.45; }
     else { orbit.th = -0.75 + Math.PI; orbit.ph = 0.32; }
   }
-  export { init, buildHAWT, buildVAWT, buildSavonius, frame, setScale, applyTheme, view, colors };
+  export { init, buildHAWT, buildVAWT, buildSavonius, buildEnvelope, frame, setScale, applyTheme, view, colors };

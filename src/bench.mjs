@@ -57,14 +57,14 @@ export const Bench = (function () {
     return cache.res;
   }
   function layout() {
-    const H = S.mode === 'HAWT', sav = !H && S.vawt.type === 'sav';
+    const H = S.mode === 'HAWT', sav = !H && noAirfoil(S.vawt);
     const sig = S.mode + (H ? '' : S.vawt.type);
     if (built === sig) return;
     built = sig;
     let h = '';
     if (sav) {
       h += `<div class="card"><h2>Savonius 阻力型轉子</h2><div class="cbx"><p class="hint">Savonius 由半圓筒葉片構成,靠阻力差產生轉矩,沒有翼型剖面可分析。下圖為俯視幾何與經驗性能曲線;若要分析翼型葉片,請在「轉子」設定改選 H 型、螺旋型、Φ 型或 V 型。</p></div></div>
-        <div class="bgrid"><div class="card">${'<h2>俯視幾何</h2>'}<div class="cbx"><canvas id="bSav" style="height:300px"></canvas></div></div><div class="card span2"><h2>Cp–λ(經驗曲線)</h2><div class="cbx"><canvas id="bSavCp" style="height:300px"></canvas></div></div></div>`;
+        <div class="bgrid"><div class="card">${'<h2>俯視幾何</h2>'}<div class="cbx"><canvas id="bSav" style="height:300px"></canvas></div></div><div class="card span2"><h2>Cp–λ(${S.vawt.type === 'custom' ? '匯入曲線' : '經驗曲線'})</h2><div class="cbx"><canvas id="bSavCp" style="height:300px"></canvas></div></div></div>`;
       $b('benchInner').innerHTML = h; return;
     }
     const lmax = Math.max(2, (G.perf ? G.perf.lam[G.perf.lam.length - 1] : 12));
@@ -365,10 +365,11 @@ export const Bench = (function () {
   function renderSav() {
     const F = fitCv($b('bSav'));
     if (F) {
-      const { g, W, H } = F, v = S.vawt, s = Math.min(W, H) / (2.6 * v.R), cx = W / 2, cy = H / 2, r = v.R / (2 - v.overlap) , e = v.overlap * 2 * r;
+      const { g, W, H } = F, cu = S.vawt.type === 'custom', v = cu ? { ...S.vawt, R: S.custom.R, B: 0, overlap: 0 } : S.vawt, s = Math.min(W, H) / (2.6 * v.R), cx = W / 2, cy = H / 2, r = v.R / (2 - v.overlap) , e = v.overlap * 2 * r;
       g.strokeStyle = Plot.css('--grid'); g.setLineDash([4, 4]); g.beginPath(); g.arc(cx, cy, v.R * s, 0, 7); g.stroke(); g.setLineDash([]);
       const n = Math.round(v.B);
       for (let k = 0; k < n; k++) { const a = SIM.theta + 2 * Math.PI * k / n, off = (r - e / 2); const x = cx + Math.cos(a) * off * s, y = cy - Math.sin(a) * off * s; g.strokeStyle = Plot.css('--ink'); g.lineWidth = 3; g.beginPath(); g.arc(x, y, r * s, -a, -a + Math.PI, false); g.stroke(); }
+      if (cu) { g.strokeStyle = Plot.css('--ink'); g.lineWidth = 3; g.beginPath(); g.moveTo(cx - Math.cos(SIM.theta) * v.R * s, cy + Math.sin(SIM.theta) * v.R * s); g.lineTo(cx + Math.cos(SIM.theta) * v.R * s, cy - Math.sin(SIM.theta) * v.R * s); g.stroke(); g.fillStyle = Plot.css('--muted'); g.textAlign = 'center'; g.fillText('匯入性能曲線,沒有葉片幾何模型(虛線為特徵半徑)', cx, H - 10); }
       arrow(g, 10, 18, 60, 18, Plot.css('--c3'), 2);
     }
     const P = G.perf; Plot.draw($b('bSavCp'), { title: 'Cp 與 Cq vs λ', series: [{ x: P.lam, y: P.cp, color: Plot.css('--c1'), label: 'Cp' }, { x: P.lam, y: P.cq, color: Plot.css('--c2'), axis: 'R', label: 'Cq' }], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Cq' });
@@ -377,10 +378,10 @@ export const Bench = (function () {
   function render() {
     if (!G.perf) return;
     layout();
-    if (S.mode === 'VAWT' && S.vawt.type === 'sav') return renderSav();
+    if (S.mode === 'VAWT' && noAirfoil(S.vawt)) return renderSav();
     const lam = lamNow();
     if (S.mode === 'HAWT') renderHAWT(lam); else renderVAWT(lam);
   }
-  function tick() { if (S.mode === 'VAWT' && S.vawt.type === 'sav') renderSav(); }
+  function tick() { if (S.mode === 'VAWT' && noAirfoil(S.vawt)) renderSav(); }
   return { render, tick, state: B, sectionAt, secWorld, hawtAt, vawtAt, drawPlan, drawSec, drawStack, drawSpan, reset() { built = ''; } };
 })();
