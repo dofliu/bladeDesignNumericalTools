@@ -2,6 +2,14 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-09 — ROADMAP 8C-1:轉子家族註冊表(4/N)
+
+- 做了什麼:使用者在互動工作階段要求「8C-1 續做」。`VAWT_FAMILIES` 新增 `scene`('blades' / 'savonius' / 'envelope')與葉片家族的 `shape(v, f)`、`struts(v, ph, y0, sf)`(純資料,可在 Node 測試);`ui.mjs` 的 `buildScene` 垂直軸分支改查註冊表,移除型式判斷。新增測試把 shape/struts 釘在重構前的內嵌公式數值上。
+- 驗證:check、npm test 67/67、build、e2e 全過(VAWT 追蹤 93–97%)。另以暫存腳本把舊的內嵌程式逐字複製,與註冊表在 3888 組參數(4 型式 × R/H/c/螺旋角/支撐臂數/葉片數)比對,輸出完全一致。桌面 1440×900(螺旋型)與手機 390×844(Φ 型)3D 截圖正常、無頁面錯誤。
+- 發現:`tests/core.test.mjs` 的「自訂性能曲線轉子 … MPPT 追蹤 >= 90%」偶發失敗(完整測試約 2/60 次,origin/main 上同樣 1/15),屬既有的隨機紊流波動,與本次無關;未放寬門檻,待後續以固定亂數種子處理。
+- 已知限制:`designVAWT` 的質量/慣量分支、參數面板、STL 的型式分支尚未搬入註冊表。
+- 下一步:8C-1 續:`designVAWT` 的型式分支(質量、慣量、性能來源)搬入註冊表。
+
 ## 2026-10-09 — ROADMAP 8C-1:轉子家族註冊表(3/N)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`VAWT_FAMILIES` 新增 `title(fmt)` 與 `condRows(fmt, esc, afLabel)`,`report.mjs` 的報告標題與「設計條件」垂直軸列改查註冊表(輸出不變,已對 H / Φ / Savonius / 自訂逐一比對);測試新增 condRows/title 檢查。
