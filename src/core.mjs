@@ -18,14 +18,21 @@ const MATERIALS = {
 // Rotor family registry (ROADMAP 8C-1): per-family metadata used by UI / bench / flow / report instead of scattered type checks.
 // noAirfoil: no blade geometry / airfoil model (Savonius empirical curve, imported curve); source: performance-source label;
 // curveTitle: title of the Cp chart when the family has no airfoil polar page; flowNote: message in the flow workspace.
+// badge(fmt, afLabel): header badge text; csv(): geometry CSV (both read S / G).
 const DMST_SOURCE = '計算:DMST(雙重多流管)';
+const dmstBadge = (fmt, afLabel) => `<b>${VAWT_TYPES[S.vawt.type]}</b>,${Math.round(S.vawt.B)} 葉,R ${fmt(S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m,${afLabel(S.af.vawt)}`;
+const dmstCsv = () => 'z_m,r_m,inclination_deg,helix_offset_deg,chord_m,pitch_deg\n' + A.vawtSlices(G.vcfg).map(s => [s.z.toFixed(4), s.r.toFixed(4), (s.delta * A.R2D).toFixed(2), (s.helixOff * A.R2D).toFixed(2), S.vawt.c, S.vawt.pitch].join(',')).join('\n');
 const VAWT_FAMILIES = {
-  H: { name: 'H 型(直葉片)', source: DMST_SOURCE },
-  helical: { name: '螺旋型(Gorlov)', source: DMST_SOURCE },
-  phi: { name: 'Φ 型(Darrieus 打蛋器)', source: DMST_SOURCE },
-  V: { name: 'V 型', source: DMST_SOURCE },
-  sav: { name: 'Savonius 阻力型', noAirfoil: true, source: '經驗曲線(Savonius)', curveTitle: 'Savonius', curveSub: '經驗曲線', flowNote: 'Savonius 使用經驗性能曲線,沒有流管模型可視化。' },
-  custom: { name: '自訂性能曲線(匯入 Cp–λ)', noAirfoil: true, source: '匯入曲線(使用者提供,本工具不計算)', curveTitle: '匯入曲線', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' }
+  H: { name: 'H 型(直葉片)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv },
+  helical: { name: '螺旋型(Gorlov)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv },
+  phi: { name: 'Φ 型(Darrieus 打蛋器)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv },
+  V: { name: 'V 型', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv },
+  sav: { name: 'Savonius 阻力型', noAirfoil: true, source: '經驗曲線(Savonius)',
+    badge: fmt => `<b>${VAWT_TYPES.sav}</b>,${Math.round(S.vawt.B)} 葉,D ${fmt(2 * S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m`,
+    csv: () => 'type,B,R_m,H_m,overlap\nSavonius,' + [S.vawt.B, S.vawt.R, S.vawt.H, S.vawt.overlap].join(','), curveTitle: 'Savonius', curveSub: '經驗曲線', flowNote: 'Savonius 使用經驗性能曲線,沒有流管模型可視化。' },
+  custom: { name: '自訂性能曲線(匯入 Cp–λ)', noAirfoil: true, source: '匯入曲線(使用者提供,本工具不計算)',
+    badge: fmt => `<b>${VAWT_TYPES.custom}</b>,${S.custom.name || '匯入資料'},R ${fmt(S.custom.R, 2)} m,A ${fmt(G.A, 2)} m²`,
+    csv: () => 'type,axis,R_m,H_m,swept_area_m2,mass_kg\ncustom,' + [S.custom.axis, S.custom.R, S.custom.H, G.A.toFixed(4), S.custom.mass].join(','), curveTitle: '匯入曲線', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' }
 };
 const VAWT_TYPES = Object.fromEntries(Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, f.name]));
 const noAirfoil = v => !!VAWT_FAMILIES[v.type]?.noAirfoil;

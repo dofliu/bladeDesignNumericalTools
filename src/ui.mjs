@@ -388,9 +388,7 @@ export function buildScene() {
 export function updateBadge() {
   let t;
   if (S.mode === 'HAWT') t = `<b>水平軸 ${Math.round(S.hawt.B)} 葉</b>,R ${fmt(S.hawt.R, 2)} m,${stSorted().map(s => afLabel(s.k).replace('NACA ', '')).join(' → ')},${{ bem: 'BEM 扭角', opt: 'Schmitz 扭角', linear: '線性扭角' }[S.hawt.twMode]},λd ${fmt(S.hawt.tsr, 1)}`;
-  else if (S.vawt.type === 'custom') t = `<b>${VAWT_TYPES.custom}</b>,${S.custom.name || '匯入資料'},R ${fmt(S.custom.R, 2)} m,A ${fmt(G.A, 2)} m²`;
-  else if (S.vawt.type === 'sav') t = `<b>${VAWT_TYPES.sav}</b>,${Math.round(S.vawt.B)} 葉,D ${fmt(2 * S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m`;
-  else t = `<b>${VAWT_TYPES[S.vawt.type]}</b>,${Math.round(S.vawt.B)} 葉,R ${fmt(S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m,${afLabel(S.af.vawt)}`;
+  else t = VAWT_FAMILIES[S.vawt.type].badge(fmt, afLabel);
   $('#badge').innerHTML = t;
 }
 
@@ -750,10 +748,7 @@ let downloads = null;
 (function getDl(n) { if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {}); else if (n < 40) setTimeout(() => getDl(n + 1), 250); })(0);
 export function csvGeometry() {
   if (S.mode === 'HAWT') return 'r_m,r_over_R,chord_m,twist_deg,pitch_deg,t_over_c,airfoil_station_index\n' + G.rows.map((x, i) => [x.r.toFixed(5), (x.r / S.hawt.R).toFixed(5), x.c.toFixed(5), x.tw.toFixed(3), S.hawt.pitch, G.afs[i].t.toFixed(4), x.w.toFixed(3)].join(',')).join('\n');
-  const v = S.vawt;
-  if (v.type === 'custom') return 'type,axis,R_m,H_m,swept_area_m2,mass_kg\ncustom,' + [S.custom.axis, S.custom.R, S.custom.H, G.A.toFixed(4), S.custom.mass].join(',');
-  if (v.type === 'sav') return 'type,B,R_m,H_m,overlap\nSavonius,' + [v.B, v.R, v.H, v.overlap].join(',');
-  return 'z_m,r_m,inclination_deg,helix_offset_deg,chord_m,pitch_deg\n' + A.vawtSlices(G.vcfg).map(s => [s.z.toFixed(4), s.r.toFixed(4), (s.delta * A.R2D).toFixed(2), (s.helixOff * A.R2D).toFixed(2), v.c, v.pitch].join(',')).join('\n');
+  return VAWT_FAMILIES[S.vawt.type].csv();
 }
 export function csvPolar() {
   const key = viewKey(), ps = getPS(key);

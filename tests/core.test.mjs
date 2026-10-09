@@ -466,3 +466,18 @@ test('自訂性能曲線轉子:內建示意範例可解析、無警告,Cp,max/λ
     S.mode = saved.mode; S.vawt.type = saved.type; Object.assign(S.tun, saved.tun); Object.assign(S.load, saved.load); Object.assign(S.custom, saved.custom);
   }
 });
+
+test('家族註冊表:每個垂直軸型式都有 badge 與 csv,內容含型式名稱與表頭', () => {
+  const fmt = (v, d = 1) => (+v).toFixed(d), label = k => k;
+  const keep = { mode: S.mode, type: S.vawt.type };
+  S.mode = 'VAWT';
+  try {
+    for (const [k, f] of Object.entries(core.VAWT_FAMILIES)) {
+      S.vawt.type = k;
+      if (k === 'custom') { G.A = 3.2; S.custom.pts = S.custom.pts || [{ l: 1, Cp: 0.2, Cq: 0.2 }]; }
+      else { designVAWT(); }
+      assert.ok(f.badge(fmt, label).includes(f.name), k + ' badge');
+      assert.match(f.csv(), /^(type|z_m),/, k + ' csv 表頭');
+    }
+  } finally { S.mode = keep.mode; S.vawt.type = keep.type; }
+});
