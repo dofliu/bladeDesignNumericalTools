@@ -64,7 +64,7 @@ export const Bench = (function () {
     let h = '';
     if (sav) {
       h += `<div class="card"><h2>Savonius 阻力型轉子</h2><div class="cbx"><p class="hint">Savonius 由半圓筒葉片構成,靠阻力差產生轉矩,沒有翼型剖面可分析。下圖為俯視幾何與經驗性能曲線;若要分析翼型葉片,請在「轉子」設定改選 H 型、螺旋型、Φ 型或 V 型。</p></div></div>
-        <div class="bgrid"><div class="card">${'<h2>俯視幾何</h2>'}<div class="cbx"><canvas id="bSav" style="height:300px"></canvas></div></div><div class="card span2"><h2>Cp–λ(${S.vawt.type === 'custom' ? '匯入曲線' : '經驗曲線'})</h2><div class="cbx"><canvas id="bSavCp" style="height:300px"></canvas></div></div></div>`;
+        <div class="bgrid"><div class="card">${'<h2>俯視幾何</h2>'}<div class="cbx"><canvas id="bSav" style="height:300px"></canvas></div></div><div class="card span2"><h2>Cp–λ(${VAWT_FAMILIES[S.vawt.type].curveSub})</h2><div class="cbx"><canvas id="bSavCp" style="height:300px"></canvas></div></div></div>`;
       $b('benchInner').innerHTML = h; return;
     }
     const lmax = Math.max(2, (G.perf ? G.perf.lam[G.perf.lam.length - 1] : 12));

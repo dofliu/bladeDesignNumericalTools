@@ -15,9 +15,21 @@ const MATERIALS = {
   pla: { name: '3D 列印 PLA(30% 填充)', rho: 1240, cost: 800, fill: 0.42, E: 2.3e9, allow: 20e6, su: 50e6, m: 8 },
   cfrp: { name: '碳纖複合材(空心殼)', rho: 1550, cost: 2000, fill: 0.22, E: 70e9, allow: 250e6, su: 600e6, m: 14 }
 };
-const VAWT_TYPES = { H: 'H 型(直葉片)', helical: '螺旋型(Gorlov)', phi: 'Φ 型(Darrieus 打蛋器)', V: 'V 型', sav: 'Savonius 阻力型', custom: '自訂性能曲線(匯入 Cp–λ)' };
-// rotors without a blade geometry / airfoil model (Savonius empirical curve, imported curve)
-const noAirfoil = v => v.type === 'sav' || v.type === 'custom';
+// Rotor family registry (ROADMAP 8C-1): per-family metadata used by UI / bench / flow / report instead of scattered type checks.
+// noAirfoil: no blade geometry / airfoil model (Savonius empirical curve, imported curve); source: performance-source label;
+// curveTitle: title of the Cp chart when the family has no airfoil polar page; flowNote: message in the flow workspace.
+const DMST_SOURCE = '計算:DMST(雙重多流管)';
+const VAWT_FAMILIES = {
+  H: { name: 'H 型(直葉片)', source: DMST_SOURCE },
+  helical: { name: '螺旋型(Gorlov)', source: DMST_SOURCE },
+  phi: { name: 'Φ 型(Darrieus 打蛋器)', source: DMST_SOURCE },
+  V: { name: 'V 型', source: DMST_SOURCE },
+  sav: { name: 'Savonius 阻力型', noAirfoil: true, source: '經驗曲線(Savonius)', curveTitle: 'Savonius', curveSub: '經驗曲線', flowNote: 'Savonius 使用經驗性能曲線,沒有流管模型可視化。' },
+  custom: { name: '自訂性能曲線(匯入 Cp–λ)', noAirfoil: true, source: '匯入曲線(使用者提供,本工具不計算)', curveTitle: '匯入曲線', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' }
+};
+const VAWT_TYPES = Object.fromEntries(Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, f.name]));
+const noAirfoil = v => !!VAWT_FAMILIES[v.type]?.noAirfoil;
+const rotorSource = () => S.mode === 'HAWT' ? '計算:BEM(葉片元素動量理論)' : VAWT_FAMILIES[S.vawt.type].source;
 // Schematic example curves for the imported-curve rotor. NOT measured data (lambda, Cp[, Cq] per line).
 const CUSTOM_EXAMPLES = {
   lift: { name: '示意:升力型(Cp,max 約 0.32 @ λ 3.5,非實測)', text: '# 示意曲線,非實測資料\n# lambda, Cp\n' + Array.from({ length: 15 }, (_, i) => { const l = 0.5 * (i + 1), x = l / 3.5; return l.toFixed(1) + ', ' + (0.32 * x * Math.exp(1 - x)).toFixed(4); }).join('\n') },
@@ -838,4 +850,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
