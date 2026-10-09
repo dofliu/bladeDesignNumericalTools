@@ -516,3 +516,31 @@ test('家族註冊表:每個垂直軸型式都有 badge 與 csv,內容含型式�
     }
   } finally { S.mode = keep.mode; S.vawt.type = keep.type; }
 });
+
+// 8C-1(5/N): designVAWT 的質量/慣量分支改由註冊表 design() 提供;數值釘在重構前的輸出
+test('VAWT_FAMILIES design():各家族面積/質量/慣量與重構前一致', () => {
+  const keep = JSON.parse(JSON.stringify({ v: S.vawt, mode: S.mode }));
+  const want = { // [A, mass, bladeMass, J],B=2、PLA、struts=2、overlap=0.2
+    H: [4, 6.956883273479466, 2.870980516739733, 6.771628624827413],
+    phi: [2.68, 8.474903573218292, 4.237451786609146, 4.15662612862363],
+    V: [2.004, 6.419707597507517, 3.2098537987537585, 2.3587848384076726],
+    sav: [4, 60.25155830564745, 30.125779152823725, 33.158357068106106]
+  };
+  const same = (k, got) => got.forEach((x, i) => assert.ok(Math.abs(x - want[k][i]) < 1e-9 * want[k][i], k + ' 值 ' + i));
+  S.mode = 'VAWT';
+  for (const k of Object.keys(core.VAWT_FAMILIES)) assert.equal(typeof core.VAWT_FAMILIES[k].design, 'function', k + ' 缺 design()');
+  Object.assign(S.vawt, { type: 'H', B: 2, material: 'pla', struts: 2, overlap: 0.2 });
+  designVAWT();
+  same('H', [G.A, G.mass, G.bladeMass, G.J]);
+  Object.assign(S.vawt, { type: 'helical' }); designVAWT();
+  assert.ok(Math.abs(G.mass - want.H[1]) < 1e-9, 'helical 質量');
+  Object.assign(S.vawt, { type: 'phi' }); designVAWT();
+  same('phi', [G.A, G.mass, G.bladeMass, G.J]);
+  Object.assign(S.vawt, { type: 'V' }); designVAWT(); same('V', [G.A, G.mass, G.bladeMass, G.J]);
+  Object.assign(S.vawt, { type: 'sav' }); designVAWT();
+  same('sav', [G.A, G.mass, G.bladeMass, G.J]);
+  Object.assign(S.vawt, { type: 'custom' }); designVAWT();
+  assert.equal(G.R, S.custom.R); assert.equal(G.mass, S.custom.mass);
+  Object.assign(S.vawt, keep.v); S.mode = keep.mode;
+  designHAWT();
+});
