@@ -73,9 +73,23 @@ const res = await page.evaluate(() => {
       out.push({ mode, ctrl, V, track: (e / a) / (G.cpMax * 0.92 * S.load.eta) });
     }
   }
+  // custom (imported Cp-lambda) rotor: tracking at 9 m/s + snapshot keeps S.custom
+  setMode('VAWT'); S.vawt.type = 'custom'; loadCpText(CUSTOM_EXAMPLES.lift.text, CUSTOM_EXAMPLES.lift.name, true); rebuild(true);
+  for (const ctrl of ['po', 'tsr', 'ot']) {
+    S.tun.TI = 0; S.tun.V = 9; S.load.ctrl = ctrl;
+    SIM.omega = G.lopt * 9 / G.R * 0.7; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0; SIM.latch = false; SIM.n = 0; SIM.po.wref = -1;
+    let e = 0, a = 0;
+    for (let t = 0; t < 120; t += 0.004) { simStep(0.004); if (t > 48) { e += SIM.out.el.Pout; a += 0.5 * air().rho * G.A * SIM.out.V ** 3; } }
+    out.push({ mode: 'custom', ctrl, V: 9, track: (e / a) / (G.cpMax * 0.92 * S.load.eta) });
+  }
+  const n0 = SNAPS.length; saveSnap(); const sn = SNAPS[SNAPS.length - 1], name = S.custom.name, np = S.custom.pts.length;
+  S.custom.pts = null; S.custom.name = ''; loadSnap(sn);
+  out.push({ snap: SNAPS.length === n0 + 1 && S.custom.name === name && S.custom.pts && S.custom.pts.length === np && !!G.perf });
+  SNAPS.length = n0; storeSnaps();
   return out;
 });
-for (const r of res) check(r.track >= 0.9, `${r.mode} ${r.ctrl} ${r.V} m/s tracking ${(r.track * 100).toFixed(0)}%`);
+check(res.some(r => r.snap), 'custom rotor: snapshot save/load restores S.custom');
+for (const r of res.filter(r => r.ctrl)) check(r.track >= 0.9, `${r.mode} ${r.ctrl} ${r.V} m/s tracking ${(r.track * 100).toFixed(0)}%`);
 await browser.close();
 if (failed) { console.log(`${failed} check(s) failed`); process.exit(1); }
 console.log('all e2e checks passed');

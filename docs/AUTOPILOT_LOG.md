@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-09 — ROADMAP 8A:自訂性能曲線介面(2/2)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`saveSnap`/`loadSnap` 在方案 `cfg` 保存/還原 `S.custom`(含匯入曲線);`tests/e2e.smoke.mjs` 新增自訂轉子 9 m/s 三種控制器 MPPT 追蹤率檢查與方案儲存→清空→載入還原檢查。
+- 驗證:check、npm test 65/65、build、e2e 全過(自訂轉子追蹤 96–97%、方案還原 PASS);桌面 1440×900 與手機 390×844 截圖無破版、無頁面錯誤。
+- 已知限制:舊版 localStorage 方案沒有 `cfg.custom`,載入時沿用目前 `S.custom`;水平軸圓盤包絡仍未做。
+- 下一步:8C-1 轉子家族註冊表重構。
+
 ## 2026-10-09 — ROADMAP 8A:自訂性能曲線介面(1/2)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`VAWT_TYPES` 新增 `custom`;轉子分頁新增「性能曲線(匯入資料)」面板(貼上 / 匯入 CSV、2 組示意範例〔標示非實測〕、資料摘要與 Betz 警告)與「幾何與質量(包絡)」滑桿;`scene.mjs` 新增 `buildEnvelope`(簡化圓柱包絡);新增 `noAirfoil()` 判斷,讓 Savonius 與自訂轉子共用「無翼型」分支(翼型分頁、摘要、單葉片、流場、STL 匯出、報告);報告列出性能來源與模型限制。
