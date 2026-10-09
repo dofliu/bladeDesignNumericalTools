@@ -13,7 +13,7 @@
 - 工作區:風洞(3D)、單葉片(平面圖/剖面/速度三角形/沿展長氣動量)、流場(面板法 + 致動盤/DMST)、報告(自動測試 + HTML 報告)
 - 方案比較(存在 localStorage)、STL/CSV 匯出、手機版版面
 
-目前正式版本也發佈在 claude.ai artifact(使用者持有連結)。
+過去曾發佈在 claude.ai artifact;使用者 2026-10-09 決定不再需要貼回 claude.ai,改為一般靜態網站(GitHub Pages / 本機開啟)。
 
 ## 常用指令
 
@@ -76,17 +76,17 @@ rebuild(geo): designHAWT()/designVAWT() → computePerf() → autoMatchGen() →
 - 驗證值:額定風速以內三種 MPPT 追蹤率 95–98%(e2e 會檢查 ≥ 90%)。
 - 已知且屬物理合理的行為:預設水平軸(λd 7)在 4 m/s 無法自行啟動;H 型 Darrieus 需輔助起轉;水平軸 14 m/s 以上發電機壓不住固定槳距轉子,會反覆觸發保護(報告會說明)。
 
-## 發佈環境限制(claude.ai artifact)
+## 發佈環境限制
 
-要繼續能貼回 claude.ai 發佈,dist 必須維持:
+使用者 2026-10-09 決定**不再需要貼回 claude.ai 發佈**,原本為 artifact 設的限制放寬如下:
 
-- 單一 HTML、< 16 MB;外部 script 只能來自 `cdnjs.cloudflare.com`、`cdn.jsdelivr.net/npm`、`cdn.tailwindcss.com`、`code.jquery.com`;樣式只能 Google Fonts;**不能 fetch 其他網站**、不能載入遠端圖片
+- 仍須是**純靜態網站**:不需後端伺服器、API 金鑰或付費服務(`docs/AUTOPILOT.md`「絕對不能做」仍適用);可放 GitHub Pages 或本機開啟
+- 不再強制單一 HTML 與 CDN 白名單;可用 npm 套件由 Vite 打包進 dist(例如 three.js 可改從 npm 打包)。目前仍輸出單一 HTML,沒有必要時不急著改
+- 執行時仍不要 fetch 第三方網站(離線可用、行為可預期)
 - 下載檔案透過 `window.claude.use('downloads')`(`ui.js` 的 `save()`);其他託管環境(GitHub Pages、本機開檔)沒有這個 API 時,`save()` 自動改用 Blob 下載(`blobSave()`),回傳 `'api'` / `'blob'` / `false`。匯出視窗在 Blob 下載後另提供「顯示內容供複製」按鈕,因為瀏覽器可能無聲擋下下載;e2e 會檢查三種匯出的檔名與大小
 - localStorage 可用(鍵:`wt-snaps-v1` 方案、`wt-theme` 佈景),一律包 try/catch
 - 主題色全部用 CSS 變數(`--accent` `--c1..c5` `--signal` 等),深色模式要兩處同步(`@media prefers-color-scheme` 與 `[data-theme=dark]`)
-- 手機斷點 860px;手機版底部導覽 `.bnav`,設定面板以 `.app.m-set` 切換
-
-若決定不再回 claude.ai 發佈,可以放寬這些限制(見 ROADMAP 第 1 項)。
+- 手機斷點 860px;手機版底部導覽 `.bnav`,設定面板以 `.app.m-set` 切換。使用者已決定手機版**只需檢視**(3D 風洞、圖表、比較、報告),完整編輯只在桌面版(見 ROADMAP 8C-7)
 
 ## 已驗證的參考數值(tests/aero.test.mjs 會檢查)
 
