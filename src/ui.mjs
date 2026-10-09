@@ -488,7 +488,7 @@ export function saveSnap() {
   const usedCols = new Set(SNAPS.map(s => s.ci));
   let ci = 0; while (usedCols.has(ci) && ci < SNAP_COL.length - 1) ci++;
   SNAPS.push({ id: Date.now(), ci, vis: true, name: `方案 ${String.fromCharCode(65 + SNAPS.length)}:${designName()}`, ...curMetrics(),
-    cfg: { hawt: JSON.parse(JSON.stringify(S.hawt)), vawt: JSON.parse(JSON.stringify(S.vawt)), st: S.af.st.map(s => ({ ...s })), vaf: S.af.vawt, cdMax: S.af.cdMax }, imp, pimp });
+    cfg: { hawt: JSON.parse(JSON.stringify(S.hawt)), vawt: JSON.parse(JSON.stringify(S.vawt)), st: S.af.st.map(s => ({ ...s })), vaf: S.af.vawt, cdMax: S.af.cdMax, custom: S.custom.pts ? JSON.parse(JSON.stringify(S.custom)) : null }, imp, pimp });
   storeSnaps(); toast('已儲存為比較方案'); if (S.ctab === 'cmp') redrawStatic();
 }
 export function loadSnap(sn) {
@@ -501,6 +501,7 @@ export function loadSnap(sn) {
   const mk = k => remap[k] || k;
   const c = JSON.parse(JSON.stringify(sn.cfg));
   S.hawt = Object.assign(S.hawt, c.hawt); S.vawt = Object.assign(S.vawt, c.vawt);
+  if (c.custom) Object.assign(S.custom, c.custom);
   S.af.st = c.st.map(s => ({ f: s.f, k: mk(s.k) })); S.af.vawt = mk(c.vaf); S.af.cdMax = c.cdMax;
   for (const [k, t] of Object.entries(sn.pimp || {})) S.af.polarImp[mk(k)] = t;
   S.af.view = sn.mode === 'HAWT' ? S.af.st.length - 1 : 'vawt';
