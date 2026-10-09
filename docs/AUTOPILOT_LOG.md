@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-09 — ROADMAP 8A:匯入 Cp–λ 曲線核心函式(1/2)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `parseCpCurve`(解析貼上/CSV 文字、Betz 警告)與 `customCurve`(重取樣成與 `savoniusCurve` 同格式);`tests/aero.test.mjs` 新增 2 項測試(解析規則、Savonius 取樣匯入一致 < 2%)。純函式,尚未接 `core.mjs`/UI。
+- 驗證:check、npm test、build、e2e 見 PR 內文。
+- 已知限制:無方位角轉矩資料(漣波視為均勻);Ct 為固定值 0.9;不外插 λ 資料範圍外。
+- 下一步:8A 核心 2/2(`core.mjs` 轉子類型 `custom`、`S.custom`、接上 `computePerf`)。
+
 ## 2026-10-08 — ROADMAP 6:Biot-Savart 渦線誘導速度
 
 - 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `biotSavart`(渦線段誘導速度,核心正規化);`tests/aero.test.mjs` 以圓形渦環軸上解析解驗證。純函式,尚未接 UI。
