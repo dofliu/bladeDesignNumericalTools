@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-09 — ROADMAP 8C-1:轉子家族註冊表(5/N)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`VAWT_FAMILIES` 新增 `design(cfg, mat)`(設定 `G.A`/`G.mass`/`G.bladeMass`/`G.J`),H/螺旋/Φ/V 共用 `dmstDesign`,Savonius 與自訂曲線各自內嵌;`designVAWT` 縮成一行查表。
+- 驗證:check、npm test 68/68(新增 design() 數值測試)、build、e2e 結果見 PR。重構前後以 24 組(6 型式 × B × 材料)比對 G.A/mass/bladeMass/J/R,輸出完全一致。
+- 已知限制:參數面板、STL 的型式分支尚未搬入註冊表。
+- 下一步:8C-1 續:STL 匯出與參數面板分支搬入註冊表。
+
 ## 2026-10-09 — ROADMAP 8C-1:轉子家族註冊表(4/N)
 
 - 做了什麼:使用者在互動工作階段要求「8C-1 續做」。`VAWT_FAMILIES` 新增 `scene`('blades' / 'savonius' / 'envelope')與葉片家族的 `shape(v, f)`、`struts(v, ph, y0, sf)`(純資料,可在 Node 測試);`ui.mjs` 的 `buildScene` 垂直軸分支改查註冊表,移除型式判斷。新增測試把 shape/struts 釘在重構前的內嵌公式數值上。

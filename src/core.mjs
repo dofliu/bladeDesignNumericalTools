@@ -28,21 +28,43 @@ const dmstRows = (fmt, esc, afLabel) => [['型式', VAWT_TYPES[S.vawt.type]], ['
 const hubStruts = ys => (v, ph, y0) => ys.map(f => ({ ang: ph, y: y0 + f * v.H, r: 0.08 * v.R, w: 0.5 * v.c }));
 const armStruts = (fs, v, ph, y0, sf) => fs.map(f => ({ ang: ph + sf(f).off, y: y0 + f * v.H, r: v.R, w: 0.6 * v.c }));
 const dmstCsv = () => 'z_m,r_m,inclination_deg,helix_offset_deg,chord_m,pitch_deg\n' + A.vawtSlices(G.vcfg).map(s => [s.z.toFixed(4), s.r.toFixed(4), (s.delta * A.R2D).toFixed(2), (s.helixOff * A.R2D).toFixed(2), S.vawt.c, S.vawt.pitch].join(',')).join('\n');
+// design(cfg, mat): sets G.A / G.mass / G.bladeMass / G.J for the family (called by designVAWT).
+function dmstDesign(cfg, mat, strutMass) {
+  const v = S.vawt;
+  G.A = A.vawtArea(cfg);
+  const af = getAf(S.af.vawt), sl = A.vawtSlices(cfg);
+  let m = 0, J = 0;
+  for (const s of sl) { const L = s.dz / Math.cos(s.delta), dm = mat.rho * mat.fill * A.airfoilArea(af) * v.c * v.c * L; m += dm; J += dm * s.r * s.r; }
+  G.bladeMass = m; m *= cfg.B; J *= cfg.B;
+  if (strutMass) { const ms = cfg.B * v.struts * 0.6 * mat.rho * mat.fill * 0.12 * (0.6 * v.c) ** 2 * v.R; m += ms; J += ms * v.R * v.R / 3; }
+  G.mass = m; G.J = Math.max(1e-3, J * 1.1 + 0.01);
+}
 const VAWT_FAMILIES = {
-  H: { name: 'H 型(直葉片)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
+  H: { name: 'H 型(直葉片)', design: (cfg, mat) => dmstDesign(cfg, mat, true), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: v => ({ r: v.R, off: 0 }), struts: (v, ph, y0, sf) => armStruts([[], [0.5], [0.22, 0.78], [0.15, 0.5, 0.85]][Math.round(v.struts)] || [], v, ph, y0, sf) },
-  helical: { name: '螺旋型(Gorlov)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
+  helical: { name: '螺旋型(Gorlov)', design: (cfg, mat) => dmstDesign(cfg, mat, true), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: (v, f) => ({ r: v.R, off: v.helix * A.D2R * f }),
     struts: (v, ph, y0, sf) => { const n = Math.round(v.struts); return armStruts(n ? [0.02, 0.98].slice(0, Math.max(1, Math.min(2, n))).concat(n > 2 ? [0.5] : []) : [], v, ph, y0, sf); } },
-  phi: { name: 'Φ 型(Darrieus 打蛋器)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
+  phi: { name: 'Φ 型(Darrieus 打蛋器)', design: (cfg, mat) => dmstDesign(cfg, mat, false), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: (v, f) => ({ r: v.R * Math.max(0.06, 1 - (2 * f - 1) ** 2), off: 0 }), struts: hubStruts([0.01, 0.99]) },
-  V: { name: 'V 型', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
+  V: { name: 'V 型', design: (cfg, mat) => dmstDesign(cfg, mat, false), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: (v, f) => ({ r: v.R * Math.max(0.05, f), off: 0 }), struts: hubStruts([0.02]) },
-  sav: { name: 'Savonius 阻力型', noAirfoil: true, scene: 'savonius', source: '經驗曲線(Savonius)',
+  sav: { name: 'Savonius 阻力型', noAirfoil: true, scene: 'savonius',
+    design: (cfg, mat) => {
+      const v = S.vawt;
+      G.A = 2 * v.R * v.H;
+      const d = 2 * v.R / (2 - v.overlap), t = Math.max(0.0015, 0.004 * v.R);
+      const m = cfg.B * Math.PI * d / 2 * v.H * t * mat.rho * Math.min(1, mat.fill * 2) + (v.endPlates ? 2 * Math.PI * v.R * v.R * t * mat.rho : 0);
+      G.mass = m; G.bladeMass = m / cfg.B; G.J = 0.5 * m * v.R * v.R * 1.1 + 0.02;
+    }, source: '經驗曲線(Savonius)',
     badge: fmt => `<b>${VAWT_TYPES.sav}</b>,${Math.round(S.vawt.B)} 葉,D ${fmt(2 * S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m`,
     title: dmstTitle, condRows: fmt => [['型式', VAWT_TYPES.sav], ['葉片數', Math.round(S.vawt.B)], ['半徑 / 高度', `${fmt(S.vawt.R, 2)} m / ${fmt(S.vawt.H, 2)} m`], ['重疊比', fmt(S.vawt.overlap, 2)], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
     csv: () => 'type,B,R_m,H_m,overlap\nSavonius,' + [S.vawt.B, S.vawt.R, S.vawt.H, S.vawt.overlap].join(','), curveTitle: 'Savonius', curveSub: '經驗曲線', flowNote: 'Savonius 使用經驗性能曲線,沒有流管模型可視化。' },
-  custom: { name: '自訂性能曲線(匯入 Cp–λ)', noAirfoil: true, scene: 'envelope', source: '匯入曲線(使用者提供,本工具不計算)',
+  custom: { name: '自訂性能曲線(匯入 Cp–λ)', noAirfoil: true, scene: 'envelope',
+    design: () => { // no geometry model: swept area / mass / inertia come straight from S.custom
+      const c = S.custom;
+      G.R = c.R; G.A = c.area > 0 ? c.area : 2 * c.R * c.H; G.mass = c.mass; G.bladeMass = c.mass; G.J = c.J > 0 ? c.J : Math.max(1e-3, 0.5 * c.mass * c.R * c.R);
+    }, source: '匯入曲線(使用者提供,本工具不計算)',
     badge: fmt => `<b>${VAWT_TYPES.custom}</b>,${S.custom.name || '匯入資料'},R ${fmt(S.custom.R, 2)} m,A ${fmt(G.A, 2)} m²`,
     title: fmt => `${VAWT_TYPES.custom} R ${fmt(S.custom.R, 2)} m`,
     condRows: (fmt, esc) => [['型式', VAWT_TYPES.custom], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts.length} 筆)`], ['特徵半徑 / 高度', `${fmt(S.custom.R, 2)} m / ${fmt(S.custom.H, 2)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
@@ -504,25 +526,7 @@ function vawtCfg() {
 function designVAWT() {
   const v = S.vawt, cfg = vawtCfg(), mat = MATERIALS[v.material];
   G.vcfg = cfg; G.R = v.R; G.loads = null; // spanwise structural loads: HAWT only for now (see ROADMAP 3)
-  if (v.type === 'custom') { // no geometry model: swept area / mass / inertia come straight from S.custom
-    const c = S.custom;
-    G.R = c.R; G.A = c.area > 0 ? c.area : 2 * c.R * c.H; G.mass = c.mass; G.bladeMass = c.mass; G.J = c.J > 0 ? c.J : Math.max(1e-3, 0.5 * c.mass * c.R * c.R);
-    return;
-  }
-  if (v.type === 'sav') {
-    G.A = 2 * v.R * v.H;
-    const d = 2 * v.R / (2 - v.overlap), t = Math.max(0.0015, 0.004 * v.R);
-    const m = cfg.B * Math.PI * d / 2 * v.H * t * mat.rho * Math.min(1, mat.fill * 2) + (v.endPlates ? 2 * Math.PI * v.R * v.R * t * mat.rho : 0);
-    G.mass = m; G.bladeMass = m / cfg.B; G.J = 0.5 * m * v.R * v.R * 1.1 + 0.02;
-    return;
-  }
-  G.A = A.vawtArea(cfg);
-  const af = getAf(S.af.vawt), sl = A.vawtSlices(cfg);
-  let m = 0, J = 0;
-  for (const s of sl) { const L = s.dz / Math.cos(s.delta), dm = mat.rho * mat.fill * A.airfoilArea(af) * v.c * v.c * L; m += dm; J += dm * s.r * s.r; }
-  G.bladeMass = m; m *= cfg.B; J *= cfg.B;
-  if (v.type === 'H' || v.type === 'helical') { const ms = cfg.B * v.struts * 0.6 * mat.rho * mat.fill * 0.12 * (0.6 * v.c) ** 2 * v.R; m += ms; J += ms * v.R * v.R / 3; }
-  G.mass = m; G.J = Math.max(1e-3, J * 1.1 + 0.01);
+  VAWT_FAMILIES[v.type].design(cfg, mat);
 }
 function curveArrays(pts) {
   return { lam: pts.map(p => p.l), cp: pts.map(p => p.Cp), ct: pts.map(p => p.Ct), cq: pts.map(p => p.Cq), tot: pts.map(p => p.tot), qAz: pts.map(p => p.qAz), alAz: pts.map(p => p.alAz), rel: pts[0].rel };
