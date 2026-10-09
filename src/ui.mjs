@@ -309,6 +309,7 @@ export function updateSummaries() {
     const Vd = S.mode === 'HAWT' ? S.hawt.Vd : S.tun.V;
     const Pd = 0.5 * rho * G.A * Vd ** 3 * G.cpMax;
     const rows = [];
+    rows.push(['性能來源', S.mode === 'HAWT' ? '計算:BEM(葉片元素動量理論)' : S.vawt.type === 'custom' ? '匯入曲線(使用者提供,本工具不計算)' : S.vawt.type === 'sav' ? '經驗曲線(Savonius)' : '計算:DMST(雙重多流管)']);
     if (S.mode === 'HAWT') {
       const sol = G.rows.reduce((s, x) => s + x.c * x.dr, 0) * S.hawt.B / (Math.PI * S.hawt.R ** 2);
       rows.push(['掃掠面積', fmt(G.A, 2) + ' m²'], ['實度', fmt(sol, 3)], ['單葉質量', fmt(G.bladeMass, 2) + ' kg'], ['轉動慣量 J', fmt(G.J, 3) + ' kg·m²']);
