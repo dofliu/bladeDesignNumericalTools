@@ -119,7 +119,7 @@ export const Report = (function () {
   function build(t) {
     const H = S.mode === 'HAWT', sav = !H && noAirfoil(S.vawt), { rho, mu } = air();
     const now = new Date(), dateS = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const title = R0.name || (H ? `${Math.round(S.hawt.B)} 葉水平軸風力機 R ${fmt(S.hawt.R, 2)} m` : `${VAWT_TYPES[S.vawt.type]} R ${fmt(S.vawt.type === 'custom' ? S.custom.R : S.vawt.R, 2)} m`);
+    const title = R0.name || (H ? `${Math.round(S.hawt.B)} 葉水平軸風力機 R ${fmt(S.hawt.R, 2)} m` : VAWT_FAMILIES[S.vawt.type].title(fmt));
     const col = n => Plot.css(n);
     let sec = 0; const hN = t => `<h2>${++sec}. ${t}</h2>`;
     let h = `<div class="rh"><div class="rk">設計規劃與虛擬風洞測試報告</div><h1>${esc(title)}</h1><div class="meta">${dateS}${R0.author ? ' · ' + esc(R0.author) : ''} · 由風力機葉片設計工具產生</div></div>`;
@@ -130,8 +130,7 @@ export const Report = (function () {
     // 1 design conditions
     h += hN('設計條件');
     const cond = H ? [['型式', `水平軸,${Math.round(S.hawt.B)} 葉`], ['轉子半徑 / 輪轂半徑', `${fmt(S.hawt.R, 2)} m / ${fmt(G.Rhub, 3)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['設計風速 / 設計尖速比', `${fmt(S.hawt.Vd, 1)} m/s / ${fmt(S.hawt.tsr, 1)}`], ['扭角設計方式', { bem: 'BEM 數值最佳化', opt: 'Schmitz 解析解', linear: `線性 ${fmt(S.hawt.twRoot, 1)}° → ${fmt(S.hawt.twTip, 1)}°` }[S.hawt.twMode]], ['槳距角', fmt(S.hawt.pitch, 1) + '°'], ['材料 / 單葉質量', `${MATERIALS[S.hawt.material].name} / ${fmt(G.bladeMass, 2)} kg`]]
-      : S.vawt.type === 'custom' ? [['型式', VAWT_TYPES.custom], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts.length} 筆)`], ['特徵半徑 / 高度', `${fmt(S.custom.R, 2)} m / ${fmt(S.custom.H, 2)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']]
-      : [['型式', VAWT_TYPES[S.vawt.type]], ['葉片數', Math.round(S.vawt.B)], ['半徑 / 高度', `${fmt(S.vawt.R, 2)} m / ${fmt(S.vawt.H, 2)} m`], ...(sav ? [['重疊比', fmt(S.vawt.overlap, 2)]] : [['弦長 / 翼型', `${fmt(S.vawt.c * 1000, 0)} mm / ${afLabel(S.af.vawt)}`], ['實度 Bc/R', fmt(S.vawt.B * S.vawt.c / S.vawt.R, 3)]]), ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']];
+      : VAWT_FAMILIES[S.vawt.type].condRows(fmt, esc, afLabel);
     cond.push(['空氣條件', `${fmt(S.tun.T, 0)} °C,海拔 ${fmt(S.tun.alt, 0)} m,ρ = ${fmt(rho, 3)} kg/m³`], ['負載', S.load.kind === 'bat' ? `電池充電 ${S.load.Vbat} V(升降壓轉換器)` : `電阻負載 ${fmt(S.load.RL, 1)} Ω`], ['MPPT 控制', { po: '擾動觀察法 P&O', tsr: '最佳尖速比控制', ot: '最佳轉矩控制', manual: '固定占空比' }[S.load.ctrl]], ['發電機', `ke ${fmt(S.load.ke, 3)} V·s/rad,Rs ${fmt(S.load.Rs, 3)} Ω,額定 ${fmtP(S.load.Pmax)},轉速上限 ${S.load.wmaxRpm} rpm`]);
     if (H) { const nz = noiseEstimate(S.hawt.tsr * S.hawt.Vd, 2 * S.hawt.R, 50); cond.push(['噪音估計(設計點,葉尖速度法)', `葉尖速度 ${fmt(S.hawt.tsr * S.hawt.Vd, 1)} m/s,聲功率級約 ${fmt(nz.Lw, 0)} dB(A),${nz.dist} m 處約 ${fmt(nz.Lp, 0)} dB(A)(經驗式,誤差約 ±5 dB,不含音調/調幅噪音)`]); }
     if (H) { const a = air(), tb = tbleSpectrum(G.rows, G.desElems, S.hawt.B, a.rho, a.mu, 50), tbl = tbleSpectrum(G.rows, G.desElems, S.hawt.B, a.rho, a.mu, 50, blDstarFn(G.afs)); cond.push(['後緣自噪音(BPM 頻譜)', `${tb.dist} m 處約 ${fmt(tb.LA, 0)} dB(A)、未加權 ${fmt(tb.Lp, 0)} dB(改用邊界層積分 δ* 交叉驗證:${fmt(tbl.LA, 0)} dB(A);1/3 八度頻帶加總,僅含紊流邊界層後緣自噪音,不含入流紊流/鈍後緣噪音;只適合設計間相對比較,絕對值誤差可達 ±5 dB 以上)`]); const tv = tipVortexNoise(G.rows, G.desElems, S.hawt.B, a.rho, a.mu, 50), tot = 10 * Math.log10(Math.pow(10, 0.1 * tb.LA) + Math.pow(10, 0.1 * tv.LA)); cond.push(['葉尖渦噪音(BPM)', `${tv.dist} m 處約 ${fmt(tv.LA, 0)} dB(A)(葉尖攻角 ${fmt(tv.alphaTip, 1)}°;與後緣自噪音能量相加約 ${fmt(tot, 0)} dB(A);圓弧葉尖經驗式、未含葉尖形狀差異,僅供相對比較)`]); }

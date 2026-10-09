@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-09 — ROADMAP 8C-1:轉子家族註冊表(3/N)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`VAWT_FAMILIES` 新增 `title(fmt)` 與 `condRows(fmt, esc, afLabel)`,`report.mjs` 的報告標題與「設計條件」垂直軸列改查註冊表(輸出不變,已對 H / Φ / Savonius / 自訂逐一比對);測試新增 condRows/title 檢查。
+- 驗證:check、npm test 66/66、build、e2e 全過(HAWT/VAWT/自訂追蹤 93–97%);桌面 1440×900、手機 390×844 截圖無破版、無頁面錯誤。
+- 已知限制:設計、3D(`buildScene`)、參數面板、STL 的型式分支尚未搬入註冊表(3D 依賴 Scene3D,需另設註冊點)。
+- 下一步:8C-1 續:`buildScene` 3D 分支搬入註冊表(ui 層註冊 builder)。
+
 ## 2026-10-09 — ROADMAP 8C-1:轉子家族註冊表(2/N)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`VAWT_FAMILIES` 新增 `badge(fmt, afLabel)` 與 `csv()`,`ui.mjs` 的 `updateBadge`、`csvGeometry` 垂直軸分支改查註冊表(輸出不變);新增測試逐一驗證各家族 badge/csv。

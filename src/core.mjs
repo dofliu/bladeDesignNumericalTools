@@ -18,20 +18,25 @@ const MATERIALS = {
 // Rotor family registry (ROADMAP 8C-1): per-family metadata used by UI / bench / flow / report instead of scattered type checks.
 // noAirfoil: no blade geometry / airfoil model (Savonius empirical curve, imported curve); source: performance-source label;
 // curveTitle: title of the Cp chart when the family has no airfoil polar page; flowNote: message in the flow workspace.
-// badge(fmt, afLabel): header badge text; csv(): geometry CSV (both read S / G).
+// badge(fmt, afLabel): header badge text; csv(): geometry CSV; title(fmt): report title; condRows(fmt, esc, afLabel): report design-condition rows (all read S / G).
 const DMST_SOURCE = '計算:DMST(雙重多流管)';
 const dmstBadge = (fmt, afLabel) => `<b>${VAWT_TYPES[S.vawt.type]}</b>,${Math.round(S.vawt.B)} 葉,R ${fmt(S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m,${afLabel(S.af.vawt)}`;
+const dmstTitle = fmt => `${VAWT_TYPES[S.vawt.type]} R ${fmt(S.vawt.R, 2)} m`;
+const dmstRows = (fmt, esc, afLabel) => [['型式', VAWT_TYPES[S.vawt.type]], ['葉片數', Math.round(S.vawt.B)], ['半徑 / 高度', `${fmt(S.vawt.R, 2)} m / ${fmt(S.vawt.H, 2)} m`], ['弦長 / 翼型', `${fmt(S.vawt.c * 1000, 0)} mm / ${afLabel(S.af.vawt)}`], ['實度 Bc/R', fmt(S.vawt.B * S.vawt.c / S.vawt.R, 3)], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']];
 const dmstCsv = () => 'z_m,r_m,inclination_deg,helix_offset_deg,chord_m,pitch_deg\n' + A.vawtSlices(G.vcfg).map(s => [s.z.toFixed(4), s.r.toFixed(4), (s.delta * A.R2D).toFixed(2), (s.helixOff * A.R2D).toFixed(2), S.vawt.c, S.vawt.pitch].join(',')).join('\n');
 const VAWT_FAMILIES = {
-  H: { name: 'H 型(直葉片)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv },
-  helical: { name: '螺旋型(Gorlov)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv },
-  phi: { name: 'Φ 型(Darrieus 打蛋器)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv },
-  V: { name: 'V 型', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv },
+  H: { name: 'H 型(直葉片)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows },
+  helical: { name: '螺旋型(Gorlov)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows },
+  phi: { name: 'Φ 型(Darrieus 打蛋器)', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows },
+  V: { name: 'V 型', source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows },
   sav: { name: 'Savonius 阻力型', noAirfoil: true, source: '經驗曲線(Savonius)',
     badge: fmt => `<b>${VAWT_TYPES.sav}</b>,${Math.round(S.vawt.B)} 葉,D ${fmt(2 * S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m`,
+    title: dmstTitle, condRows: fmt => [['型式', VAWT_TYPES.sav], ['葉片數', Math.round(S.vawt.B)], ['半徑 / 高度', `${fmt(S.vawt.R, 2)} m / ${fmt(S.vawt.H, 2)} m`], ['重疊比', fmt(S.vawt.overlap, 2)], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
     csv: () => 'type,B,R_m,H_m,overlap\nSavonius,' + [S.vawt.B, S.vawt.R, S.vawt.H, S.vawt.overlap].join(','), curveTitle: 'Savonius', curveSub: '經驗曲線', flowNote: 'Savonius 使用經驗性能曲線,沒有流管模型可視化。' },
   custom: { name: '自訂性能曲線(匯入 Cp–λ)', noAirfoil: true, source: '匯入曲線(使用者提供,本工具不計算)',
     badge: fmt => `<b>${VAWT_TYPES.custom}</b>,${S.custom.name || '匯入資料'},R ${fmt(S.custom.R, 2)} m,A ${fmt(G.A, 2)} m²`,
+    title: fmt => `${VAWT_TYPES.custom} R ${fmt(S.custom.R, 2)} m`,
+    condRows: (fmt, esc) => [['型式', VAWT_TYPES.custom], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts.length} 筆)`], ['特徵半徑 / 高度', `${fmt(S.custom.R, 2)} m / ${fmt(S.custom.H, 2)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
     csv: () => 'type,axis,R_m,H_m,swept_area_m2,mass_kg\ncustom,' + [S.custom.axis, S.custom.R, S.custom.H, G.A.toFixed(4), S.custom.mass].join(','), curveTitle: '匯入曲線', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' }
 };
 const VAWT_TYPES = Object.fromEntries(Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, f.name]));

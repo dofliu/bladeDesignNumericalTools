@@ -478,6 +478,10 @@ test('家族註冊表:每個垂直軸型式都有 badge 與 csv,內容含型式�
       else { designVAWT(); }
       assert.ok(f.badge(fmt, label).includes(f.name), k + ' badge');
       assert.match(f.csv(), /^(type|z_m),/, k + ' csv 表頭');
+      const esc = x => String(x), rows = f.condRows(fmt, esc, label);
+      assert.equal(rows[0][1], f.name, k + ' condRows 型式');
+      assert.ok(rows.some(r => r[0] === '掃掠面積') && rows.some(r => r[0] === '轉子質量'), k + ' condRows 面積/質量');
+      assert.ok(f.title(fmt).startsWith(f.name), k + ' title');
     }
   } finally { S.mode = keep.mode; S.vawt.type = keep.type; }
 });
