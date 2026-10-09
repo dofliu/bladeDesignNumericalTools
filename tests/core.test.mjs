@@ -407,3 +407,35 @@ test('BPM 葉尖渦噪音:距離/葉片數縮放、攻角升高噪音上升、�
   assert.ok(t1.Lp < te.Lp + 10, `tip ${t1.Lp} TE ${te.Lp}`);
   console.log('tip vortex Lp', t1.Lp.toFixed(1), 'LA', t1.LA.toFixed(1), 'TE Lp', te.Lp.toFixed(1));
 });
+
+test('自訂性能曲線轉子(type custom):以 Savonius 曲線取樣匯入,computePerf 與內建一致,MPPT 追蹤 >= 90%', () => {
+  const saved = { mode: S.mode, type: S.vawt.type, tun: { ...S.tun }, load: { ...S.load } };
+  try {
+    S.mode = 'VAWT'; S.vawt.type = 'sav'; designVAWT(); computePerf();
+    const ref = { cp: G.cpMax, lopt: G.lopt, A: G.A, R: G.R };
+    const text = 'lambda,Cp,Cq\n' + G.perf.lam.map((l, i) => l > 0 ? `${l},${G.perf.cp[i]},${G.perf.cq[i]}` : '').filter(Boolean).join('\n');
+    const { pts, warnings } = A.parseCpCurve(text);
+    assert.equal(warnings.length, 0);
+    Object.assign(S.custom, { R: G.R, H: S.vawt.H, area: G.A, mass: G.mass, J: G.J, pts });
+    S.vawt.type = 'custom'; designVAWT(); computePerf();
+    assert.ok(Math.abs(G.cpMax - ref.cp) / ref.cp < 0.02, `Cp,max ${G.cpMax} vs ${ref.cp}`);
+    assert.ok(Math.abs(G.lopt - ref.lopt) / ref.lopt < 0.02, `λopt ${G.lopt} vs ${ref.lopt}`);
+    assert.equal(G.A, ref.A); assert.equal(G.R, ref.R);
+    autoMatchGen();
+    const track = trackingRatio('po', 6, 70);
+    assert.ok(track >= 0.9, `custom po 6 m/s tracking ${(track * 100).toFixed(1)}%`);
+  } finally {
+    S.mode = saved.mode; S.vawt.type = saved.type; Object.assign(S.tun, saved.tun); Object.assign(S.load, saved.load);
+  }
+});
+
+test('自訂性能曲線轉子:未匯入資料時 computePerf 丟出明確錯誤;area 未設定時以 2RH 估算', () => {
+  const savedType = S.vawt.type, savedMode = S.mode, savedPts = S.custom.pts;
+  try {
+    S.mode = 'VAWT'; S.vawt.type = 'custom';
+    Object.assign(S.custom, { R: 0.8, H: 1.5, area: 0, pts: null });
+    designVAWT();
+    assert.ok(Math.abs(G.A - 2.4) < 1e-9);
+    assert.throws(() => computePerf(), /尚未匯入/);
+  } finally { S.vawt.type = savedType; S.mode = savedMode; S.custom.pts = savedPts; }
+});

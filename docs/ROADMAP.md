@@ -131,7 +131,7 @@
 讓任何無法以 BEM/DMST 計算的外形(阿基米德螺旋、扭轉 Savonius、混合式……)都能用外部資料(論文、CFD、自己的風洞實驗)接上虛擬風洞。沿用 Savonius 經驗曲線的路徑(`savoniusCurve` → `curveArrays`)。
 
 - [x] 核心 1/2(2026-10-09):`aero.mjs` 新增 `parseCpCurve(text)`(標題/註解略過、缺 Cq 以 Cp/λ 推得、λ 遞增檢查、Betz 警告)與 `customCurve(cfg)`(重取樣為 0.05 格點、λ→0 外插啟動轉矩,輸出格式同 `savoniusCurve`);測試含 Savonius 取樣後匯入 Cp/λopt 誤差 < 2%。
-- [ ] 核心 2/2:`core.mjs` 轉子類型 `custom` 與 `S.custom`、`designVAWT`/`computePerf` 接上 `customCurve`、`computePerf` 與內建 Savonius 一致的測試。(原規格:(狀態 `S.custom`:軸向 `h`/`v`、掃掠面積(由 R、H 計算或直接輸入)、特徵半徑(λ 的基準)、轉動慣量、曲線點);`aero.mjs` 或 `core.mjs` 新增 `parseCpCurve(text)`(每行 λ, Cp[, Cq];可含標題,λ 須遞增,缺 Cq 時以 Cp/λ 推得,λ→0 外插啟動轉矩)與 `customCurve(cfg)`(輸出與 `savoniusCurve` 相同格式)。測試:解析、Betz 警告、以 Savonius 經驗曲線取樣後匯入,`computePerf` 結果與內建 Savonius 一致(Cp、λopt 誤差 < 2%)。)
+- [x] 核心 2/2(2026-10-09;`S.custom` 與 `vawt.type==='custom'` 已接上 `designVAWT`/`computePerf`,尚未加入 `VAWT_TYPES`/UI,待下一項「介面」):`core.mjs` 轉子類型 `custom` 與 `S.custom`、`designVAWT`/`computePerf` 接上 `customCurve`、`computePerf` 與內建 Savonius 一致的測試。(原規格:(狀態 `S.custom`:軸向 `h`/`v`、掃掠面積(由 R、H 計算或直接輸入)、特徵半徑(λ 的基準)、轉動慣量、曲線點);`aero.mjs` 或 `core.mjs` 新增 `parseCpCurve(text)`(每行 λ, Cp[, Cq];可含標題,λ 須遞增,缺 Cq 時以 Cp/λ 推得,λ→0 外插啟動轉矩)與 `customCurve(cfg)`(輸出與 `savoniusCurve` 相同格式)。測試:解析、Betz 警告、以 Savonius 經驗曲線取樣後匯入,`computePerf` 結果與內建 Savonius 一致(Cp、λopt 誤差 < 2%)。)
 - [ ] 介面(放在現有面板即可,不等 8C):轉子型式加入「自訂性能曲線」;可貼上或匯入 CSV;內建 1–2 組**標示為「示意,非實測」**的範例曲線;3D 以簡化包絡(水平軸圓盤 / 垂直軸圓柱)示意。性能曲線分頁、虛擬風洞、MPPT、方案比較可運作;e2e 加入此轉子類型的 MPPT 追蹤率檢查(門檻同樣 ≥ 90%)。
 - [ ] 報告與轉子摘要標示「性能來源:匯入曲線(使用者提供)」,並在模型限制段落說明;單葉片、流場工作區顯示「此轉子沒有幾何模型可分析」的說明(同 Savonius 做法)。
 - 驗收:匯入資料後整套虛擬風洞、報告、年發電量可運作;資料來源與可信度清楚標示。

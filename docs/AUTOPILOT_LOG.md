@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-09 — ROADMAP 8A:自訂性能曲線轉子接上 core(2/2)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `S.custom`(軸向、R、H、掃掠面積、質量、J、曲線點)與 `vawt.type === 'custom'`:`designVAWT` 直接採用 `S.custom` 的面積/質量/慣量,`computePerf` 以 `A.customCurve` 產生性能曲線(未匯入資料時丟出明確錯誤)。`tests/core.test.mjs` 新增 2 項:Savonius 曲線取樣匯入後 Cp,max/λopt 誤差 < 2% 且 P&O MPPT 追蹤 ≥ 90%;未匯入資料/area 預設 2RH。
+- 驗證:check、npm test 64/64、build、e2e 見 PR 內文。
+- 已知限制:尚未加入 `VAWT_TYPES`/UI(故介面看不到,避免半成品),3D、報告標示留待下一步。
+- 下一步:8A 介面(轉子型式「自訂性能曲線」、貼上/匯入 CSV、示意範例曲線、e2e 追蹤率檢查)。
+
 ## 2026-10-09 — ROADMAP 8A:匯入 Cp–λ 曲線核心函式(1/2)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `parseCpCurve`(解析貼上/CSV 文字、Betz 警告)與 `customCurve`(重取樣成與 `savoniusCurve` 同格式);`tests/aero.test.mjs` 新增 2 項測試(解析規則、Savonius 取樣匯入一致 < 2%)。純函式,尚未接 `core.mjs`/UI。
