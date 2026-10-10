@@ -39,6 +39,9 @@ function dmstDesign(cfg, mat, strutMass) {
   if (strutMass) { const ms = cfg.B * v.struts * 0.6 * mat.rho * mat.fill * 0.12 * (0.6 * v.c) ** 2 * v.R; m += ms; J += ms * v.R * v.R / 3; }
   G.mass = m; G.J = Math.max(1e-3, J * 1.1 + 0.01);
 }
+// Free-form family: v.shapePts [{zf, rf}] = radius as a fraction of v.R along the height fraction (so the R slider scales the whole envelope).
+const freeShapeCfg = v => ({ pts: (v.shapePts || FREE_SHAPE_DEFAULT).map(p => ({ zf: p.zf, r: p.rf * v.R })), helix: v.helix });
+const FREE_SHAPE_DEFAULT = [{ zf: 0, rf: 0.06 }, { zf: 0.15, rf: 0.62 }, { zf: 0.3, rf: 0.88 }, { zf: 0.5, rf: 1 }, { zf: 0.7, rf: 0.88 }, { zf: 0.85, rf: 0.62 }, { zf: 1, rf: 0.06 }];
 const VAWT_FAMILIES = {
   H: { name: 'H 型(直葉片)', pane: 'dmst', rLabel: '轉子半徑 R', hasStruts: true, design: (cfg, mat) => dmstDesign(cfg, mat, true), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: v => ({ r: v.R, off: 0 }), struts: (v, ph, y0, sf) => armStruts([[], [0.5], [0.22, 0.78], [0.15, 0.5, 0.85]][Math.round(v.struts)] || [], v, ph, y0, sf) },
@@ -49,6 +52,8 @@ const VAWT_FAMILIES = {
     scene: 'blades', shape: (v, f) => ({ r: v.R * Math.max(0.06, 1 - (2 * f - 1) ** 2), off: 0 }), struts: hubStruts([0.01, 0.99]) },
   V: { name: 'V 型', pane: 'dmst', rLabel: '頂端半徑 R', design: (cfg, mat) => dmstDesign(cfg, mat, false), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: (v, f) => ({ r: v.R * Math.max(0.05, f), off: 0 }), struts: hubStruts([0.02]) },
+  free: { name: '自訂外形(r(z) 控制點)', pane: 'dmst', rLabel: '最大半徑 R', hasHelix: true, design: (cfg, mat) => dmstDesign(cfg, mat, false), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
+    scene: 'blades', shape: (v, f) => GEO.customBladeShape(A.customShape(freeShapeCfg(v)), v.helix)(f), struts: hubStruts([0.02, 0.98]) },
   sav: { name: 'Savonius 阻力型', pane: 'sav', noAirfoil: true, scene: 'savonius',
     design: (cfg, mat) => {
       const v = S.vawt;
@@ -521,7 +526,7 @@ function fatigueEstimate(sig, dur, matKey = S.hawt.material) {
 }
 function vawtCfg() {
   const v = S.vawt, { rho, mu } = air();
-  return { type: v.type, R: v.R, H: v.H, B: Math.round(v.B), c: v.c, pitch: v.pitch, helix: v.helix, nz: 10, polar: getPS(S.af.vawt), rho, mu, struts: v.struts, dynStall: !!v.dynStall, curvature: !!v.curvature, overlap: v.overlap, endPlates: v.endPlates };
+  return { type: v.type === 'free' ? 'custom' : v.type, ...(v.type === 'free' ? freeShapeCfg(v) : {}), R: v.R, H: v.H, B: Math.round(v.B), c: v.c, pitch: v.pitch, helix: v.helix, nz: 10, polar: getPS(S.af.vawt), rho, mu, struts: v.struts, dynStall: !!v.dynStall, curvature: !!v.curvature, overlap: v.overlap, endPlates: v.endPlates };
 }
 function designVAWT() {
   const v = S.vawt, cfg = vawtCfg(), mat = MATERIALS[v.material];

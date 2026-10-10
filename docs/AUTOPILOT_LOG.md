@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-10 — ROADMAP 8B:自訂外形葉片放樣(2/2,3D/STL 完成)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 註冊表新增 `free` 家族「自訂外形(r(z) 控制點)」:`S.vawt.shapePts`(`{zf, rf}`,rf 為 R 倍數,預設蛋形)、`freeShapeCfg`,`vawtCfg` 將 free 轉成 AERO `type:'custom'` 走 DMST;`shape()` 用 `GEO.customBladeShape`,故 3D 場景、STL、CSV 皆沿同一條 r(z)。新增測試(設計/性能、放樣包圍盒、R 縮放),並更新面板欄位測試涵蓋 free。
+- 驗證:check、npm test 73/73(MPPT 追蹤率測試偶有隨機波動,曾有一次 87.7%,重跑 3 次皆過,基準版本也同樣偶發)、build、e2e 全過;桌面/手機截圖確認自訂外形顯示正常。
+- 已知限制:尚無控制點編輯介面(只能預設蛋形或改狀態);截面維持水平。
+- 下一步:8B 介面第一版(控制點數值表 + 樣板)。
+
 ## 2026-10-10 — ROADMAP 8B:自訂外形葉片放樣(1/2)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`geo.mjs` 新增 `customBladeShape(shape, helixDeg)`,把 `AERO.customShape` 結果轉成 `vawtBlade` 的切片函式(半徑下限 6% rMax,與 `vawtSlices` 一致)。新增測試:球形包絡半徑與 `vawtSlices` 逐點一致、放樣包圍盒(高度 0..H、最大半徑)、線性螺旋相位。
