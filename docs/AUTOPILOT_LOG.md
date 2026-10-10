@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-10 — ROADMAP 8B 核心:自訂垂直軸外形 `vawtSlices`
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `monotoneCubic`(Fritsch–Carlson 單調三次插值)與 `customShape`,`vawtSlices` 支援 `type:'custom'`(`pts [{zf,r}]`、選用 `twist [{zf,deg}]`,否則 `helix` 線性;傾角 δ = atan(|dr/dz|))。支撐臂阻力也適用 custom。新增 2 個測試:以 41 個控制點重建 H/Φ/V,Cp 與內建型式差 < 1%;球形掃掠面積對照 πR²;插值不過衝、錯誤輸入拋錯。
+- 驗證:check、npm test 71/71、build、e2e 結果見 PR。既有參考值(H 0.333、Φ 0.357)不變。
+- 已知限制:尚未接上 `core.mjs`(`S`/`designVAWT`)與 UI;`cfg.R` 須由呼叫端設為最大半徑。
+- 下一步:8B 第 2 項:3D 場景與 STL 沿 r(z) 放樣的通用 VAWT 葉片(或先把 custom 接進註冊表)。
+
 ## 2026-10-10 — ROADMAP 8C-1:轉子家族註冊表(7/N,收尾)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`VAWT_FAMILIES` 新增 `pane`('dmst'/'sav'/'custom')、`rLabel`、`hasStruts`、`hasHelix`,`ui.mjs` 的 `paneRotor` 垂直軸分支改查註冊表,不再有 `v.type === ...` 判斷;面板輸出不變。新增測試釘住欄位值。8C-1 標記完成。
