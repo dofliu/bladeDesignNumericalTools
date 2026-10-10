@@ -750,7 +750,7 @@ export function afCoords(af) { return af.name + '\n' + GEO.loop(af).map(([x, y])
 export function stlText() {
   if (S.mode === 'HAWT') return GEO.stl(GEO.hawtBlade(G.rows, G.afs, G.Rhub, 0), 'hawt_blade_mm');
   const v = S.vawt; if (noAirfoil(v)) return null;
-  const sf = f => v.type === 'phi' ? { r: v.R * Math.max(0.06, 1 - (2 * f - 1) ** 2), off: 0 } : v.type === 'V' ? { r: v.R * Math.max(0.05, f), off: 0 } : { r: v.R, off: v.type === 'helical' ? v.helix * A.D2R * f : 0 };
+  const sf = f => VAWT_FAMILIES[v.type].shape(v, f);
   return GEO.stl(GEO.vawtBlade(sf, getAf(S.af.vawt), v.c, v.pitch, 0, v.H, 0), 'vawt_blade_mm');
 }
 export const MIME = { csv: 'text/csv', html: 'text/html', zip: 'application/zip', stl: 'model/stl', dat: 'text/plain' };
