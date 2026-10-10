@@ -2,6 +2,12 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-10 — ROADMAP 8C-1:轉子家族註冊表(7/N,收尾)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`VAWT_FAMILIES` 新增 `pane`('dmst'/'sav'/'custom')、`rLabel`、`hasStruts`、`hasHelix`,`ui.mjs` 的 `paneRotor` 垂直軸分支改查註冊表,不再有 `v.type === ...` 判斷;面板輸出不變。新增測試釘住欄位值。8C-1 標記完成。
+- 驗證:check、npm test、build、e2e 結果見 PR。
+- 下一步:8C-2 流程式外殼(頂部步驟導覽)。
+
 ## 2026-10-10 — ROADMAP 8C-1:轉子家族註冊表(6/N)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`ui.mjs` 的 `stlText()` 垂直軸分支改用 `VAWT_FAMILIES[type].shape(v, f)`,移除內嵌的 phi/V/helical 判斷;H/螺旋/Φ/V 的 shape 公式與舊內嵌式逐項相同(已有測試釘住)。STL 輸出不變。

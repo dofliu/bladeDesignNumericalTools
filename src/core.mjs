@@ -40,16 +40,16 @@ function dmstDesign(cfg, mat, strutMass) {
   G.mass = m; G.J = Math.max(1e-3, J * 1.1 + 0.01);
 }
 const VAWT_FAMILIES = {
-  H: { name: 'H 型(直葉片)', design: (cfg, mat) => dmstDesign(cfg, mat, true), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
+  H: { name: 'H 型(直葉片)', pane: 'dmst', rLabel: '轉子半徑 R', hasStruts: true, design: (cfg, mat) => dmstDesign(cfg, mat, true), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: v => ({ r: v.R, off: 0 }), struts: (v, ph, y0, sf) => armStruts([[], [0.5], [0.22, 0.78], [0.15, 0.5, 0.85]][Math.round(v.struts)] || [], v, ph, y0, sf) },
-  helical: { name: '螺旋型(Gorlov)', design: (cfg, mat) => dmstDesign(cfg, mat, true), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
+  helical: { name: '螺旋型(Gorlov)', pane: 'dmst', rLabel: '轉子半徑 R', hasHelix: true, hasStruts: true, design: (cfg, mat) => dmstDesign(cfg, mat, true), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: (v, f) => ({ r: v.R, off: v.helix * A.D2R * f }),
     struts: (v, ph, y0, sf) => { const n = Math.round(v.struts); return armStruts(n ? [0.02, 0.98].slice(0, Math.max(1, Math.min(2, n))).concat(n > 2 ? [0.5] : []) : [], v, ph, y0, sf); } },
-  phi: { name: 'Φ 型(Darrieus 打蛋器)', design: (cfg, mat) => dmstDesign(cfg, mat, false), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
+  phi: { name: 'Φ 型(Darrieus 打蛋器)', pane: 'dmst', rLabel: '赤道半徑 R', design: (cfg, mat) => dmstDesign(cfg, mat, false), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: (v, f) => ({ r: v.R * Math.max(0.06, 1 - (2 * f - 1) ** 2), off: 0 }), struts: hubStruts([0.01, 0.99]) },
-  V: { name: 'V 型', design: (cfg, mat) => dmstDesign(cfg, mat, false), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
+  V: { name: 'V 型', pane: 'dmst', rLabel: '頂端半徑 R', design: (cfg, mat) => dmstDesign(cfg, mat, false), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: (v, f) => ({ r: v.R * Math.max(0.05, f), off: 0 }), struts: hubStruts([0.02]) },
-  sav: { name: 'Savonius 阻力型', noAirfoil: true, scene: 'savonius',
+  sav: { name: 'Savonius 阻力型', pane: 'sav', noAirfoil: true, scene: 'savonius',
     design: (cfg, mat) => {
       const v = S.vawt;
       G.A = 2 * v.R * v.H;
@@ -60,7 +60,7 @@ const VAWT_FAMILIES = {
     badge: fmt => `<b>${VAWT_TYPES.sav}</b>,${Math.round(S.vawt.B)} 葉,D ${fmt(2 * S.vawt.R, 2)} m,H ${fmt(S.vawt.H, 2)} m`,
     title: dmstTitle, condRows: fmt => [['型式', VAWT_TYPES.sav], ['葉片數', Math.round(S.vawt.B)], ['半徑 / 高度', `${fmt(S.vawt.R, 2)} m / ${fmt(S.vawt.H, 2)} m`], ['重疊比', fmt(S.vawt.overlap, 2)], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
     csv: () => 'type,B,R_m,H_m,overlap\nSavonius,' + [S.vawt.B, S.vawt.R, S.vawt.H, S.vawt.overlap].join(','), curveTitle: 'Savonius', curveSub: '經驗曲線', flowNote: 'Savonius 使用經驗性能曲線,沒有流管模型可視化。' },
-  custom: { name: '自訂性能曲線(匯入 Cp–λ)', noAirfoil: true, scene: 'envelope',
+  custom: { name: '自訂性能曲線(匯入 Cp–λ)', pane: 'custom', noAirfoil: true, scene: 'envelope',
     design: () => { // no geometry model: swept area / mass / inertia come straight from S.custom
       const c = S.custom;
       G.R = c.R; G.A = c.area > 0 ? c.area : 2 * c.R * c.H; G.mass = c.mass; G.bladeMass = c.mass; G.J = c.J > 0 ? c.J : Math.max(1e-3, 0.5 * c.mass * c.R * c.R);

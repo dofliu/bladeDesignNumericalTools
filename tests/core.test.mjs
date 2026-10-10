@@ -544,3 +544,17 @@ test('VAWT_FAMILIES design():各家族面積/質量/慣量與重構前一致', (
   Object.assign(S.vawt, keep.v); S.mode = keep.mode;
   designHAWT();
 });
+
+test('VAWT_FAMILIES 面板欄位:pane/rLabel/hasStruts/hasHelix 與重構前的型式判斷一致', () => {
+  const F = core.VAWT_FAMILIES;
+  const pane = { H: 'dmst', helical: 'dmst', phi: 'dmst', V: 'dmst', sav: 'sav', custom: 'custom' };
+  const rl = { phi: '赤道半徑 R', V: '頂端半徑 R', H: '轉子半徑 R', helical: '轉子半徑 R' };
+  for (const k of Object.keys(F)) {
+    assert.equal(F[k].pane, pane[k], k);
+    if (pane[k] === 'dmst') {
+      assert.equal(F[k].rLabel, rl[k], k);
+      assert.equal(!!F[k].hasStruts, k === 'H' || k === 'helical', k);
+      assert.equal(!!F[k].hasHelix, k === 'helical', k);
+    }
+  }
+});
