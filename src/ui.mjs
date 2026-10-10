@@ -63,6 +63,15 @@ export function paneAirfoil() {
   h += grp('翼型摘要', `<div class="kv" id="afSummary"></div>`);
   return h;
 }
+// Inline-SVG side view of the free-form envelope: r(z) mirrored about the axis, control points as dots.
+export function shapePreviewSvg(pts) {
+  let cfg; try { cfg = A.customShape({ pts: pts.map(p => ({ zf: p.zf, r: p.rf })) }); } catch (e) { return ''; }
+  const W = 200, Hh = 150, pad = 8, cx = W / 2, half = cx - pad, rm = Math.max(1e-6, cfg.rMax), y = f => (Hh - pad - f * (Hh - 2 * pad)).toFixed(1);
+  const right = [], left = [];
+  for (let i = 0; i <= 40; i++) { const f = i / 40, dx = Math.max(0.06 * rm, cfg.rf.y(f)) / rm * half; right.push(`${(cx + dx).toFixed(1)},${y(f)}`); left.push(`${(cx - dx).toFixed(1)},${y(f)}`); }
+  const dots = pts.map(p => `<circle cx="${(cx + p.rf / rm * half).toFixed(1)}" cy="${y(p.zf)}" r="2.5" fill="var(--c2)"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" style="max-width:260px;display:block;margin:6px auto" role="img" aria-label="外形預覽(側視)"><line x1="${cx}" y1="2" x2="${cx}" y2="${Hh - 2}" stroke="var(--muted)" stroke-dasharray="3 3"/><polyline points="${right.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/><polyline points="${left.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>${dots}</svg>`;
+}
 export function paneRotor() {
   let h = '';
   if (S.mode === 'HAWT') {
@@ -98,6 +107,11 @@ export function paneRotor() {
         sel('vawt.material', '材料', Object.entries(MATERIALS).map(([k, m]) => [k, m.name])) +
         `<p class="note">Savonius 性能採經驗曲線(Cp 約 0.15–0.2,最佳 λ 約 0.7–0.9,重疊比 0.15–0.25 最佳),啟動轉矩大但效率低。</p>`);
     } else {
+      if (v.type === 'free') h += grp('外形控制點 r(z)', `<p class="note">每行一個控制點「zf, rf」:zf 為高度比例(0 = 底、1 = 頂),rf 為該高度半徑對最大半徑 R 的倍數(單調三次插值)。接近水平(傾角 > 60°)的段落只計阻力,可信度較低。</p>
+        <div class="row wide"><label for="shapeTpl">內建樣板</label><div style="display:flex;gap:6px"><select class="txt" id="shapeTpl">${Object.entries(FREE_SHAPE_TEMPLATES).map(([k, t]) => `<option value="${k}">${t.name}</option>`).join('')}</select><button class="btn" id="shapeTplLoad">載入</button></div></div>
+        <textarea id="shapeText" class="txt" style="min-height:120px" aria-label="外形控制點" spellcheck="false">${esc(shapePtsText(v.shapePts || FREE_SHAPE_DEFAULT))}</textarea>
+        <div class="btns"><button class="btn" id="shapeApply">套用控制點</button></div>
+        <div id="shapePrev">${shapePreviewSvg(v.shapePts || FREE_SHAPE_DEFAULT)}</div>`);
       h += grp('幾何', rng('vawt.B', '葉片數 B', 1, 6, 1, '片') + rng('vawt.R', VAWT_FAMILIES[v.type].rLabel, 0.2, 20, 0.05, 'm') +
         rng('vawt.H', '高度 H', 0.2, 40, 0.05, 'm') + rng('vawt.c', '弦長 c', 0.02, 2, 0.005, 'm') +
         rng('vawt.pitch', '安裝角(外傾+)', -10, 10, 0.5, '°') +
@@ -203,6 +217,11 @@ export function bindPane(p) {
   });
   on('cpExLoad', () => { const e = CUSTOM_EXAMPLES[p.querySelector('#cpEx').value]; loadCpText(e.text, e.name); renderPane(); });
   on('cpApply', () => { loadCpText(p.querySelector('#cpText').value, '使用者貼上的資料'); renderPane(); });
+  on('shapeTplLoad', () => { S.vawt.shapePts = FREE_SHAPE_TEMPLATES[p.querySelector('#shapeTpl').value].pts.map(q => ({ ...q })); renderPane(); scheduleRebuild(true); });
+  on('shapeApply', () => {
+    try { S.vawt.shapePts = parseShapePts(p.querySelector('#shapeText').value); toast('已套用 ' + S.vawt.shapePts.length + ' 個控制點'); renderPane(); scheduleRebuild(true); }
+    catch (e) { toast(e.message); }
+  });
   on('cpFileBtn', () => $('#cpFileIn').click());
   cpInfo(p);
   on('datFile', () => $('#fileIn').click());

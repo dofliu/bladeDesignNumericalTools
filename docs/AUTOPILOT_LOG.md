@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-10 — ROADMAP 8B:介面第一版(控制點表 + 樣板 + 預覽)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `FREE_SHAPE_TEMPLATES`(蛋形/H/Φ/球形/圓角框環形)、`parseShapePts`(文字 → 控制點,含範圍與遞增檢查)、`shapePtsText`;`ui.mjs` 選「自訂外形」時轉子面板新增「外形控制點 r(z)」:樣板下拉、文字控制點表、套用按鈕、即時 SVG 側視預覽。錯誤輸入以 toast 顯示、不改狀態。
+- 驗證:check、npm test 74/74(新增解析/錯誤/5 個樣板設計與 Cp 檢查)、build、e2e 全過(追蹤率 93–97%);桌面 1440×900 與手機 390×844 截圖確認預覽與面板正常、無頁面錯誤(截圖時抓到預覽初版誤呼叫 `rf()`,已修)。
+- 已知限制:無拖曳編輯(8C-5);尚無扭轉(twist)控制點編輯,仍用螺旋包角。
+- 下一步:8B 最後一項:流場工作區與報告支援自訂外形(報告註明高傾角段可信度低)。
+
 ## 2026-10-10 — ROADMAP 8B:自訂外形葉片放樣(2/2,3D/STL 完成)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 註冊表新增 `free` 家族「自訂外形(r(z) 控制點)」:`S.vawt.shapePts`(`{zf, rf}`,rf 為 R 倍數,預設蛋形)、`freeShapeCfg`,`vawtCfg` 將 free 轉成 AERO `type:'custom'` 走 DMST;`shape()` 用 `GEO.customBladeShape`,故 3D 場景、STL、CSV 皆沿同一條 r(z)。新增測試(設計/性能、放樣包圍盒、R 縮放),並更新面板欄位測試涵蓋 free。
