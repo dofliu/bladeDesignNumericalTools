@@ -2,6 +2,12 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-10 — ROADMAP 8B:自訂外形葉片放樣(1/2)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`geo.mjs` 新增 `customBladeShape(shape, helixDeg)`,把 `AERO.customShape` 結果轉成 `vawtBlade` 的切片函式(半徑下限 6% rMax,與 `vawtSlices` 一致)。新增測試:球形包絡半徑與 `vawtSlices` 逐點一致、放樣包圍盒(高度 0..H、最大半徑)、線性螺旋相位。
+- 已知限制:尚未接上 `scene.mjs`、STL 匯出與註冊表;截面維持水平,陡斜段不隨斜率傾斜。
+- 下一步:8B 第 2 項(2/2):註冊表加入自訂外形家族並接上 3D 場景與 STL。
+
 ## 2026-10-10 — ROADMAP 8B 核心:自訂垂直軸外形 `vawtSlices`
 
 - 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `monotoneCubic`(Fritsch–Carlson 單調三次插值)與 `customShape`,`vawtSlices` 支援 `type:'custom'`(`pts [{zf,r}]`、選用 `twist [{zf,deg}]`,否則 `helix` 線性;傾角 δ = atan(|dr/dz|))。支撐臂阻力也適用 custom。新增 2 個測試:以 41 個控制點重建 H/Φ/V,Cp 與內建型式差 < 1%;球形掃掠面積對照 πR²;插值不過衝、錯誤輸入拋錯。

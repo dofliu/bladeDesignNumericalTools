@@ -77,6 +77,12 @@ export function vawtBlade(slicesFn, af, c, pitchDeg, phase, H, y0) {
   }
   return loft(secs, true);
 }
+// Slice function for vawtBlade from a custom r(z) envelope (AERO.customShape result: rf.y(zf), optional tw.y(zf) in deg).
+// Same clamp as AERO.vawtSlices (r >= 6% of the max radius) so the lofted blade matches what DMST analysed.
+export function customBladeShape(shape, helixDeg) {
+  const { rf, tw, rMax } = shape;
+  return zf => ({ r: Math.max(0.06 * rMax, rf.y(zf)), off: (tw ? tw.y(zf) : (helixDeg || 0) * zf) * Math.PI / 180 });
+}
 export function merge(meshes) {
   let np = 0, ni = 0; for (const m of meshes) { np += m.pos.length; ni += m.idx.length; }
   const pos = new Float32Array(np), idx = new Uint32Array(ni);
