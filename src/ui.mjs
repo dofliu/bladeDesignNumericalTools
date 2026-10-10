@@ -82,7 +82,8 @@ export function paneRotor() {
   } else {
     const v = S.vawt;
     h += grp('型式', sel('vawt.type', '轉子結構', Object.entries(VAWT_TYPES), { kind: 'type' }));
-    if (v.type === 'custom') {
+    const pk = VAWT_FAMILIES[v.type].pane;
+    if (pk === 'custom') {
       const c = S.custom;
       h += grp('性能曲線(匯入資料)', `<p class="note">此轉子沒有葉片幾何模型:性能完全由你提供的 Cp–λ 資料決定(論文、CFD、風洞實驗),準確度取決於資料來源;Cp 請以下方「掃掠面積」為基準。每行一組「λ, Cp[, Cq]」,可含標題或 # 註解,λ 須遞增。</p>
         <div class="row wide"><label for="cpEx">示意範例(非實測)</label><div style="display:flex;gap:6px"><select class="txt" id="cpEx">${Object.entries(CUSTOM_EXAMPLES).map(([k, e]) => `<option value="${k}">${e.name}</option>`).join('')}</select><button class="btn" id="cpExLoad">載入</button></div></div>
@@ -91,17 +92,17 @@ export function paneRotor() {
       h += grp('幾何與質量(包絡)', rng('custom.R', '特徵半徑 R(λ 基準)', 0.1, 10, 0.01, 'm') + rng('custom.H', '高度 / 軸向長度 H', 0.1, 10, 0.05, 'm') +
         rng('custom.area', '掃掠面積(0 = 自動)', 0, 60, 0.05, 'm²') + rng('custom.mass', '轉子質量', 1, 400, 0.5, 'kg') + rng('custom.J', '轉動慣量 J(0 = 自動)', 0, 200, 0.05, 'kg·m²') +
         `<p class="note">自動掃掠面積 = 2R·H(垂直軸投影);若轉子是水平軸圓盤等其他外形,請直接輸入掃掠面積(迎風投影面積)。λ = 最外緣速度 / 風速,以特徵半徑 R 計。3D 只畫簡化的垂直軸圓柱包絡,不是真實外形。</p>`);
-    } else if (v.type === 'sav') {
+    } else if (pk === 'sav') {
       h += grp('幾何', rng('vawt.B', '葉片數', 2, 3, 1, '片') + rng('vawt.R', '轉子半徑 R', 0.1, 3, 0.01, 'm') + rng('vawt.H', '高度 H', 0.2, 6, 0.05, 'm') +
         rng('vawt.overlap', '重疊比 e/d', 0, 0.4, 0.01, '') + chk('vawt.endPlates', '上下端板') +
         sel('vawt.material', '材料', Object.entries(MATERIALS).map(([k, m]) => [k, m.name])) +
         `<p class="note">Savonius 性能採經驗曲線(Cp 約 0.15–0.2,最佳 λ 約 0.7–0.9,重疊比 0.15–0.25 最佳),啟動轉矩大但效率低。</p>`);
     } else {
-      h += grp('幾何', rng('vawt.B', '葉片數 B', 1, 6, 1, '片') + rng('vawt.R', v.type === 'phi' ? '赤道半徑 R' : v.type === 'V' ? '頂端半徑 R' : '轉子半徑 R', 0.2, 20, 0.05, 'm') +
+      h += grp('幾何', rng('vawt.B', '葉片數 B', 1, 6, 1, '片') + rng('vawt.R', VAWT_FAMILIES[v.type].rLabel, 0.2, 20, 0.05, 'm') +
         rng('vawt.H', '高度 H', 0.2, 40, 0.05, 'm') + rng('vawt.c', '弦長 c', 0.02, 2, 0.005, 'm') +
         rng('vawt.pitch', '安裝角(外傾+)', -10, 10, 0.5, '°') +
-        (v.type === 'helical' ? rng('vawt.helix', '螺旋包角', 0, 240, 5, '°') : '') +
-        ((v.type === 'H' || v.type === 'helical') ? rng('vawt.struts', '每葉支撐臂數', 0, 3, 1, '支') : '') +
+        (VAWT_FAMILIES[v.type].hasHelix ? rng('vawt.helix', '螺旋包角', 0, 240, 5, '°') : '') +
+        (VAWT_FAMILIES[v.type].hasStruts ? rng('vawt.struts', '每葉支撐臂數', 0, 3, 1, '支') : '') +
         chk('vawt.dynStall', '簡化動態失速(Gormont 式,未校正)') +
         chk('vawt.curvature', '流線彎曲修正(Migliore 簡化,未校正)') +
         sel('vawt.material', '材料', Object.entries(MATERIALS).map(([k, m]) => [k, m.name])));
