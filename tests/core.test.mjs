@@ -544,3 +544,11 @@ test('VAWT_FAMILIES design():各家族面積/質量/慣量與重構前一致', (
   Object.assign(S.vawt, keep.v); S.mode = keep.mode;
   designHAWT();
 });
+
+test('註冊表 shape() 與 STL 匯出原本寫死的各型式外形一致', () => {
+  const v = { R: 1.3, helix: 40 };
+  const old = (type, f) => type === 'phi' ? { r: v.R * Math.max(0.06, 1 - (2 * f - 1) ** 2), off: 0 } : type === 'V' ? { r: v.R * Math.max(0.05, f), off: 0 } : { r: v.R, off: type === 'helical' ? v.helix * A.D2R * f : 0 };
+  for (const type of ['H', 'helical', 'phi', 'V']) for (const f of [0, 0.1, 0.5, 0.9, 1]) {
+    assert.deepEqual(core.VAWT_FAMILIES[type].shape(v, f), old(type, f), type + ' f=' + f);
+  }
+});

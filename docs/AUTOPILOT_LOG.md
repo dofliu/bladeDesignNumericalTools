@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-09 — ROADMAP 8C-1:轉子家族註冊表(6/N)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`ui.mjs` 的 `stlText()` 垂直軸外形原本寫死 phi/V/helical 三個分支,改查 `VAWT_FAMILIES[type].shape(v, f)`(與 3D 場景共用同一份外形定義)。新增測試比對 4 型式 × 5 個高度比的 shape() 與舊公式完全一致。
+- 驗證:check、npm test、build、e2e 結果見 PR。
+- 已知限制:參數面板的型式分支尚未搬入註冊表。
+- 下一步:8C-1 續:參數面板分支搬入註冊表。
+
 ## 2026-10-09 — ROADMAP 8C-1:轉子家族註冊表(5/N)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`VAWT_FAMILIES` 新增 `design(cfg, mat)`(設定 `G.A`/`G.mass`/`G.bladeMass`/`G.J`),H/螺旋/Φ/V 共用 `dmstDesign`,Savonius 與自訂曲線各自內嵌;`designVAWT` 縮成一行查表。
