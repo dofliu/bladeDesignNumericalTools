@@ -129,3 +129,22 @@ test('minerDamage / equivalentRange: constant amplitude closed form', () => {
   near(GEO.equivalentRange(cycles, m, 1000), 40, 1e-9, 'equivalent range at the same cycle count');
   assert.equal(GEO.minerDamage([{ range: 10, mean: 120, count: 1 }], su, m), Infinity, 'mean above ultimate fails');
 });
+
+test('customBladeShape + vawtBlade: sphere envelope lofts to the expected bounding box and matches AERO slice radii', () => {
+  const R = 1, H = 2, af = A.naca4('0018');
+  const pts = []; for (let i = 0; i <= 20; i++) { const zf = i / 20, s = 2 * zf - 1; pts.push({ zf, r: R * Math.sqrt(Math.max(0, 1 - s * s)) }); }
+  const shape = A.customShape({ pts, H });
+  const f = GEO.customBladeShape(shape, 0);
+  near(f(0.5).r, R, 1e-3, 'equator radius');
+  near(f(0.5).off, 0, 1e-12, 'no twist');
+  near(f(0).r, 0.06 * shape.rMax, 1e-9, 'pole radius clamped like vawtSlices');
+  const sl = A.vawtSlices({ type: 'custom', pts, H, R, nz: 10 });
+  sl.forEach(s => near(f(s.zf).r, s.r, 1e-9, 'radius at zf ' + s.zf));
+  const g = GEO.customBladeShape(shape, 90);
+  near(g(1).off, Math.PI / 2, 1e-12, 'linear helix offset');
+  const mesh = GEO.vawtBlade(f, af, 0.15, 0, 0, H, 0), P = mesh.pos;
+  let ymin = Infinity, ymax = -Infinity, rmax = 0;
+  for (let i = 0; i < P.length; i += 3) { ymin = Math.min(ymin, P[i + 1]); ymax = Math.max(ymax, P[i + 1]); rmax = Math.max(rmax, Math.hypot(P[i], P[i + 2])); }
+  near(ymin, 0, 1e-6, 'bottom'); near(ymax, H, 1e-6, 'top');
+  near(rmax, R, 0.1, 'max radius incl. half chord');
+});
