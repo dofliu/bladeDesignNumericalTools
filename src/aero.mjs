@@ -528,8 +528,55 @@
 
   /* ---------- VAWT DMST ---------- */
   // cfg: {type:'H'|'helical'|'phi'|'V', R, H, B, c, pitch(deg), helix(deg), nz, polar, rho, mu}
+  // Monotone cubic (Fritsch–Carlson) interpolation through pts [{x, y}] sorted by x; returns {y, dy}
+  // evaluators. Never overshoots the control points, so r(z) stays within the user's values.
+  function monotoneCubic(pts) {
+    const n = pts.length, x = pts.map(p => p.x), y = pts.map(p => p.y), d = new Array(n - 1), m = new Array(n);
+    for (let i = 0; i < n - 1; i++) d[i] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]);
+    m[0] = d[0]; m[n - 1] = d[n - 2];
+    for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+    for (let i = 0; i < n - 1; i++) {
+      if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+      const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b;
+      if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+    }
+    const seg = q => { let i = 0; while (i < n - 2 && q > x[i + 1]) i++; return i; };
+    return {
+      y(q) {
+        q = Math.min(x[n - 1], Math.max(x[0], q));
+        const i = seg(q), h = x[i + 1] - x[i], t = (q - x[i]) / h, t2 = t * t, t3 = t2 * t;
+        return (2 * t3 - 3 * t2 + 1) * y[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * y[i + 1] + (t3 - t2) * h * m[i + 1];
+      },
+      dy(q) {
+        q = Math.min(x[n - 1], Math.max(x[0], q));
+        const i = seg(q), h = x[i + 1] - x[i], t = (q - x[i]) / h, t2 = t * t;
+        return ((6 * t2 - 6 * t) * y[i] + (3 * t2 - 4 * t + 1) * h * m[i] + (-6 * t2 + 6 * t) * y[i + 1] + (3 * t2 - 2 * t) * h * m[i + 1]) / h;
+      }
+    };
+  }
+  // type 'custom': cfg.pts [{zf, r}] (zf 0..1 bottom→top, r in m) gives r(z); optional cfg.twist [{zf, deg}]
+  // gives the blade phase offset θ(z), else cfg.helix (deg, linear over the height) as for 'helical'.
+  function customShape(cfg) {
+    const ps = (cfg.pts || []).filter(p => isFinite(p.zf) && isFinite(p.r)).slice().sort((a, b) => a.zf - b.zf);
+    if (ps.length < 2) throw new Error('自訂外形至少需要 2 個控制點');
+    for (let i = 1; i < ps.length; i++) if (!(ps[i].zf > ps[i - 1].zf)) throw new Error('控制點的 zf 必須嚴格遞增');
+    const rf = monotoneCubic(ps.map(p => ({ x: p.zf, y: p.r })));
+    const tw = cfg.twist && cfg.twist.length >= 2 ? monotoneCubic(cfg.twist.slice().sort((a, b) => a.zf - b.zf).map(p => ({ x: p.zf, y: p.deg }))) : null;
+    return { rf, tw, rMax: Math.max(...ps.map(p => p.r)) };
+  }
   function vawtSlices(cfg) {
     const nz = cfg.type === 'H' ? 1 : cfg.nz || 10;
+    if (cfg.type === 'custom') {
+      const { rf, tw, rMax } = customShape(cfg), out = [];
+      for (let k = 0; k < nz; k++) {
+        const zf = (k + 0.5) / nz;
+        const r = Math.max(0.06 * rMax, rf.y(zf));
+        const delta = Math.atan(Math.abs(rf.dy(zf)) / cfg.H);
+        const helixOff = (tw ? tw.y(zf) : (cfg.helix || 0) * zf) * D2R;
+        out.push({ z: (zf - 0.5) * cfg.H, zf, r, delta, dz: cfg.H / nz, helixOff });
+      }
+      return out;
+    }
     const out = [];
     for (let k = 0; k < nz; k++) {
       const zf = (k + 0.5) / nz; // 0..1
@@ -627,8 +674,8 @@
       }
     }
     const omega = lam * V / R;
-    // parasitic drag of struts / arms (H, helical, V use radial arms)
-    if ((cfg.type === 'H' || cfg.type === 'helical') && cfg.struts) {
+    // parasitic drag of struts / arms (H, helical, custom use radial arms; custom: cfg.R must be the max radius)
+    if ((cfg.type === 'H' || cfg.type === 'helical' || cfg.type === 'custom') && cfg.struts) {
       const Qs = B * cfg.struts * 0.5 * rho * (cfg.strutCdc || 0.015 * 0.6 * c) * omega * omega * R ** 4 / 4;
       Qtot -= Qs;
       for (let j = 0; j < 2 * NTH; j++) qAz[j] -= Qs / B;
@@ -791,4 +838,4 @@
 
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart };

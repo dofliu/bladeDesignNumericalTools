@@ -245,3 +245,38 @@ test('customCurve:取樣內建 Savonius 曲線再匯入,Cp、λopt 與原曲線�
   const c2 = A.customCurve({ pts: A.parseCpCurve('0,0,0.3\n1,0.2,0.2\n2,0.1,0.05').pts });
   near(c2[0].Cq, 0.3, 1e-12, 'λ=0 Cq');
 });
+
+test('8B: 自訂垂直軸外形(r(z) 控制點)重建 H/Φ/V 型,Cp 與既有型式一致', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('0018')));
+  const base = { R: 1, H: 2, B: 3, c: 0.15, pitch: 0, helix: 0, nz: 10, polar: ps, rho: 1.225, mu: 1.81e-5, struts: 2 };
+  const pts = f => Array.from({ length: 41 }, (_, i) => ({ zf: i / 40, r: f(i / 40) }));
+  const shapes = {
+    phi: zf => Math.max(0.08, 1 - (2 * zf - 1) ** 2),
+    V: zf => Math.max(0.06, zf),
+    H: () => 1
+  };
+  for (const [type, f] of Object.entries(shapes)) {
+    const cfg = { ...base, type, nz: type === 'H' ? 1 : 10, struts: type === 'H' ? 2 : 0 }; // 內建 Φ/V 不計支撐臂阻力
+    const cust = { ...cfg, type: 'custom', pts: pts(f) };
+    for (const lam of [2.5, 3.5, 4.5]) {
+      const a = A.dmstPoint(cfg, 8, lam).Cp, b = A.dmstPoint(cust, 8, lam).Cp;
+      assert.ok(Math.abs(a - b) <= 0.01 * Math.abs(a) + 0.003, `${type} λ${lam}: ${a.toFixed(4)} vs custom ${b.toFixed(4)}`);
+    }
+  }
+  // 掃掠面積對照解析值:球形 r = R·√(1-(2zf-1)²),H = 2R → 面積 πR²
+  const R = 1.2, sph = { ...base, type: 'custom', R, H: 2 * R, nz: 400, pts: Array.from({ length: 81 }, (_, i) => ({ zf: i / 80, r: R * Math.sqrt(Math.max(0, 1 - (2 * i / 80 - 1) ** 2)) })) };
+  near(A.vawtArea(sph), Math.PI * R * R, Math.PI * R * R * 0.02, '球形掃掠面積');
+});
+
+test('8B: monotoneCubic 通過控制點、不過衝;自訂外形傾角與扭轉', () => {
+  const m = A.monotoneCubic([{ x: 0, y: 0 }, { x: 0.3, y: 1 }, { x: 0.6, y: 1 }, { x: 1, y: 3 }]);
+  near(m.y(0.3), 1, 1e-9, '控制點'); near(m.y(1), 3, 1e-9, '端點');
+  for (let q = 0; q <= 1; q += 0.01) assert.ok(m.y(q) >= -1e-9 && m.y(q) <= 3 + 1e-9, '不過衝');
+  assert.ok(m.y(0.45) >= 1 - 1e-9 && m.y(0.45) <= 1 + 1e-9, '平台段維持常數');
+  const cfg = { type: 'custom', H: 2, nz: 5, pts: [{ zf: 0, r: 0.5 }, { zf: 1, r: 1.5 }], twist: [{ zf: 0, deg: 0 }, { zf: 1, deg: 90 }] };
+  const sl = A.vawtSlices(cfg);
+  near(sl[0].r, 0.6, 1e-9, '線性 r'); near(sl[0].delta, Math.atan(0.5), 1e-9, '傾角 = atan(dr/dz)');
+  near(sl[4].helixOff, 0.9 * Math.PI / 2, 1e-9, '扭轉相位');
+  assert.throws(() => A.vawtSlices({ type: 'custom', H: 1, pts: [{ zf: 0, r: 1 }] }), /2 個控制點/);
+  assert.throws(() => A.vawtSlices({ type: 'custom', H: 1, pts: [{ zf: 0.5, r: 1 }, { zf: 0.5, r: 1 }] }), /遞增/);
+});
