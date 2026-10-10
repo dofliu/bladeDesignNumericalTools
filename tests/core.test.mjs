@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as core from '../src/core.mjs';
 import * as A from '../src/aero.mjs';
+import * as GEO from '../src/geo.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
   gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
@@ -547,14 +548,33 @@ test('VAWT_FAMILIES design():各家族面積/質量/慣量與重構前一致', (
 
 test('VAWT_FAMILIES 面板欄位:pane/rLabel/hasStruts/hasHelix 與重構前的型式判斷一致', () => {
   const F = core.VAWT_FAMILIES;
-  const pane = { H: 'dmst', helical: 'dmst', phi: 'dmst', V: 'dmst', sav: 'sav', custom: 'custom' };
-  const rl = { phi: '赤道半徑 R', V: '頂端半徑 R', H: '轉子半徑 R', helical: '轉子半徑 R' };
+  const pane = { H: 'dmst', helical: 'dmst', phi: 'dmst', V: 'dmst', sav: 'sav', custom: 'custom', free: 'dmst' };
+  const rl = { phi: '赤道半徑 R', V: '頂端半徑 R', H: '轉子半徑 R', helical: '轉子半徑 R', free: '最大半徑 R' };
   for (const k of Object.keys(F)) {
     assert.equal(F[k].pane, pane[k], k);
     if (pane[k] === 'dmst') {
       assert.equal(F[k].rLabel, rl[k], k);
       assert.equal(!!F[k].hasStruts, k === 'H' || k === 'helical', k);
-      assert.equal(!!F[k].hasHelix, k === 'helical', k);
+      assert.equal(!!F[k].hasHelix, k === 'helical' || k === 'free', k);
     }
   }
+});
+
+// 8B(3D/STL 2/2):自訂外形家族 'free' 接進註冊表;性能走 DMST(custom 外形),3D 放樣與 STL 取自同一條 r(z)
+test('自訂外形家族 free:設計/性能可算,放樣包圍盒與 R 一致,預設外形 Cp 在 Φ 型附近', () => {
+  const keep = JSON.parse(JSON.stringify({ v: S.vawt, mode: S.mode }));
+  try {
+    S.mode = 'VAWT';
+    Object.assign(S.vawt, { type: 'phi', R: 1, H: 2, B: 3, c: 0.15, material: 'gfrp' }); designVAWT(); computePerf();
+    const cpPhi = G.cpMax;
+    Object.assign(S.vawt, { type: 'free', shapePts: undefined }); designVAWT(); computePerf();
+    assert.ok(G.A > 2 && G.A < 3.2 && G.mass > 0 && Number.isFinite(G.cpMax), `A ${G.A} Cp ${G.cpMax}`);
+    assert.ok(Math.abs(G.cpMax - cpPhi) < 0.1, `free ${G.cpMax} vs phi ${cpPhi}`);
+    const fam = core.VAWT_FAMILIES.free, sf = f => fam.shape(S.vawt, f);
+    assert.ok(Math.abs(sf(0.5).r - 1) < 1e-9 && sf(0).r < 0.2);
+    const m = GEO.vawtBlade(sf, core.getAf(S.af.vawt), S.vawt.c, 0, 0, S.vawt.H, 0);
+    let ymax = -1, rmax = 0; for (let i = 0; i < m.pos.length; i += 3) { ymax = Math.max(ymax, m.pos[i + 1]); rmax = Math.max(rmax, Math.hypot(m.pos[i], m.pos[i + 2])); }
+    assert.ok(Math.abs(ymax - 2) < 0.2 && rmax > 0.95 && rmax < 1.2, `ymax ${ymax} rmax ${rmax}`);
+    S.vawt.R = 2; assert.ok(Math.abs(sf(0.5).r - 2) < 1e-9);
+  } finally { Object.assign(S.vawt, keep.v); S.mode = keep.mode; }
 });
