@@ -102,6 +102,18 @@ const VAWT_FAMILIES = {
     condRows: (fmt, esc) => [['型式', VAWT_TYPES.custom], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts.length} 筆)`], ['特徵半徑 / 高度', `${fmt(S.custom.R, 2)} m / ${fmt(S.custom.H, 2)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
     csv: () => 'type,axis,R_m,H_m,swept_area_m2,mass_kg\ncustom,' + [S.custom.axis, S.custom.R, S.custom.H, G.A.toFixed(4), S.custom.mass].join(','), curveTitle: '匯入曲線', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' }
 };
+// 8C-3: concept-card metadata (typical values from this tool's own models; qualitative notes, not guarantees)
+const ROTOR_CARDS = {
+  HAWT: { name: '水平軸(n 葉 BEM)', cp: '0.40–0.48', lam: 'λ 5–9', start: '需較高風速(約 3–4 m/s 以上)', trust: '中高:BEM + 半經驗極曲線', note: '效率最高、最成熟;需對風(偏航)。' },
+  H: { cp: '0.30–0.38', lam: 'λ 2.5–4.5', start: '差,通常需輔助起轉', trust: '中:DMST,未含動態失速', note: '不需對風、構造簡單;轉矩脈動大。' },
+  helical: { cp: '0.28–0.36', lam: 'λ 2.5–4', start: '較 H 型好', trust: '中:DMST,未含動態失速', note: '螺旋包角使轉矩較平順、噪音較低。' },
+  phi: { cp: '0.30–0.38', lam: 'λ 3–5', start: '差,通常需輔助起轉', trust: '中:DMST,未含流線彎曲', note: '彎曲葉片以張力為主,離心應力較低。' },
+  V: { cp: '0.25–0.33', lam: 'λ 2.5–4', start: '差', trust: '中低:DMST 近似', note: '葉片傾斜,上寬下窄;風切下可能有利。' },
+  free: { cp: '依外形而定', lam: 'λ 2–5', start: '依外形而定', trust: '中低:自訂外形 DMST,陡斜段僅計阻力', note: '以 r(z) 控制點描述任意旋轉外形。' },
+  sav: { cp: '0.10–0.25', lam: 'λ 0.6–1.2', start: '佳,低風速可自行啟動', trust: '低:經驗曲線', note: '阻力型,低速高轉矩、效率低。' },
+  custom: { cp: '依匯入資料', lam: '依匯入資料', start: '依匯入資料', trust: '匯入資料:本工具不計算', note: '貼上論文、CFD 或實驗的 Cp–λ 曲線。' },
+};
+const rotorCardList = () => [['HAWT', ROTOR_CARDS.HAWT], ...Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, { ...ROTOR_CARDS[k], name: f.name }])];
 const VAWT_TYPES = Object.fromEntries(Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, f.name]));
 // Fraction of the free-shape height whose blade is steeper than limitDeg from vertical (near-horizontal segments only add drag in DMST).
 const freeSteepFraction = (limitDeg = 60) => {
@@ -912,4 +924,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

@@ -72,8 +72,19 @@ export function shapePreviewSvg(pts) {
   const dots = pts.map(p => `<circle cx="${(cx + p.rf / rm * half).toFixed(1)}" cy="${y(p.zf)}" r="2.5" fill="var(--c2)"/>`).join('');
   return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" style="max-width:260px;display:block;margin:6px auto" role="img" aria-label="外形預覽(側視)"><line x1="${cx}" y1="2" x2="${cx}" y2="${Hh - 2}" stroke="var(--muted)" stroke-dasharray="3 3"/><polyline points="${right.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/><polyline points="${left.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>${dots}</svg>`;
 }
+export function conceptCards() {
+  const cur = S.mode === 'HAWT' ? 'HAWT' : S.vawt.type;
+  return grp('轉子家族(點選卡片建立預設設計)', '<div class="cards">' + rotorCardList().map(([k, c]) =>
+    `<button class="fcard" data-fam="${k}" aria-pressed="${k === cur}"><b>${esc(c.name)}</b><span>Cp 約 ${esc(c.cp)}(${esc(c.lam)})</span><span>自啟動:${esc(c.start)}</span><span>可信度:${esc(c.trust)}</span><em>${esc(c.note)}</em></button>`).join('') + '</div><p class="note">數值為本工具模型的典型範圍,僅供概念比較;實際設計請看右側計算結果。</p>');
+}
+export function selectFamily(k) {
+  if (k === 'HAWT') { if (S.mode !== 'HAWT') setMode('HAWT'); else renderPane(); return; }
+  S.vawt.type = k;
+  if (k === 'custom' && !S.custom.pts) loadCpText(CUSTOM_EXAMPLES.lift.text, CUSTOM_EXAMPLES.lift.name, true);
+  if (S.mode !== 'VAWT') setMode('VAWT'); else { pendingStart = true; scheduleRebuild(true); renderPane(); }
+}
 export function paneRotor() {
-  let h = '';
+  let h = $('#app').classList.contains('flow') && flowStepOf(S.ws, S.step) === 'concept' ? conceptCards() : '';
   if (S.mode === 'HAWT') {
     h += grp('幾何', rng('hawt.B', '葉片數 B', 1, 6, 1, '片') + rng('hawt.R', '轉子半徑 R', 0.3, 60, 0.05, 'm') + rng('hawt.Rhub', '輪轂半徑', 0.03, 6, 0.01, 'm') + rng('hawt.nSec', '截面數', 8, 30, 1, ''));
     const tm = S.hawt.twMode;
@@ -174,6 +185,7 @@ export function renderPane() {
   const f = { af: paneAirfoil, rotor: paneRotor, tunnel: paneTunnel, load: paneLoad }[S.step];
   const st = p.scrollTop;
   p.innerHTML = f();
+  p.querySelectorAll('[data-fam]').forEach(b => b.addEventListener('click', () => selectFamily(b.dataset.fam)));
   bindPane(p);
   p.scrollTop = st;
   updateSummaries();
@@ -869,8 +881,9 @@ export function setStep(step) {
 }
 export function setFlow(id) {
   const f = FLOW_STEPS[id]; if (!f) return;
-  if (f.step) setStep(f.step);
   setWS(f.ws);
+  if (f.step) setStep(f.step);
+  markNav();
 }
 export function setLayout(flow) {
   $('#app').classList.toggle('flow', flow);
@@ -923,7 +936,7 @@ export function init() {
   document.querySelectorAll('.flownav [data-flow]').forEach(b => b.addEventListener('click', () => setFlow(b.dataset.flow)));
   $('#flowPrev').addEventListener('click', () => { const n = flowNeighbor(flowStepOf(S.ws, S.step), -1); if (n) setFlow(n); });
   $('#flowNext').addEventListener('click', () => { const n = flowNeighbor(flowStepOf(S.ws, S.step), 1); if (n) setFlow(n); });
-  $('#layoutBtn').addEventListener('click', () => setLayout(!$('#app').classList.contains('flow')));
+  $('#layoutBtn').addEventListener('click', () => { setLayout(!$('#app').classList.contains('flow')); renderPane(); });
   let lay = ''; try { lay = localStorage.getItem('wt-layout') || ''; } catch (e) {}
   setLayout(lay === 'flow');
   document.querySelectorAll('#ctabs [data-c]').forEach(b => b.addEventListener('click', () => {

@@ -52,6 +52,12 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.click('#flowNext'); await page.waitForTimeout(500);
     const nx = await page.evaluate(() => [...document.querySelectorAll('.flownav [aria-pressed="true"]')].map(b => b.dataset.flow).join() + '|' + document.querySelector('#flowHint').textContent.length);
     check(prevOff && nx.startsWith('geometry|') && !nx.endsWith('|0'), 'desktop: 流程上一步/下一步與步驟說明');
+    await page.click('.flownav [data-flow="concept"]'); await page.waitForTimeout(400);
+    check(await page.evaluate(() => document.querySelectorAll('#pane .fcard').length) >= 7, 'desktop: 概念步驟顯示轉子家族卡片');
+    await page.click('#pane .fcard[data-fam="sav"]'); await page.waitForTimeout(800);
+    check(await page.evaluate(() => document.querySelector('#pane .fcard[data-fam="sav"]').getAttribute('aria-pressed') === 'true'), 'desktop: 點選卡片切換轉子家族');
+    await page.screenshot({ path: join(out, 'desktop-concept.png') });
+    await page.click('#pane .fcard[data-fam="HAWT"]'); await page.waitForTimeout(800);
     await page.screenshot({ path: join(out, 'desktop-flow.png') });
     await page.click('#layoutBtn');
     check(await page.evaluate(() => getComputedStyle(document.querySelector('.wsnav')).display !== 'none'), 'desktop: 可切回經典版面');
