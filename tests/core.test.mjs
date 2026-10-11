@@ -625,3 +625,11 @@ test('ROTOR_GUIDE:三條路徑各有標題、說明,且指向存在的家族', (
   const fams = new Set(core.rotorCardList().map(([k]) => k));
   for (const g of core.ROTOR_GUIDE) { assert.ok(g.title && g.note && g.action); assert.ok(fams.has(g.fam), g.fam); }
 });
+
+test('rotorTrust:每個家族與水平軸都有可信度標示', () => {
+  const keep = [S.mode, S.vawt.type];
+  S.mode = 'HAWT'; assert.match(core.rotorTrust(), /BEM/);
+  S.mode = 'VAWT';
+  for (const k of Object.keys(core.VAWT_FAMILIES)) { S.vawt.type = k; assert.ok(core.rotorTrust().length > 3, k); }
+  [S.mode, S.vawt.type] = keep;
+});
