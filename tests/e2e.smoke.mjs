@@ -47,6 +47,12 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
       if (st.on !== 'ws-' + ws || st.cur !== id) { ok = false; console.log('flow mismatch', id, st); }
     }
     check(ok, 'desktop: 流程式外殼五步驟切換正確');
+    await page.click('.flownav [data-flow="concept"]'); await page.waitForTimeout(400);
+    check(await page.evaluate(() => document.querySelectorAll('#pane .fcard').length) >= 7, 'desktop: 概念步驟顯示轉子家族卡片');
+    await page.click('#pane .fcard[data-fam="sav"]'); await page.waitForTimeout(800);
+    check(await page.evaluate(() => document.querySelector('#pane .fcard[data-fam="sav"]').getAttribute('aria-pressed') === 'true'), 'desktop: 點選卡片切換轉子家族');
+    await page.screenshot({ path: join(out, 'desktop-concept.png') });
+    await page.click('#pane .fcard[data-fam="HAWT"]'); await page.waitForTimeout(800);
     await page.screenshot({ path: join(out, 'desktop-flow.png') });
     await page.click('#layoutBtn');
     check(await page.evaluate(() => getComputedStyle(document.querySelector('.wsnav')).display !== 'none'), 'desktop: 可切回經典版面');

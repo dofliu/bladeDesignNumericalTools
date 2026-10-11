@@ -81,6 +81,10 @@ textarea{width:100%;min-height:90px;padding:6px;border:1px solid var(--line);bor
 .btn.ghost{background:transparent;color:var(--accent)}
 .btn.warn{background:var(--warn);border-color:var(--warn);color:#fff}
 .btns{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.cards{display:grid;grid-template-columns:1fr;gap:8px}
+.fcard{display:flex;flex-direction:column;gap:2px;text-align:left;padding:8px 10px;border:1px solid var(--line,var(--muted));border-radius:var(--radius);background:var(--panel);color:var(--ink);font-size:12px;cursor:pointer}
+.fcard b{font-size:13px}.fcard em{color:var(--muted);font-style:normal}
+.fcard[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .note{font-size:12px;color:var(--muted);margin:6px 0;line-height:1.5}
 .chk{display:flex;align-items:center;gap:6px;font-size:12.5px;margin:6px 0;color:var(--ink)}
 .kv{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:12.5px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px}
