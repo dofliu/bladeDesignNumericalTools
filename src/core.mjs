@@ -42,6 +42,33 @@ function dmstDesign(cfg, mat, strutMass) {
 // Free-form family: v.shapePts [{zf, rf}] = radius as a fraction of v.R along the height fraction (so the R slider scales the whole envelope).
 const freeShapeCfg = v => ({ pts: (v.shapePts || FREE_SHAPE_DEFAULT).map(p => ({ zf: p.zf, r: p.rf * v.R })), helix: v.helix });
 const FREE_SHAPE_DEFAULT = [{ zf: 0, rf: 0.06 }, { zf: 0.15, rf: 0.62 }, { zf: 0.3, rf: 0.88 }, { zf: 0.5, rf: 1 }, { zf: 0.7, rf: 0.88 }, { zf: 0.85, rf: 0.62 }, { zf: 1, rf: 0.06 }];
+const sphereRf = f => Math.max(0.06, Math.sin(Math.PI * f));
+const FREE_SHAPE_TEMPLATES = {
+  egg: { name: '蛋形(預設)', pts: FREE_SHAPE_DEFAULT },
+  H: { name: 'H 型(直筒)', pts: [{ zf: 0, rf: 1 }, { zf: 1, rf: 1 }] },
+  phi: { name: 'Φ 型(拋物線)', pts: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1].map(zf => ({ zf, rf: Math.max(0.06, +(1 - (2 * zf - 1) ** 2).toFixed(4)) })) },
+  sphere: { name: '球形', pts: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1].map(zf => ({ zf, rf: +sphereRf(zf).toFixed(4) })) },
+  loop: { name: '圓角框環形', pts: [{ zf: 0, rf: 0.3 }, { zf: 0.05, rf: 0.8 }, { zf: 0.12, rf: 0.97 }, { zf: 0.2, rf: 1 }, { zf: 0.8, rf: 1 }, { zf: 0.88, rf: 0.97 }, { zf: 0.95, rf: 0.8 }, { zf: 1, rf: 0.3 }] },
+};
+// Text <-> control points: one "zf, rf" pair per line (zf = height fraction 0..1, rf = radius / R); '#' comments and a header line are skipped.
+function parseShapePts(text) {
+  const pts = [];
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.replace(/#.*/, '').trim();
+    if (!line) continue;
+    const t = line.split(/[\s,;\t]+/).map(Number);
+    if (t.length < 2 || !isFinite(t[0]) || !isFinite(t[1])) { if (!pts.length) continue; throw new Error('無法解析:「' + raw.trim() + '」(每行需為 zf, rf)'); }
+    pts.push({ zf: t[0], rf: t[1] });
+  }
+  if (pts.length < 2) throw new Error('至少需要 2 個控制點');
+  if (pts.length > 24) throw new Error('控制點最多 24 個');
+  pts.sort((a, b) => a.zf - b.zf);
+  if (pts.some(p => p.zf < 0 || p.zf > 1)) throw new Error('zf 必須在 0–1 之間');
+  for (let i = 1; i < pts.length; i++) if (!(pts[i].zf > pts[i - 1].zf)) throw new Error('zf 必須嚴格遞增');
+  if (pts.some(p => !(p.rf > 0 && p.rf <= 2))) throw new Error('rf 必須在 0–2 之間(R 的倍數,大於 0)');
+  return pts;
+}
+const shapePtsText = pts => 'zf, rf\n' + pts.map(p => `${+p.zf.toFixed(4)}, ${+p.rf.toFixed(4)}`).join('\n');
 const VAWT_FAMILIES = {
   H: { name: 'H 型(直葉片)', pane: 'dmst', rLabel: '轉子半徑 R', hasStruts: true, design: (cfg, mat) => dmstDesign(cfg, mat, true), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: v => ({ r: v.R, off: 0 }), struts: (v, ph, y0, sf) => armStruts([[], [0.5], [0.22, 0.78], [0.15, 0.5, 0.85]][Math.round(v.struts)] || [], v, ph, y0, sf) },
@@ -76,6 +103,11 @@ const VAWT_FAMILIES = {
     csv: () => 'type,axis,R_m,H_m,swept_area_m2,mass_kg\ncustom,' + [S.custom.axis, S.custom.R, S.custom.H, G.A.toFixed(4), S.custom.mass].join(','), curveTitle: '匯入曲線', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' }
 };
 const VAWT_TYPES = Object.fromEntries(Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, f.name]));
+// Fraction of the free-shape height whose blade is steeper than limitDeg from vertical (near-horizontal segments only add drag in DMST).
+const freeSteepFraction = (limitDeg = 60) => {
+  const nz = 200, sl = A.vawtSlices({ ...G.vcfg, nz });
+  return sl.filter(x => Math.abs(x.delta) * A.R2D > limitDeg).length / nz;
+};
 const noAirfoil = v => !!VAWT_FAMILIES[v.type]?.noAirfoil;
 const rotorSource = () => S.mode === 'HAWT' ? '計算:BEM(葉片元素動量理論)' : VAWT_FAMILIES[S.vawt.type].source;
 // Schematic example curves for the imported-curve rotor. NOT measured data (lambda, Cp[, Cq] per line).
@@ -880,4 +912,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

@@ -578,3 +578,35 @@ test('自訂外形家族 free:設計/性能可算,放樣包圍盒與 R 一致,�
     S.vawt.R = 2; assert.ok(Math.abs(sf(0.5).r - 2) < 1e-9);
   } finally { Object.assign(S.vawt, keep.v); S.mode = keep.mode; }
 });
+
+// 8B 介面第一版:控制點文字解析 / 內建樣板 / 預覽用的純函式
+test('自訂外形控制點:parseShapePts 解析與錯誤、樣板皆可通過 customShape 並算出 Cp', () => {
+  const pts = core.parseShapePts('zf, rf\n# 註解\n1, 0.5\n0, 0.2\n0.5\t1.0');
+  assert.deepEqual(pts, [{ zf: 0, rf: 0.2 }, { zf: 0.5, rf: 1 }, { zf: 1, rf: 0.5 }]);
+  assert.deepEqual(core.parseShapePts(core.shapePtsText(pts)), pts);
+  for (const bad of ['', '0, 1', '0, 1\n0, 1', '0, 1\n1.5, 1', '0, 1\n1, 0', '0, 1\n1, 3', '0, 1\nabc, def']) assert.throws(() => core.parseShapePts(bad), undefined, bad);
+  const keep = { v: { ...S.vawt }, mode: S.mode };
+  try {
+    S.mode = 'VAWT';
+    for (const [k, t] of Object.entries(core.FREE_SHAPE_TEMPLATES)) {
+      Object.assign(S.vawt, { type: 'free', R: 1, H: 2, B: 3, c: 0.15, material: 'gfrp', shapePts: t.pts.map(q => ({ ...q })) });
+      assert.doesNotThrow(() => core.parseShapePts(core.shapePtsText(t.pts)), k);
+      core.designVAWT(); core.computePerf();
+      assert.ok(core.G.A > 1 && core.G.cpMax > 0.1 && core.G.cpMax < 0.593, `${k}: A ${core.G.A} Cp ${core.G.cpMax}`);
+    }
+  } finally { Object.assign(S.vawt, keep.v); delete S.vawt.shapePts; S.mode = keep.mode; }
+});
+
+// 8B(流場/報告):自訂外形高傾角段占比
+test('freeSteepFraction:預設蛋形端部較陡、H 型風格直線外形為 0', () => {
+  const sv = JSON.parse(JSON.stringify(S.vawt));
+  try {
+    Object.assign(S.vawt, { type: 'free', shapePts: undefined }); designVAWT();
+    const egg = core.freeSteepFraction();
+    assert.ok(egg >= 0 && egg < 0.5, `egg ${egg}`);
+    Object.assign(S.vawt, { shapePts: [{ zf: 0, rf: 1 }, { zf: 1, rf: 1 }] }); designVAWT();
+    assert.equal(core.freeSteepFraction(), 0);
+    Object.assign(S.vawt, { shapePts: [{ zf: 0, rf: 0.1 }, { zf: 0.5, rf: 2 }, { zf: 1, rf: 0.1 }] }); designVAWT();
+    assert.ok(core.freeSteepFraction(10) > core.freeSteepFraction(60));
+  } finally { Object.assign(S.vawt, sv); designVAWT(); }
+});

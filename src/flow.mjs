@@ -230,7 +230,7 @@ export const Flow = (function () {
     g.fillStyle = Plot.css('--ink'); g.font = '600 12px ' + Plot.css('--font-ui'); g.textAlign = 'left'; g.textBaseline = 'top';
     g.fillText(`俯視流管速度(雙重多流管)· λ ${lam.toFixed(2)} · Cp ${res.Cp.toFixed(3)}`, 10, 8);
     g.font = '11px ' + Plot.css('--font-ui'); g.fillStyle = Plot.css('--muted');
-    g.fillText('上風半圈先減速一次,下風葉片在已減速的氣流中再取一次能量', 10, 26);
+    g.fillText('上風半圈先減速一次,下風葉片在已減速的氣流中再取一次能量' + (S.vawt.type === 'free' ? `;自訂外形:此為赤道截面,傾角 > 60° 的高度占 ${(freeSteepFraction() * 100).toFixed(0)}%(只計阻力)` : ''), 10, 26);
     colorbar(g, W - 170, H - 26, 150, 8, map, 'u/V∞', { min: 0, max: 1.4, v: [[0, '0'], [0.5, '0.5'], [1, '1']] });
     return { uf, Cp: res.Cp };
   }
