@@ -2,3 +2,6 @@ node_modules/
 .DS_Store
 *.log
 tests/output/
+*.zip
+風力機葉片設計與虛擬風洞.html
+
