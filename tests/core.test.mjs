@@ -596,3 +596,17 @@ test('自訂外形控制點:parseShapePts 解析與錯誤、樣板皆可通過 c
     }
   } finally { Object.assign(S.vawt, keep.v); delete S.vawt.shapePts; S.mode = keep.mode; }
 });
+
+// 8B(流場/報告):自訂外形高傾角段占比
+test('freeSteepFraction:預設蛋形端部較陡、H 型風格直線外形為 0', () => {
+  const sv = JSON.parse(JSON.stringify(S.vawt));
+  try {
+    Object.assign(S.vawt, { type: 'free', shapePts: undefined }); designVAWT();
+    const egg = core.freeSteepFraction();
+    assert.ok(egg >= 0 && egg < 0.5, `egg ${egg}`);
+    Object.assign(S.vawt, { shapePts: [{ zf: 0, rf: 1 }, { zf: 1, rf: 1 }] }); designVAWT();
+    assert.equal(core.freeSteepFraction(), 0);
+    Object.assign(S.vawt, { shapePts: [{ zf: 0, rf: 0.1 }, { zf: 0.5, rf: 2 }, { zf: 1, rf: 0.1 }] }); designVAWT();
+    assert.ok(core.freeSteepFraction(10) > core.freeSteepFraction(60));
+  } finally { Object.assign(S.vawt, sv); designVAWT(); }
+});

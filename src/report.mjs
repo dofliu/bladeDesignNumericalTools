@@ -95,6 +95,7 @@ export const Report = (function () {
       const al = (G.rows || []).map(r => r.aAct), mx = Math.max(...al); if (mx > 11) out.push(`設計點最大攻角約 ${fmt(mx, 1)}°,靠近失速,低風速或陣風時可能提早失速。`);
     } else if (!noAirfoil(S.vawt)) {
       const sol = S.vawt.B * S.vawt.c / S.vawt.R; out.push(`實度 Bc/R = ${fmt(sol, 3)};最佳尖速比 ${fmt(G.lopt, 2)}、Cp,max ${fmt(G.cpMax, 3)}。實度越高最佳尖速比越低、啟動越容易但最高效率下降。`);
+      if (S.vawt.type === 'free') { const sf = freeSteepFraction(); out.push(sf > 0.01 ? `自訂外形有約 ${fmt(sf * 100, 0)}% 的葉片高度傾角超過 60°(接近水平的橫段),DMST 在這些段只計阻力、不產生轉矩,此外形的 Cp 可信度較低,建議以風洞實驗或 CFD 驗證。` : '自訂外形沒有傾角超過 60° 的葉片段;DMST 仍未含流線彎曲與動態失速,傾角較大處的 Cp 偏樂觀。'); }
     }
     if (t) {
       const mid = t.curve.filter(c => c.V >= 6 && c.V <= 10 && c.ideal > 0);
