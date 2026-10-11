@@ -37,6 +37,17 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.waitForTimeout(1200);
     await page.screenshot({ path: join(out, `${vp.tag}-${ws}.png`) });
   }
+  if (!mobile) {
+    for (const [f, ws, step] of [['geo', 'blade', 'rotor'], ['af', 'blade', 'af'], ['tunnel', 'tunnel', 'tunnel'], ['report', 'report', null], ['concept', 'tunnel', 'rotor']]) {
+      await page.click(`.flownav [data-flow="${f}"]`); await page.waitForTimeout(500);
+      const ok = await page.evaluate(([f, ws, step]) => document.querySelector(`.flownav [data-flow="${f}"]`).getAttribute('aria-pressed') === 'true' && document.querySelector(`#ws-${ws}`).classList.contains('on') && (!step || document.querySelector(`.steps [data-step="${step}"]`).getAttribute('aria-selected') === 'true'), [f, ws, step]);
+      check(ok, `flow nav: ${f} → 工作區 ${ws}${step ? ' / 面板 ' + step : ''}`);
+    }
+    await page.screenshot({ path: join(out, 'desktop-flow.png') });
+    await page.click('#classicBtn');
+    check(await page.$eval('.flownav', e => getComputedStyle(e).display === 'none'), 'flow nav: 經典版面 hides flow nav');
+    await page.click('#classicBtn');
+  }
   check(errors.length === 0, `${vp.tag}: no page errors ${errors.slice(0, 3).join(' | ')}`);
   await page.close();
 }

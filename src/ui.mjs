@@ -817,7 +817,15 @@ export function setWS(ws) {
   markNav();
   requestAnimationFrame(() => renderWS());
 }
+const FLOW = { concept: ['rotor', 'tunnel'], geo: ['rotor', 'blade'], af: ['af', 'blade'], tunnel: ['tunnel', 'tunnel'], report: [null, 'report'] };
+let flowStep = 'concept';
+export function setFlow(id) {
+  const [step, ws] = FLOW[id]; flowStep = id;
+  if (step) { S.step = step; document.querySelectorAll('.steps button').forEach(x => x.setAttribute('aria-selected', x.dataset.step === step)); renderPane(); }
+  setWS(ws);
+}
 export function markNav() {
+  document.querySelectorAll('.flownav [data-flow]').forEach(b => b.setAttribute('aria-pressed', b.dataset.flow === flowStep));
   const set = $('#app').classList.contains('m-set');
   document.querySelectorAll('.wsnav [data-ws]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ws === S.ws));
   document.querySelectorAll('.bnav [data-mnav]').forEach(b => b.setAttribute('aria-current', set ? b.dataset.mnav === 'set' : b.dataset.mnav === S.ws));
@@ -864,6 +872,10 @@ export function init() {
   $('#runBtn').addEventListener('click', e => { S.tun.running = !S.tun.running; e.target.textContent = S.tun.running ? '暫停' : '繼續'; });
   $('#exportBtn').addEventListener('click', openExport);
   document.querySelectorAll('.wsnav [data-ws]').forEach(b => b.addEventListener('click', () => setWS(b.dataset.ws)));
+  document.querySelectorAll('.flownav [data-flow]').forEach(b => b.addEventListener('click', () => setFlow(b.dataset.flow)));
+  const classic = on => { $('#app').classList.toggle('classic', on); $('#classicBtn').setAttribute('aria-pressed', on); $('#classicBtn').textContent = on ? '流程版面' : '經典版面'; try { localStorage.setItem('wt-layout', on ? 'classic' : 'flow'); } catch (e) {} };
+  $('#classicBtn').addEventListener('click', () => classic(!$('#app').classList.contains('classic')));
+  try { if (localStorage.getItem('wt-layout') === 'classic') classic(true); } catch (e) {}
   document.querySelectorAll('.bnav [data-mnav]').forEach(b => b.addEventListener('click', () => setWS(b.dataset.mnav)));
   $('#sideDone').addEventListener('click', () => setWS(S.ws));
   $('#sideBtn').addEventListener('click', () => { sideHidden = !sideHidden; $('#app').classList.toggle('noside', sideHidden); markNav(); setTimeout(renderWS, 50); });

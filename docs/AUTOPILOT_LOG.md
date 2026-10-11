@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-11 — ROADMAP 8C-2:流程式外殼(1/N)頂部步驟導覽
+
+- 做了什麼:無開著的 `[autopilot]` PR。桌面版頂部新增「① 概念 ② 幾何 ③ 翼型 ④ 虛擬風洞 ⑤ 比較與報告」導覽(`setFlow`),各步驟切換對應的設定面板分頁與工作區;原工作區分頁保留,新增「經典版面」按鈕(localStorage `wt-layout`)可隱藏流程導覽。手機版不顯示。e2e 新增導覽與經典版面切換檢查。
+- 驗證:check、npm test 73/73、build、e2e 全過;桌面/手機截圖確認。
+- 已知限制:步驟只是既有面板與工作區的分配,尚未依步驟重組內容;「比較與報告」未直接帶出方案比較分頁。
+- 下一步:8C-2 第 2 步(步驟內容重組)或 8C-3 概念頁。
+
 ## 2026-10-10 — ROADMAP 8B:自訂外形葉片放樣(2/2,3D/STL 完成)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 註冊表新增 `free` 家族「自訂外形(r(z) 控制點)」:`S.vawt.shapePts`(`{zf, rf}`,rf 為 R 倍數,預設蛋形)、`freeShapeCfg`,`vawtCfg` 將 free 轉成 AERO `type:'custom'` 走 DMST;`shape()` 用 `GEO.customBladeShape`,故 3D 場景、STL、CSV 皆沿同一條 r(z)。新增測試(設計/性能、放樣包圍盒、R 縮放),並更新面板欄位測試涵蓋 free。

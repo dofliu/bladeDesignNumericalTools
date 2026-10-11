@@ -40,9 +40,13 @@ button,input,select,textarea{font:inherit;color:inherit}
 .app.noside{grid-template-columns:1fr}.app.noside aside{display:none}
 header{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel);position:relative;z-index:3}
 .wsnav button{padding:6px 14px}
+.flownav button{padding:6px 12px}.flownav b{font-weight:600;color:var(--accent);margin-right:3px}
+.flownav button[aria-pressed=true] b{color:inherit}.flownav button,header .iconbtn{white-space:nowrap}
+.app.classic .flownav{display:none}
 .sidetog{display:inline-flex}
 header h1{font-size:17px;font-weight:600;margin:0;letter-spacing:.01em;white-space:nowrap}
 header h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:8px}
+@media (max-width:1700px){header h1 small{display:none}}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel2)}
 .seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;color:var(--muted);white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
@@ -178,7 +182,7 @@ aside .sidehead{display:none}
   .app{grid-template-columns:1fr!important;grid-template-rows:auto 1fr auto;height:100%}
   header{padding:6px 10px;gap:8px;flex-wrap:nowrap}
   header h1{font-size:15px}
-  header h1 small,.wsnav,.sidetog{display:none!important}
+  header h1 small,.wsnav,.flownav,.sidetog,#classicBtn{display:none!important}
   header .seg button{padding:5px 9px;font-size:12.5px}
   header .iconbtn{padding:5px 8px;font-size:12.5px}
   aside{grid-row:2;grid-column:1;border-right:0;display:none!important;min-height:0}
@@ -238,6 +242,13 @@ aside .sidehead{display:none}
       <button id="mHAWT" aria-pressed="true">水平軸</button>
       <button id="mVAWT" aria-pressed="false">垂直軸</button>
     </div>
+    <div class="seg flownav" role="tablist" aria-label="設計流程">
+      <button data-flow="concept" aria-pressed="true"><b>①</b>概念</button>
+      <button data-flow="geo" aria-pressed="false"><b>②</b>幾何</button>
+      <button data-flow="af" aria-pressed="false"><b>③</b>翼型</button>
+      <button data-flow="tunnel" aria-pressed="false"><b>④</b>虛擬風洞</button>
+      <button data-flow="report" aria-pressed="false"><b>⑤</b>比較與報告</button>
+    </div>
     <div class="seg wsnav" role="tablist" aria-label="工作區">
       <button data-ws="tunnel" aria-pressed="true">風洞</button>
       <button data-ws="blade" aria-pressed="false">單葉片</button>
@@ -245,6 +256,7 @@ aside .sidehead{display:none}
       <button data-ws="report" aria-pressed="false">報告</button>
     </div>
     <div class="hspace"></div>
+    <button class="iconbtn" id="classicBtn" title="切換經典版面(隱藏頂部流程導覽)" aria-pressed="false">經典版面</button>
     <button class="iconbtn sidetog" id="sideBtn" title="收合/展開設定面板">設定面板</button>
     <button class="iconbtn" id="exportBtn" title="匯出葉片 STL 與數據">匯出</button>
     <button class="iconbtn" id="themeBtn" title="切換深淺色" aria-label="切換深淺色">◐</button>
