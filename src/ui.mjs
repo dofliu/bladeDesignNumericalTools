@@ -836,9 +836,41 @@ export function setWS(ws) {
   markNav();
   requestAnimationFrame(() => renderWS());
 }
+/* 流程式外殼:五步驟對應到既有的工作區與設定面板步驟(功能不減,與經典版面共用同一套狀態) */
+export const FLOW_STEPS = {
+  concept: { ws: 'tunnel', step: 'rotor' },
+  geometry: { ws: 'blade', step: 'rotor' },
+  airfoil: { ws: 'blade', step: 'af' },
+  tunnel: { ws: 'tunnel', step: 'tunnel' },
+  report: { ws: 'report', step: null },
+};
+export function flowStepOf(ws, step) {
+  if (ws === 'report') return 'report';
+  if (ws === 'tunnel') return step === 'rotor' ? 'concept' : 'tunnel';
+  if (ws === 'blade') return step === 'af' ? 'airfoil' : 'geometry';
+  return step === 'af' ? 'airfoil' : step === 'rotor' ? 'geometry' : 'tunnel';
+}
+export function setStep(step) {
+  S.step = step;
+  document.querySelectorAll('.steps button').forEach(x => x.setAttribute('aria-selected', x.dataset.step === step));
+  renderPane();
+}
+export function setFlow(id) {
+  const f = FLOW_STEPS[id]; if (!f) return;
+  if (f.step) setStep(f.step);
+  setWS(f.ws);
+}
+export function setLayout(flow) {
+  $('#app').classList.toggle('flow', flow);
+  $('#layoutBtn').textContent = flow ? '經典版面' : '流程版面';
+  try { localStorage.setItem('wt-layout', flow ? 'flow' : 'classic'); } catch (e) {}
+  markNav();
+}
 export function markNav() {
   const set = $('#app').classList.contains('m-set');
   document.querySelectorAll('.wsnav [data-ws]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ws === S.ws));
+  const fs = flowStepOf(S.ws, S.step);
+  document.querySelectorAll('.flownav [data-flow]').forEach(b => b.setAttribute('aria-pressed', b.dataset.flow === fs));
   document.querySelectorAll('.bnav [data-mnav]').forEach(b => b.setAttribute('aria-current', set ? b.dataset.mnav === 'set' : b.dataset.mnav === S.ws));
   $('#sideBtn').textContent = sideHidden ? '顯示設定' : '隱藏設定';
 }
@@ -872,8 +904,12 @@ export function init() {
   Scene3D.init($('#three'));
   cv[0] = $('#cv1'); cv[1] = $('#cv2'); cv[2] = $('#cv3');
   document.querySelectorAll('.steps button').forEach(b => b.addEventListener('click', () => {
-    S.step = b.dataset.step; document.querySelectorAll('.steps button').forEach(x => x.setAttribute('aria-selected', x === b)); renderPane();
+    setStep(b.dataset.step); markNav();
   }));
+  document.querySelectorAll('.flownav [data-flow]').forEach(b => b.addEventListener('click', () => setFlow(b.dataset.flow)));
+  $('#layoutBtn').addEventListener('click', () => setLayout(!$('#app').classList.contains('flow')));
+  let lay = ''; try { lay = localStorage.getItem('wt-layout') || ''; } catch (e) {}
+  setLayout(lay === 'flow');
   document.querySelectorAll('#ctabs [data-c]').forEach(b => b.addEventListener('click', () => {
     S.ctab = b.dataset.c; document.querySelectorAll('#ctabs [data-c]').forEach(x => x.setAttribute('aria-selected', x === b)); setCmpLayout(S.ctab === 'cmp'); chartOpts(); redrawStatic();
   }));

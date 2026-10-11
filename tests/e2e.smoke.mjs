@@ -37,6 +37,20 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.waitForTimeout(1200);
     await page.screenshot({ path: join(out, `${vp.tag}-${ws}.png`) });
   }
+  if (!mobile) { // 流程式外殼:五步驟各自切到對應工作區並標示目前步驟
+    await page.click('#layoutBtn');
+    const want = { concept: 'tunnel', geometry: 'blade', airfoil: 'blade', tunnel: 'tunnel', report: 'report' };
+    let ok = true;
+    for (const [id, ws] of Object.entries(want)) {
+      await page.click(`.flownav [data-flow="${id}"]`); await page.waitForTimeout(600);
+      const st = await page.evaluate(id2 => ({ on: document.querySelector('.ws.on').id, cur: [...document.querySelectorAll('.flownav [aria-pressed="true"]')].map(b => b.dataset.flow).join() }), id);
+      if (st.on !== 'ws-' + ws || st.cur !== id) { ok = false; console.log('flow mismatch', id, st); }
+    }
+    check(ok, 'desktop: 流程式外殼五步驟切換正確');
+    await page.screenshot({ path: join(out, 'desktop-flow.png') });
+    await page.click('#layoutBtn');
+    check(await page.evaluate(() => getComputedStyle(document.querySelector('.wsnav')).display !== 'none'), 'desktop: 可切回經典版面');
+  }
   check(errors.length === 0, `${vp.tag}: no page errors ${errors.slice(0, 3).join(' | ')}`);
   await page.close();
 }
