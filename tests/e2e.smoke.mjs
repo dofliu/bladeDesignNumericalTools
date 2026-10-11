@@ -47,6 +47,11 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
       if (st.on !== 'ws-' + ws || st.cur !== id) { ok = false; console.log('flow mismatch', id, st); }
     }
     check(ok, 'desktop: 流程式外殼五步驟切換正確');
+    await page.click('.flownav [data-flow="concept"]'); await page.waitForTimeout(300);
+    const prevOff = await page.evaluate(() => document.querySelector('#flowPrev').disabled);
+    await page.click('#flowNext'); await page.waitForTimeout(500);
+    const nx = await page.evaluate(() => [...document.querySelectorAll('.flownav [aria-pressed="true"]')].map(b => b.dataset.flow).join() + '|' + document.querySelector('#flowHint').textContent.length);
+    check(prevOff && nx.startsWith('geometry|') && !nx.endsWith('|0'), 'desktop: 流程上一步/下一步與步驟說明');
     await page.screenshot({ path: join(out, 'desktop-flow.png') });
     await page.click('#layoutBtn');
     check(await page.evaluate(() => getComputedStyle(document.querySelector('.wsnav')).display !== 'none'), 'desktop: 可切回經典版面');
