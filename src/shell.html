@@ -40,6 +40,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .app.noside{grid-template-columns:1fr}.app.noside aside{display:none}
 header{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel);position:relative;z-index:3}
 .wsnav button{padding:6px 14px}
+.flownav{display:none}
+.app.flow .flownav{display:inline-flex}
+.app.flow .wsnav{display:none}
+.flownav button{padding:6px 12px}
 .sidetog{display:inline-flex}
 header h1{font-size:17px;font-weight:600;margin:0;letter-spacing:.01em;white-space:nowrap}
 header h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:8px}
@@ -178,7 +182,7 @@ aside .sidehead{display:none}
   .app{grid-template-columns:1fr!important;grid-template-rows:auto 1fr auto;height:100%}
   header{padding:6px 10px;gap:8px;flex-wrap:nowrap}
   header h1{font-size:15px}
-  header h1 small,.wsnav,.sidetog{display:none!important}
+  header h1 small,.wsnav,.flownav,.sidetog,#layoutBtn{display:none!important}
   header .seg button{padding:5px 9px;font-size:12.5px}
   header .iconbtn{padding:5px 8px;font-size:12.5px}
   aside{grid-row:2;grid-column:1;border-right:0;display:none!important;min-height:0}
@@ -244,7 +248,15 @@ aside .sidehead{display:none}
       <button data-ws="flow" aria-pressed="false">流場</button>
       <button data-ws="report" aria-pressed="false">報告</button>
     </div>
+    <div class="seg flownav" role="tablist" aria-label="設計流程">
+      <button data-flow="concept" aria-pressed="false">① 概念</button>
+      <button data-flow="geometry" aria-pressed="false">② 幾何</button>
+      <button data-flow="airfoil" aria-pressed="false">③ 翼型</button>
+      <button data-flow="tunnel" aria-pressed="false">④ 虛擬風洞</button>
+      <button data-flow="report" aria-pressed="false">⑤ 比較與報告</button>
+    </div>
     <div class="hspace"></div>
+    <button class="iconbtn" id="layoutBtn" title="切換流程式 / 經典版面">流程版面</button>
     <button class="iconbtn sidetog" id="sideBtn" title="收合/展開設定面板">設定面板</button>
     <button class="iconbtn" id="exportBtn" title="匯出葉片 STL 與數據">匯出</button>
     <button class="iconbtn" id="themeBtn" title="切換深淺色" aria-label="切換深淺色">◐</button>
