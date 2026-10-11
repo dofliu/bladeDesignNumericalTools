@@ -343,7 +343,7 @@ export function updateSummaries() {
     const Vd = S.mode === 'HAWT' ? S.hawt.Vd : S.tun.V;
     const Pd = 0.5 * rho * G.A * Vd ** 3 * G.cpMax;
     const rows = [];
-    rows.push(['性能來源', rotorSource()]);
+    rows.push(['性能來源', rotorSource()], ['模型可信度', rotorTrust()]);
     if (S.mode === 'HAWT') {
       const sol = G.rows.reduce((s, x) => s + x.c * x.dr, 0) * S.hawt.B / (Math.PI * S.hawt.R ** 2);
       rows.push(['掃掠面積', fmt(G.A, 2) + ' m²'], ['實度', fmt(sol, 3)], ['單葉質量', fmt(G.bladeMass, 2) + ' kg'], ['轉動慣量 J', fmt(G.J, 3) + ' kg·m²']);
@@ -412,7 +412,7 @@ export function updateBadge() {
   let t;
   if (S.mode === 'HAWT') t = `<b>水平軸 ${Math.round(S.hawt.B)} 葉</b>,R ${fmt(S.hawt.R, 2)} m,${stSorted().map(s => afLabel(s.k).replace('NACA ', '')).join(' → ')},${{ bem: 'BEM 扭角', opt: 'Schmitz 扭角', linear: '線性扭角' }[S.hawt.twMode]},λd ${fmt(S.hawt.tsr, 1)}`;
   else t = VAWT_FAMILIES[S.vawt.type].badge(fmt, afLabel);
-  $('#badge').innerHTML = t;
+  $('#badge').innerHTML = t + `<br><span>可信度 ${esc(rotorTrust())}</span>`;
 }
 
 /* ---------- charts ---------- */

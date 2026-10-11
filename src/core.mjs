@@ -120,6 +120,8 @@ const ROTOR_GUIDE = [
   { id: 'cad', title: '完全自由的 CAD 外形', fam: 'custom', action: '匯入性能曲線', note: '匯入外形(STL)尚在規劃(8E);目前只能匯入該外形的性能曲線。' },
 ];
 const rotorCardList = () => [['HAWT', ROTOR_CARDS.HAWT], ...Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, { ...ROTOR_CARDS[k], name: f.name }])];
+// 8C-4: one-line model-credibility label for the active rotor (same text as the concept cards)
+const rotorTrust = () => ROTOR_CARDS[S.mode === 'HAWT' ? 'HAWT' : S.vawt.type].trust;
 const VAWT_TYPES = Object.fromEntries(Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, f.name]));
 // Fraction of the free-shape height whose blade is steeper than limitDeg from vertical (near-horizontal segments only add drag in DMST).
 const freeSteepFraction = (limitDeg = 60) => {
@@ -930,4 +932,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

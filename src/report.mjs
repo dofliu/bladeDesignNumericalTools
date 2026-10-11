@@ -127,6 +127,7 @@ export const Report = (function () {
     // summary box
     const aep = snapAEP({ A: G.A, cpMax: G.cpMax }), cf = capacityFactor(aep, S.load.Pmax);
     h += `<div class="sum"><div><b>${fmt(G.cpMax, 3)}</b><span>最大功率係數 Cp</span></div><div><b>${fmt(G.lopt, 2)}</b><span>最佳尖速比</span></div><div><b>${fmtP(0.5 * rho * G.A * (H ? S.hawt.Vd : 8) ** 3 * G.cpMax)}</b><span>氣動功率 @ ${H ? fmt(S.hawt.Vd, 1) : 8} m/s</span></div><div><b>${fmt(aep, 0)}</b><span>年發電量 kWh(理想,Weibull 年均 ${fmt(S.perf.Vavg, 1)} m/s、k=${fmt(S.perf.k, 1)})</span></div><div><b>${fmt(cf * 100, 0)}%</b><span>容量因數(對發電機額定 ${fmtP(S.load.Pmax)})</span></div></div>`;
+    h += `<p class="muted"><b>模型可信度:</b>${esc(rotorTrust())}(${esc(rotorSource())})</p>`;
     if (R0.goal) h += `<p class="goal"><b>設計目標:</b>${esc(R0.goal)}</p>`;
     // 1 design conditions
     h += hN('設計條件');
