@@ -619,3 +619,9 @@ test('rotorCardList:涵蓋 HAWT 與全部垂直軸家族,每張卡片欄位齊�
     for (const f of ['name', 'cp', 'lam', 'start', 'trust', 'note']) assert.ok(c[f], `${k}.${f}`);
   }
 });
+
+test('ROTOR_GUIDE:三條路徑各有標題、說明,且指向存在的家族', () => {
+  assert.equal(core.ROTOR_GUIDE.length, 3);
+  const fams = new Set(core.rotorCardList().map(([k]) => k));
+  for (const g of core.ROTOR_GUIDE) { assert.ok(g.title && g.note && g.action); assert.ok(fams.has(g.fam), g.fam); }
+});
