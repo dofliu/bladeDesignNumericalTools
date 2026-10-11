@@ -75,7 +75,9 @@ export function shapePreviewSvg(pts) {
 export function conceptCards() {
   const cur = S.mode === 'HAWT' ? 'HAWT' : S.vawt.type;
   return grp('轉子家族(點選卡片建立預設設計)', '<div class="cards">' + rotorCardList().map(([k, c]) =>
-    `<button class="fcard" data-fam="${k}" aria-pressed="${k === cur}"><b>${esc(c.name)}</b><span>Cp 約 ${esc(c.cp)}(${esc(c.lam)})</span><span>自啟動:${esc(c.start)}</span><span>可信度:${esc(c.trust)}</span><em>${esc(c.note)}</em></button>`).join('') + '</div><p class="note">數值為本工具模型的典型範圍,僅供概念比較;實際設計請看右側計算結果。</p>');
+    `<button class="fcard" data-fam="${k}" aria-pressed="${k === cur}"><b>${esc(c.name)}</b><span>Cp 約 ${esc(c.cp)}(${esc(c.lam)})</span><span>自啟動:${esc(c.start)}</span><span>可信度:${esc(c.trust)}</span><em>${esc(c.note)}</em></button>`).join('') + '</div><p class="note">數值為本工具模型的典型範圍,僅供概念比較;實際設計請看右側計算結果。</p>') +
+    grp('我的形狀該選哪條路', '<div class="guide">' + ROTOR_GUIDE.map(g =>
+      `<div class="gitem"><b>${esc(g.title)}</b><span>${esc(g.note)}</span><button class="btn ghost" data-fam="${g.fam}" data-guide="${g.id}">${esc(g.action)}</button></div>`).join('') + '</div>');
 }
 export function selectFamily(k) {
   if (k === 'HAWT') { if (S.mode !== 'HAWT') setMode('HAWT'); else renderPane(); return; }

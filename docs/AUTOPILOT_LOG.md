@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-11 — ROADMAP 8C-3:「我的形狀該選哪條路」引導(2/N)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `ROTOR_GUIDE`(三條路徑:自訂垂直軸外形、參數化家族 + 匯入性能、自由 CAD 外形 + 匯入性能);`ui.mjs` 於概念步驟卡片下方顯示引導,按鈕呼叫 `selectFamily()` 切換到對應家族;`shell.html` 補樣式。
+- 驗證:check、npm test 77/77(新增 `ROTOR_GUIDE` 測試)、build、e2e 全過(追蹤率 93–97%,新增引導項目數檢查);桌面截圖確認版面正常,手機版不受影響(流程導覽僅桌面)。
+- 已知限制:引導為靜態文字與按鈕,尚無示意圖;「匯入外形(STL)」仍屬 8E,尚未實作。
+- 下一步:8C-3 示意圖;之後 8C-4 模型可信度標章。
+
 ## 2026-10-11 — ROADMAP 8C-3:概念頁轉子家族卡片(1/N)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `ROTOR_CARDS` / `rotorCardList()`(HAWT + 全部垂直軸家族的典型 Cp、λ 範圍、自啟動、模型可信度、說明);`ui.mjs` 在流程版面「① 概念」步驟的轉子面板頂端顯示卡片,點選 `selectFamily()` 切換家族並重新設計;`setFlow` 改為先切工作區再切步驟並補 `markNav()`。

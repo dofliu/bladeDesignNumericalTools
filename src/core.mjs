@@ -113,6 +113,12 @@ const ROTOR_CARDS = {
   sav: { cp: '0.10–0.25', lam: 'λ 0.6–1.2', start: '佳,低風速可自行啟動', trust: '低:經驗曲線', note: '阻力型,低速高轉矩、效率低。' },
   custom: { cp: '依匯入資料', lam: '依匯入資料', start: '依匯入資料', trust: '匯入資料:本工具不計算', note: '貼上論文、CFD 或實驗的 Cp–λ 曲線。' },
 };
+// 8C-3: "which path for my shape" guide (3 routes from ROADMAP 8C-3); fam = family selected by the button
+const ROTOR_GUIDE = [
+  { id: 'lift', title: '升力型垂直軸、外形可用 r(z) 與扭轉描述', fam: 'free', action: '使用自訂垂直軸外形', note: '以 DMST 計算性能;陡斜段僅計阻力,可信度中低。' },
+  { id: 'param', title: '有規律的外形,但現有模型算不了(例如螺旋、特殊截面)', fam: 'custom', action: '參數化家族 + 匯入性能', note: '幾何由工具產生,性能貼上論文、CFD 或實驗的 Cp–λ 曲線(本工具不計算)。' },
+  { id: 'cad', title: '完全自由的 CAD 外形', fam: 'custom', action: '匯入性能曲線', note: '匯入外形(STL)尚在規劃(8E);目前只能匯入該外形的性能曲線。' },
+];
 const rotorCardList = () => [['HAWT', ROTOR_CARDS.HAWT], ...Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, { ...ROTOR_CARDS[k], name: f.name }])];
 const VAWT_TYPES = Object.fromEntries(Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, f.name]));
 // Fraction of the free-shape height whose blade is steeper than limitDeg from vertical (near-horizontal segments only add drag in DMST).
@@ -924,4 +930,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
