@@ -856,6 +856,18 @@ export const FLOW_STEPS = {
   tunnel: { ws: 'tunnel', step: 'tunnel' },
   report: { ws: 'report', step: null },
 };
+export const FLOW_ORDER = ['concept', 'geometry', 'airfoil', 'tunnel', 'report'];
+export const FLOW_HINTS = {
+  concept: '選轉子型式與基本尺寸,看 3D 外觀與整體性能。',
+  geometry: '調整葉片/外形幾何,在單葉片檢視平面圖與剖面。',
+  airfoil: '選翼型、設定沿展長翼型站與極曲線。',
+  tunnel: '設定風速、紊流與負載,觀察轉子與發電機動態。',
+  report: '執行自動測試、產生報告與比較方案。',
+};
+export function flowNeighbor(id, d) {
+  const i = FLOW_ORDER.indexOf(id), j = i + d;
+  return i < 0 || j < 0 || j >= FLOW_ORDER.length ? null : FLOW_ORDER[j];
+}
 export function flowStepOf(ws, step) {
   if (ws === 'report') return 'report';
   if (ws === 'tunnel') return step === 'rotor' ? 'concept' : 'tunnel';
@@ -884,6 +896,8 @@ export function markNav() {
   document.querySelectorAll('.wsnav [data-ws]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ws === S.ws));
   const fs = flowStepOf(S.ws, S.step);
   document.querySelectorAll('.flownav [data-flow]').forEach(b => b.setAttribute('aria-pressed', b.dataset.flow === fs));
+  const fh = $('#flowHint'); if (fh) { fh.textContent = FLOW_HINTS[fs] || ''; fh.title = fh.textContent; }
+  const fp = $('#flowPrev'), fn = $('#flowNext'); if (fp) fp.disabled = !flowNeighbor(fs, -1); if (fn) fn.disabled = !flowNeighbor(fs, 1);
   document.querySelectorAll('.bnav [data-mnav]').forEach(b => b.setAttribute('aria-current', set ? b.dataset.mnav === 'set' : b.dataset.mnav === S.ws));
   $('#sideBtn').textContent = sideHidden ? '顯示設定' : '隱藏設定';
 }
@@ -920,6 +934,8 @@ export function init() {
     setStep(b.dataset.step); markNav();
   }));
   document.querySelectorAll('.flownav [data-flow]').forEach(b => b.addEventListener('click', () => setFlow(b.dataset.flow)));
+  $('#flowPrev').addEventListener('click', () => { const n = flowNeighbor(flowStepOf(S.ws, S.step), -1); if (n) setFlow(n); });
+  $('#flowNext').addEventListener('click', () => { const n = flowNeighbor(flowStepOf(S.ws, S.step), 1); if (n) setFlow(n); });
   $('#layoutBtn').addEventListener('click', () => { setLayout(!$('#app').classList.contains('flow')); renderPane(); });
   let lay = ''; try { lay = localStorage.getItem('wt-layout') || ''; } catch (e) {}
   setLayout(lay === 'flow');
