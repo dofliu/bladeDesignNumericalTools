@@ -633,3 +633,21 @@ test('rotorTrust:每個家族與水平軸都有可信度標示', () => {
   for (const k of Object.keys(core.VAWT_FAMILIES)) { S.vawt.type = k; assert.ok(core.rotorTrust().length > 3, k); assert.ok(core.rotorTrust().split(':')[0].length >= 1, k); } // 圖表標題與比較表只取冒號前的等級
   [S.mode, S.vawt.type] = keep;
 });
+
+test('polarSourceInfo / rotorTrust:未匯入、部分匯入、全部匯入、範圍與可信度不因匯入而提高', () => {
+  const rows = []; for (let a = -10; a <= 10; a += 1) rows.push(`${a} ${(0.1 * a).toFixed(3)} ${(0.01 + 0.0002 * a * a).toFixed(4)}`);
+  const text = rows.join('\n'), saved = { mode: S.mode, imp: S.af.polarImp, st: S.af.st };
+  S.mode = 'HAWT'; S.af.polarImp = {};
+  const keys = [...new Set(core.stSorted().map(s => s.k))];
+  let r = core.polarSourceInfo(); assert.equal(r.kind, 'builtin'); assert.match(core.rotorSource(), /內建半經驗/);
+  const base = core.rotorTrust().split(':')[0];
+  S.af.polarImp[keys[0]] = text; r = core.polarSourceInfo();
+  assert.equal(r.kind, 'mixed'); assert.equal(r.ranges[0].amin, -10); assert.equal(r.ranges[0].amax, 10);
+  assert.match(r.note, /-10°~10°.*外推/); assert.match(core.rotorSource(), /混合/);
+  for (const k of keys) S.af.polarImp[k] = text;
+  r = core.polarSourceInfo(); assert.equal(r.kind, 'imported'); assert.match(core.rotorTrust(), /匯入極曲線.*品質未驗證.*外推/);
+  assert.equal(core.rotorTrust().split(':')[0], base);
+  S.af.polarImp[keys[0]] = 'bad data'; // parse failure falls back to the built-in model
+  assert.notEqual(core.polarSourceInfo().kind, 'imported');
+  S.mode = saved.mode; S.af.polarImp = saved.imp; S.af.st = saved.st;
+});

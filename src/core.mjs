@@ -121,7 +121,12 @@ const ROTOR_GUIDE = [
 ];
 const rotorCardList = () => [['HAWT', ROTOR_CARDS.HAWT], ...Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, { ...ROTOR_CARDS[k], name: f.name }])];
 // 8C-4: one-line model-credibility label for the active rotor (same text as the concept cards)
-const rotorTrust = () => ROTOR_CARDS[S.mode === 'HAWT' ? 'HAWT' : S.vawt.type].trust;
+// Level text comes from the rotor card; importing a polar never raises it (data quality is unknown), it only changes the stated polar source.
+const rotorTrust = () => {
+  const t = ROTOR_CARDS[S.mode === 'HAWT' ? 'HAWT' : S.vawt.type].trust, ps = polarSourceInfo();
+  if (ps.kind === 'none' || ps.kind === 'builtin') return t;
+  return S.mode === 'HAWT' ? `${t.split(':')[0]}:BEM + ${ps.short}(品質未驗證,範圍外外推)` : `${t};極曲線${ps.kind === 'mixed' ? '部分' : ''}匯入(品質未驗證)`;
+};
 const VAWT_TYPES = Object.fromEntries(Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, f.name]));
 // Fraction of the free-shape height whose blade is steeper than limitDeg from vertical (near-horizontal segments only add drag in DMST).
 const freeSteepFraction = (limitDeg = 60) => {
@@ -129,7 +134,23 @@ const freeSteepFraction = (limitDeg = 60) => {
   return sl.filter(x => Math.abs(x.delta) * A.R2D > limitDeg).length / nz;
 };
 const noAirfoil = v => !!VAWT_FAMILIES[v.type]?.noAirfoil;
-const rotorSource = () => S.mode === 'HAWT' ? '計算:BEM(葉片元素動量理論)' : VAWT_FAMILIES[S.vawt.type].source;
+// Airfoil-polar data source actually used by the current design (what getPS really resolves, so a failed parse counts as built-in).
+// kind: 'none' (no airfoil polar) | 'builtin' | 'mixed' | 'imported'; ranges: alpha span (deg) of each imported table, outside it the model extrapolates (Viterna).
+const polarSourceInfo = () => {
+  if (S.mode === 'VAWT' && noAirfoil(S.vawt)) return { kind: 'none', short: '', ranges: [] };
+  const keys = [...new Set(S.mode === 'HAWT' ? stSorted().map(s => s.k) : [S.af.vawt])];
+  const imp = keys.map(k => [k, getPS(k)]).filter(([, ps]) => ps.imported);
+  const ranges = imp.map(([k, ps]) => ({ key: k, label: afLabel(k), amin: ps.rows[0][0], amax: ps.rows[ps.rows.length - 1][0] }));
+  const kind = !imp.length ? 'builtin' : imp.length < keys.length ? 'mixed' : 'imported';
+  const short = { builtin: '內建半經驗極曲線', mixed: '匯入與內建混合極曲線', imported: '匯入極曲線' }[kind];
+  const rg = ranges.map(r => `${r.label} ${r.amin.toFixed(0)}°~${r.amax.toFixed(0)}°`).join('、');
+  const note = kind === 'builtin' ? '' : `匯入資料只在其攻角範圍內內插(${rg}),範圍外由模型 Viterna 外推${kind === 'mixed' ? ';未匯入的翼型站仍用內建模型' : ''};匯入檔可能來自實驗或 XFOIL,本工具不驗證其品質`;
+  return { kind, short, ranges, note, nImp: imp.length, nAll: keys.length };
+};
+const rotorSource = () => {
+  if (S.mode !== 'HAWT') { const ps = polarSourceInfo(); const b = VAWT_FAMILIES[S.vawt.type].source; return ps.kind === 'none' || ps.kind === 'builtin' ? b : b + ';翼型極曲線:' + ps.short; }
+  return '計算:BEM(葉片元素動量理論)+ ' + polarSourceInfo().short;
+};
 // Schematic example curves for the imported-curve rotor. NOT measured data (lambda, Cp[, Cq] per line).
 const CUSTOM_EXAMPLES = {
   lift: { name: '示意:升力型(Cp,max 約 0.32 @ λ 3.5,非實測)', text: '# 示意曲線,非實測資料\n# lambda, Cp\n' + Array.from({ length: 15 }, (_, i) => { const l = 0.5 * (i + 1), x = l / 3.5; return l.toFixed(1) + ', ' + (0.32 * x * Math.exp(1 - x)).toFixed(4); }).join('\n') },
@@ -932,4 +953,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

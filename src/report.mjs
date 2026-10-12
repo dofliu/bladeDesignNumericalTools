@@ -128,6 +128,7 @@ export const Report = (function () {
     const aep = snapAEP({ A: G.A, cpMax: G.cpMax }), cf = capacityFactor(aep, S.load.Pmax);
     h += `<div class="sum"><div><b>${fmt(G.cpMax, 3)}</b><span>最大功率係數 Cp</span></div><div><b>${fmt(G.lopt, 2)}</b><span>最佳尖速比</span></div><div><b>${fmtP(0.5 * rho * G.A * (H ? S.hawt.Vd : 8) ** 3 * G.cpMax)}</b><span>氣動功率 @ ${H ? fmt(S.hawt.Vd, 1) : 8} m/s</span></div><div><b>${fmt(aep, 0)}</b><span>年發電量 kWh(理想,Weibull 年均 ${fmt(S.perf.Vavg, 1)} m/s、k=${fmt(S.perf.k, 1)})</span></div><div><b>${fmt(cf * 100, 0)}%</b><span>容量因數(對發電機額定 ${fmtP(S.load.Pmax)})</span></div></div>`;
     h += `<p class="muted"><b>模型可信度:</b>${esc(rotorTrust())}(${esc(rotorSource())})</p>`;
+    { const ps = polarSourceInfo(); if (ps.note) h += `<p class="muted"><b>極曲線資料來源:</b>${esc(ps.short)}。${esc(ps.note)}。</p>`; }
     if (R0.goal) h += `<p class="goal"><b>設計目標:</b>${esc(R0.goal)}</p>`;
     // 1 design conditions
     h += hN('設計條件');
@@ -234,7 +235,7 @@ export const Report = (function () {
     h += hN('結論與建議');
     h += `<ul>${conclusions(t).map(x => `<li>${x}</li>`).join('')}</ul>`;
     h += hN('模型說明與限制');
-    h += `<ul class="muted"><li>翼型極曲線:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依摩擦阻力、失速估算與 Viterna 失速後外推;精度低於 XFOIL 或風洞實測,可在工具中匯入實測極曲線取代。</li><li>水平軸:葉片元素動量理論(BEM),含 Prandtl 葉尖/輪轂損失與 Buhl 高誘導修正;偏航以分區方位角計算。</li><li>垂直軸:雙重多流管法(DMST),含展弦比修正與支撐臂阻力,未含動態失速與流線彎曲,高尖速比結果偏樂觀。Savonius 為經驗曲線。</li>${S.mode === 'VAWT' && S.vawt.type === 'custom' ? '<li><b>本設計的性能來源為「匯入曲線(使用者提供)」</b>:本工具不計算此轉子的氣動性能,Cp–λ 的準確度完全取決於資料來源(論文、CFD 或實驗),所有發電量與控制結果都以該曲線為前提。</li>' : ''}<li>電氣系統:永磁發電機 + 整流 + 升降壓轉換器的準穩態模型;虛擬風洞測試為時域模擬,不含結構振動、塔影與地面邊界層。</li><li>本報告數值適合概念設計與方案比較;製造前建議以 CFD 或實體風洞驗證。</li></ul>`;
+    h += `<ul class="muted"><li>翼型極曲線:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依摩擦阻力、失速估算與 Viterna 失速後外推;精度低於 XFOIL 或風洞實測,可在工具中匯入極曲線取代;匯入資料只在其攻角範圍內使用,範圍外仍由此模型外推,且工具不驗證匯入資料的品質(實驗或 XFOIL 皆然)。</li><li>水平軸:葉片元素動量理論(BEM),含 Prandtl 葉尖/輪轂損失與 Buhl 高誘導修正;偏航以分區方位角計算。</li><li>垂直軸:雙重多流管法(DMST),含展弦比修正與支撐臂阻力,未含動態失速與流線彎曲,高尖速比結果偏樂觀。Savonius 為經驗曲線。</li>${S.mode === 'VAWT' && S.vawt.type === 'custom' ? '<li><b>本設計的性能來源為「匯入曲線(使用者提供)」</b>:本工具不計算此轉子的氣動性能,Cp–λ 的準確度完全取決於資料來源(論文、CFD 或實驗),所有發電量與控制結果都以該曲線為前提。</li>' : ''}<li>電氣系統:永磁發電機 + 整流 + 升降壓轉換器的準穩態模型;虛擬風洞測試為時域模擬,不含結構振動、塔影與地面邊界層。</li><li>本報告數值適合概念設計與方案比較;製造前建議以 CFD 或實體風洞驗證。</li></ul>`;
     return { title, body: h, date: dateS };
   }
   const CSS = `.rpt{font:14px/1.6 "IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#15242C;background:#fff;max-width:960px;margin:0 auto;padding:28px 32px;font-variant-numeric:tabular-nums}
