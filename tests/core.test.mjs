@@ -630,6 +630,6 @@ test('rotorTrust:每個家族與水平軸都有可信度標示', () => {
   const keep = [S.mode, S.vawt.type];
   S.mode = 'HAWT'; assert.match(core.rotorTrust(), /BEM/);
   S.mode = 'VAWT';
-  for (const k of Object.keys(core.VAWT_FAMILIES)) { S.vawt.type = k; assert.ok(core.rotorTrust().length > 3, k); }
+  for (const k of Object.keys(core.VAWT_FAMILIES)) { S.vawt.type = k; assert.ok(core.rotorTrust().length > 3, k); assert.ok(core.rotorTrust().split(':')[0].length >= 1, k); } // 圖表標題與比較表只取冒號前的等級
   [S.mode, S.vawt.type] = keep;
 });
