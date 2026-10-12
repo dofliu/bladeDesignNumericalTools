@@ -69,6 +69,23 @@ function parseShapePts(text) {
   return pts;
 }
 const shapePtsText = pts => 'zf, rf\n' + pts.map(p => `${+p.zf.toFixed(4)}, ${+p.rf.toFixed(4)}`).join('\n');
+// Graphical editor helpers (pure, return new arrays). zf stays inside 0–1 and strictly between neighbours; rf is limited to 0.03–2.
+const SHAPE_GAP = 0.01, SHAPE_RF = [0.03, 2];
+const clampN = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+function moveShapePoint(pts, i, zf, rf) {
+  const q = pts.map(p => ({ ...p })), n = q.length;
+  const lo = i > 0 ? q[i - 1].zf + SHAPE_GAP : 0, hi = i < n - 1 ? q[i + 1].zf - SHAPE_GAP : 1;
+  q[i].zf = clampN(zf, lo, hi);
+  q[i].rf = clampN(rf, SHAPE_RF[0], SHAPE_RF[1]);
+  return q;
+}
+function addShapePoint(pts, zf) {
+  if (pts.length >= 24 || zf <= 0 || zf >= 1 || pts.some(p => Math.abs(p.zf - zf) < SHAPE_GAP)) return pts;
+  const sh = A.customShape({ pts: pts.map(p => ({ zf: p.zf, r: p.rf })) });
+  const q = [...pts, { zf, rf: clampN(+sh.rf.y(zf).toFixed(4), SHAPE_RF[0], SHAPE_RF[1]) }].sort((a, b) => a.zf - b.zf);
+  return q;
+}
+const removeShapePoint = (pts, i) => (pts.length <= 2 ? pts : pts.filter((_, k) => k !== i));
 const VAWT_FAMILIES = {
   H: { name: 'H 型(直葉片)', pane: 'dmst', rLabel: '轉子半徑 R', hasStruts: true, design: (cfg, mat) => dmstDesign(cfg, mat, true), source: DMST_SOURCE, badge: dmstBadge, csv: dmstCsv, title: dmstTitle, condRows: dmstRows,
     scene: 'blades', shape: v => ({ r: v.R, off: 0 }), struts: (v, ph, y0, sf) => armStruts([[], [0.5], [0.22, 0.78], [0.15, 0.5, 0.85]][Math.round(v.struts)] || [], v, ph, y0, sf) },
@@ -953,4 +970,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
