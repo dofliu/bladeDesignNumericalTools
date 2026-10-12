@@ -669,4 +669,8 @@ test('外形編輯器:moveShapePoint / addShapePoint / removeShapePoint 維持�
   assert.equal(core.removeShapePoint(pts, 2).length, pts.length - 1);
   const two = [{ zf: 0, rf: 1 }, { zf: 1, rf: 1 }];
   assert.equal(core.removeShapePoint(two, 0), two, '至少保留 2 點');
+  const nz = core.nudgeShapePoint(pts, 3, 0.02, -0.02);
+  assert.ok(Math.abs(nz[3].zf - pts[3].zf - 0.02) < 1e-9 && Math.abs(nz[3].rf - pts[3].rf + 0.02) < 1e-9, '方向鍵微調位移');
+  assert.equal(core.nudgeShapePoint(pts, 0, -0.5, 0)[0].zf, 0, '微調不超出範圍');
+  assert.equal(core.nudgeShapePoint(pts, 3, 0.9, 5)[3].rf, 2, '微調 rf 上限 2');
 });

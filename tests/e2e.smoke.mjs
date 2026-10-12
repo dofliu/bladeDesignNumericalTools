@@ -72,6 +72,14 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
       check(await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length) === n0 + 1, 'desktop: 雙擊曲線新增控制點');
       const b2 = await box(); await page.mouse.dblclick(b2.x, b2.y); await page.waitForTimeout(600);
       check(await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length) === n0, 'desktop: 雙擊控制點刪除');
+      const rk0 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT)[3].rf);
+      await page.evaluate(() => document.querySelector('#shapeSvg .shpt[data-i="3"]').focus());
+      await page.keyboard.press('ArrowRight'); await page.waitForTimeout(600);
+      const rk1 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT)[3].rf);
+      check(Math.abs(rk1 - rk0 - 0.02) < 1e-6 || rk1 >= 2, `desktop: 方向鍵微調控制點 ${rk0} → ${rk1}`);
+      check(await page.evaluate(() => document.activeElement?.dataset?.i === '3'), 'desktop: 微調後焦點仍在該控制點');
+      await page.keyboard.press('Delete'); await page.waitForTimeout(600);
+      check(await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length) === n0 - 1, 'desktop: Delete 鍵刪除控制點');
     }
     await page.click('#pane .fcard[data-fam="HAWT"]'); await page.waitForTimeout(800);
     await page.screenshot({ path: join(out, 'desktop-flow.png') });

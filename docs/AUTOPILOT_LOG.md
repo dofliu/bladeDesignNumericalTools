@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-12 — ROADMAP 8C-5:圖形化外形編輯器(2/3)鍵盤微調
+
+- 做了什麼:無開著的 `[autopilot]` PR。外形控制點聚焦後可用方向鍵微調(上下 zf、左右 rf,步長 0.02,Shift ×5)、Delete/Backspace 刪除;重繪後焦點回到同一控制點。`core.mjs` 新增純函式 `nudgeShapePoint`。
+- 驗證:見 PR。
+- 已知限制:拖曳中仍不即時顯示 Cp;手機只檢視時尚未隱藏編輯。
+- 下一步:8C-5 續(即時 Cp),或 8C-6 概念比較。
+
 ## 2026-10-12 — ROADMAP 8C-5:圖形化外形編輯器(1/2)
 
 - 做了什麼:無開著的 `[autopilot]` PR。自訂外形的側視預覽改為可編輯:拖曳控制點(放開後重新設計)、雙擊空白處新增、雙擊控制點刪除,文字表同步更新。`core.mjs` 新增純函式 `moveShapePoint`/`addShapePoint`/`removeShapePoint`(zf 保持嚴格遞增於 0–1、rf 限 0.03–2、最多 24 點、至少 2 點);預覽比例改為 max(1.2, rMax) 讓拖曳時畫面穩定。

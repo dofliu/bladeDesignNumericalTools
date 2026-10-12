@@ -70,7 +70,7 @@ export function shapePreviewSvg(pts) {
   const right = [], left = [];
   for (let i = 0; i <= 40; i++) { const f = i / 40, dx = Math.max(0.06, cfg.rf.y(f)) / rm * half; right.push(`${(cx + dx).toFixed(1)},${y(f)}`); left.push(`${(cx - dx).toFixed(1)},${y(f)}`); }
   const dots = pts.map((p, i) => `<g class="shpt" data-i="${i}" tabindex="0" role="button" aria-label="控制點 ${i + 1}:zf ${p.zf.toFixed(2)}、rf ${p.rf.toFixed(2)}"><circle cx="${(cx + p.rf / rm * half).toFixed(1)}" cy="${y(p.zf)}" r="8" fill="transparent"/><circle cx="${(cx + p.rf / rm * half).toFixed(1)}" cy="${y(p.zf)}" r="3.2" fill="var(--c2)"/></g>`).join('');
-  return `<svg id="shapeSvg" data-rm="${rm}" viewBox="0 0 ${W} ${Hh}" width="100%" style="max-width:260px;display:block;margin:6px auto;touch-action:none;cursor:crosshair" role="img" aria-label="外形編輯器(側視):拖曳控制點、雙擊曲線新增、雙擊控制點刪除"><line x1="${cx}" y1="2" x2="${cx}" y2="${Hh - 2}" stroke="var(--muted)" stroke-dasharray="3 3"/><polyline points="${right.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/><polyline points="${left.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>${dots}</svg>`;
+  return `<svg id="shapeSvg" data-rm="${rm}" viewBox="0 0 ${W} ${Hh}" width="100%" style="max-width:260px;display:block;margin:6px auto;touch-action:none;cursor:crosshair" role="img" aria-label="外形編輯器(側視):拖曳控制點、雙擊曲線新增、雙擊控制點刪除,或聚焦控制點後用方向鍵微調、Delete 刪除"><line x1="${cx}" y1="2" x2="${cx}" y2="${Hh - 2}" stroke="var(--muted)" stroke-dasharray="3 3"/><polyline points="${right.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/><polyline points="${left.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>${dots}</svg>`;
 }
 // Drag control points in the preview (pointer events → mouse + touch); double-click empty space adds a point, double-click a point removes it.
 function shapeEditor(p) {
@@ -93,6 +93,20 @@ function shapeEditor(p) {
   });
   const end = () => { if (drag == null) return; const pts = tmp; drag = null; tmp = null; if (pts) commit(pts); };
   box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+  // Keyboard: arrows nudge the focused point (Shift = 5x), Delete/Backspace removes it; focus returns to the same point after re-render.
+  box.addEventListener('keydown', ev => {
+    const g = ev.target.closest('.shpt'); if (!g) return;
+    const i = +g.dataset.i, cur = S.vawt.shapePts || FREE_SHAPE_DEFAULT, st = ev.shiftKey ? 0.1 : 0.02;
+    let q = null;
+    if (ev.key === 'Delete' || ev.key === 'Backspace') { q = removeShapePoint(cur, i); if (q === cur) { toast('至少需要 2 個控制點'); ev.preventDefault(); return; } }
+    else {
+      const d = { ArrowUp: [st, 0], ArrowDown: [-st, 0], ArrowRight: [0, st], ArrowLeft: [0, -st] }[ev.key]; if (!d) return;
+      q = nudgeShapePoint(cur, i, d[0], d[1]);
+    }
+    ev.preventDefault(); commit(q);
+    const j = ev.key === 'Delete' || ev.key === 'Backspace' ? Math.min(i, q.length - 1) : i;
+    p.querySelector(`#shapePrev .shpt[data-i="${j}"]`)?.focus();
+  });
   box.addEventListener('dblclick', ev => {
     const svg = box.querySelector('svg'); if (!svg) return;
     const g = ev.target.closest('.shpt'), cur = S.vawt.shapePts || FREE_SHAPE_DEFAULT;
