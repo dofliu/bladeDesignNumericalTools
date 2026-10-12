@@ -609,18 +609,19 @@ export function drawCompare() {
   // table
   const rows = [{ ...cur, cur: true }, ...SNAPS];
   const best = k => Math.max(...rows.map(r => r[k] || 0));
-  const aeps = rows.map(r => snapAEP(r)), bestAep = Math.max(...aeps);
+  const aeps = rows.map(r => snapAEP(r)), bestAep = Math.max(...aeps), bestAepA = Math.max(...aeps.map((e, i) => e / rows[i].A));
   const cfs = aeps.map((e, i) => capacityFactor(e, snapRated(rows[i]))), bestCf = Math.max(...cfs);
   const lcoes = rows.map((r, i) => r.massTot != null ? costEstimate(r.massTot, r.mat, snapRated(r), r.A, aeps[i], r.cost).lcoe : NaN), bestL = Math.min(...lcoes.filter(isFinite));
   const bw = r => r.band && r.band[0] != null ? r.band[1] - r.band[0] : 0, bestBw = Math.max(...rows.map(bw));
   const cls = (val, b) => Math.abs(val - b) < 1e-9 && rows.length > 1 ? 'best' : '';
-  let h = `<table><colgroup><col style="width:27%"><col style="width:11%"><col style="width:8%"><col style="width:17%"><col style="width:12%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、輸出限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;
+  let h = `<table><colgroup><col style="width:25%"><col style="width:10%"><col style="width:8%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:10%"><col style="width:11%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、輸出限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷ 掃掠面積:跨家族比較的基準(同風況、同發電機額定)">AEP/A<br><small>kWh/m²</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;
   rows.forEach((r, i) => {
     const sw = r.cur ? `<span class="sw" style="background:transparent;border:1.5px dashed ${col('--ink')}"></span>` : `<input type="checkbox" data-vis="${r.id}" ${r.vis ? 'checked' : ''} aria-label="顯示"><span class="sw" style="background:${col(SNAP_COL[r.ci])}"></span>`;
-    const sub = `${r.sub}${r.trust ? ` · 可信度 ${esc(r.trust.split(':')[0])}` : ''}${r.cpDes != null ? ` · Cp(λd) ${fmt(r.cpDes, 3)}` : ''} · ${fmt(r.mass, 2)} kg${r.mode === 'HAWT' ? '/葉' : ''}`;
+    const sub = `${r.sub} · 掃掠 ${fmt(r.A, 2)} m²${r.trust ? ` · 可信度 ${esc(r.trust.split(':')[0])}` : ''}${r.cpDes != null ? ` · Cp(λd) ${fmt(r.cpDes, 3)}` : ''} · ${fmt(r.mass, 2)} kg${r.mode === 'HAWT' ? '/葉' : ''}`;
     h += `<tr class="${r.cur ? 'cur' : ''}"><td class="nm"><div class="nmh">${sw}${r.cur ? `<b>目前設計</b>` : `<input data-name="${r.id}" value="${r.name.replace(/"/g, '&quot;')}" title="${r.name.replace(/"/g, '&quot;')}" aria-label="方案名稱">`}</div>${r.cur ? `<div class="sub">${designName()}</div>` : ''}<div class="sub">${sub}</div><div class="acts">${r.cur ? '<button class="btn" id="snapSave">儲存為方案</button>' : `<button class="btn ghost" data-load="${r.id}" title="載入此方案">載入</button><button class="btn ghost" data-del="${r.id}" aria-label="刪除" title="刪除">刪除</button>`}</div></td>
       <td class="${cls(r.cpMax, best('cpMax'))}">${fmt(r.cpMax, 3)}</td><td>${fmt(r.lopt, 2)}</td><td class="${cls(bw(r), bestBw)}">${r.band && r.band[0] != null ? fmt(r.band[0], 1) + '–' + fmt(r.band[1], 1) : '–'}</td>
       <td class="${cls(aeps[i], bestAep)}">${fmt(aeps[i], 0)}</td>
+      <td class="${cls(aeps[i] / r.A, bestAepA)}">${fmt(aeps[i] / r.A, 0)}</td>
       <td class="${cls(cfs[i], bestCf)}">${fmt(cfs[i] * 100, 0)}%</td>
       <td class="${isFinite(lcoes[i]) ? cls(lcoes[i], bestL) : ''}">${isFinite(lcoes[i]) ? fmt(lcoes[i], 1) : '–'}</td>
       </tr>`;
