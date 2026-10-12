@@ -496,7 +496,7 @@ export function curMetrics() {
   const P = G.perf, cm = G.cpMax; let lo = null, hi = null;
   for (let i = 0; i < P.lam.length; i++) if (P.cp[i] >= 0.9 * cm) { if (lo == null) lo = P.lam[i]; hi = P.lam[i]; }
   const H = S.mode === 'HAWT', R = G.R;
-  const m = { mode: S.mode, A: G.A, R, cpMax: cm, lopt: G.lopt, band: [lo, hi], mass: H ? G.bladeMass : G.mass, massTot: G.mass, mat: H ? S.hawt.material : S.vawt.material, cost: { ...(S.perf.cost || {}) }, Pmax: S.load.Pmax, cpDes: H ? G.cpDesign : null, lamD: H ? S.hawt.tsr : null,
+  const m = { mode: S.mode, trust: rotorTrust(), A: G.A, R, cpMax: cm, lopt: G.lopt, band: [lo, hi], mass: H ? G.bladeMass : G.mass, massTot: G.mass, mat: H ? S.hawt.material : S.vawt.material, cost: { ...(S.perf.cost || {}) }, Pmax: S.load.Pmax, cpDes: H ? G.cpDesign : null, lamD: H ? S.hawt.tsr : null,
     lam: r4(P.lam), cp: r4(P.cp.map(v => Math.max(-0.2, v))), sub: designSub() };
   if (H) Object.assign(m, { rr: r4(G.rows.map(x => x.r / R)), cR: r4(G.rows.map(x => x.c / R)), tw: r4(G.rows.map(x => x.tw)), aAct: r4(G.rows.map(x => x.aAct)), aD: r4(G.rows.map(x => x.aD)), tc: r4(G.afs.map(a => a.t)) });
   return m;
@@ -573,7 +573,7 @@ export function drawCompare() {
   let h = `<table><colgroup><col style="width:27%"><col style="width:11%"><col style="width:8%"><col style="width:17%"><col style="width:12%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、輸出限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;
   rows.forEach((r, i) => {
     const sw = r.cur ? `<span class="sw" style="background:transparent;border:1.5px dashed ${col('--ink')}"></span>` : `<input type="checkbox" data-vis="${r.id}" ${r.vis ? 'checked' : ''} aria-label="顯示"><span class="sw" style="background:${col(SNAP_COL[r.ci])}"></span>`;
-    const sub = `${r.sub}${r.cpDes != null ? ` · Cp(λd) ${fmt(r.cpDes, 3)}` : ''} · ${fmt(r.mass, 2)} kg${r.mode === 'HAWT' ? '/葉' : ''}`;
+    const sub = `${r.sub}${r.trust ? ` · 可信度 ${r.trust}` : ''}${r.cpDes != null ? ` · Cp(λd) ${fmt(r.cpDes, 3)}` : ''} · ${fmt(r.mass, 2)} kg${r.mode === 'HAWT' ? '/葉' : ''}`;
     h += `<tr class="${r.cur ? 'cur' : ''}"><td class="nm"><div class="nmh">${sw}${r.cur ? `<b>目前設計</b>` : `<input data-name="${r.id}" value="${r.name.replace(/"/g, '&quot;')}" title="${r.name.replace(/"/g, '&quot;')}" aria-label="方案名稱">`}</div>${r.cur ? `<div class="sub">${designName()}</div>` : ''}<div class="sub">${sub}</div><div class="acts">${r.cur ? '<button class="btn" id="snapSave">儲存為方案</button>' : `<button class="btn ghost" data-load="${r.id}" title="載入此方案">載入</button><button class="btn ghost" data-del="${r.id}" aria-label="刪除" title="刪除">刪除</button>`}</div></td>
       <td class="${cls(r.cpMax, best('cpMax'))}">${fmt(r.cpMax, 3)}</td><td>${fmt(r.lopt, 2)}</td><td class="${cls(bw(r), bestBw)}">${r.band && r.band[0] != null ? fmt(r.band[0], 1) + '–' + fmt(r.band[1], 1) : '–'}</td>
       <td class="${cls(aeps[i], bestAep)}">${fmt(aeps[i], 0)}</td>
@@ -697,7 +697,7 @@ export function drawPerf() {
   const P = G.perf, { rho } = air(), V = S.tun.V;
   const o = SIM.out;
   Plot.draw(cv[0], {
-    title: `功率係數 Cp–λ(Cp,max ${fmt(G.cpMax, 3)} @ λ ${fmt(G.lopt, 2)})`,
+    title: `功率係數 Cp–λ(Cp,max ${fmt(G.cpMax, 3)} @ λ ${fmt(G.lopt, 2)};${rotorSource()})`,
     series: [{ x: P.lam, y: P.cp, color: col('--c1'), label: 'Cp' }, { x: P.lam, y: P.ct, color: col('--c2'), axis: 'R', label: 'Ct', dash: [5, 3] }, { x: [0, P.lam[P.lam.length - 1]], y: [16 / 27, 16 / 27], color: col('--muted'), dash: [2, 3], width: 1, label: 'Betz 極限' }],
     ylim: [Math.min(0, ...P.cp.map(v => Math.max(v, -0.2))), 0.65], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Ct',
     markers: o.lam != null ? [{ x: o.lam, y: o.Cp, color: col('--signal'), label: '運轉點' }] : [], vlines: [{ x: G.lopt, color: col('--muted') }]
