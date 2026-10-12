@@ -651,3 +651,22 @@ test('polarSourceInfo / rotorTrust:未匯入、部分匯入、全部匯入、範
   assert.notEqual(core.polarSourceInfo().kind, 'imported');
   S.mode = saved.mode; S.af.polarImp = saved.imp; S.af.st = saved.st;
 });
+
+test('外形編輯器:moveShapePoint / addShapePoint / removeShapePoint 維持合法控制點', () => {
+  const pts = core.FREE_SHAPE_DEFAULT.map(q => ({ ...q }));
+  const m = core.moveShapePoint(pts, 3, 0.52, 1.4);
+  assert.equal(m[3].zf, 0.52); assert.equal(m[3].rf, 1.4);
+  assert.equal(pts[3].rf, 1, '不修改原陣列');
+  const c = core.moveShapePoint(pts, 3, 0.95, 9); // 不可越過下一點,rf 上限 2
+  assert.ok(c[3].zf < pts[4].zf && c[3].zf > pts[2].zf); assert.equal(c[3].rf, 2);
+  const e = core.moveShapePoint(pts, 0, -0.3, -1); assert.equal(e[0].zf, 0); assert.equal(e[0].rf, 0.03);
+  const e2 = core.moveShapePoint(pts, 6, 1.5, 0.5); assert.equal(e2[6].zf, 1);
+  for (const q of [m, c, e, e2]) assert.doesNotThrow(() => core.parseShapePts(core.shapePtsText(q)));
+  const a = core.addShapePoint(pts, 0.4);
+  assert.equal(a.length, pts.length + 1); assert.doesNotThrow(() => core.parseShapePts(core.shapePtsText(a)));
+  assert.ok(a.find(q => q.zf === 0.4).rf > 0.88 && a.find(q => q.zf === 0.4).rf < 1.01, '新點落在原曲線上');
+  assert.equal(core.addShapePoint(pts, 0.5), pts, '太靠近既有點不新增');
+  assert.equal(core.removeShapePoint(pts, 2).length, pts.length - 1);
+  const two = [{ zf: 0, rf: 1 }, { zf: 1, rf: 1 }];
+  assert.equal(core.removeShapePoint(two, 0), two, '至少保留 2 點');
+});

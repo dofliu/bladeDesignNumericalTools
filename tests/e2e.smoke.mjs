@@ -58,6 +58,21 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.click('#pane .fcard[data-fam="sav"]'); await page.waitForTimeout(800);
     check(await page.evaluate(() => document.querySelector('#pane .fcard[data-fam="sav"]').getAttribute('aria-pressed') === 'true'), 'desktop: 點選卡片切換轉子家族');
     await page.screenshot({ path: join(out, 'desktop-concept.png') });
+    await page.click('#pane .fcard[data-fam="free"]'); await page.waitForTimeout(1000);
+    { // 外形編輯器:拖曳、雙擊新增、雙擊刪除控制點
+      const n0 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length), rf0 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT)[3].rf);
+      const box = async () => await page.evaluate(() => { document.querySelector('#shapeSvg').scrollIntoView({ block: 'center' }); const c = document.querySelector('#shapeSvg .shpt[data-i="3"] circle:last-child').getBoundingClientRect(); const s = document.querySelector('#shapeSvg').getBoundingClientRect(); return { x: c.x + c.width / 2, y: c.y + c.height / 2, sx: s.width / 200 }; });
+      const b = await box();
+      await page.mouse.move(b.x, b.y); await page.mouse.down(); await page.mouse.move(b.x - 12 * b.sx, b.y, { steps: 4 }); await page.mouse.up(); await page.waitForTimeout(600);
+      const rf1 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT)[3].rf);
+      check(rf1 < rf0 - 0.05, `desktop: 拖曳外形控制點改變半徑 ${rf0} → ${rf1.toFixed(2)}`);
+      await page.screenshot({ path: join(out, 'desktop-shape-editor.png') });
+      const s = await page.evaluate(() => { document.querySelector('#shapeSvg').scrollIntoView({ block: 'center' }); const r = document.querySelector('#shapeSvg').getBoundingClientRect(); return { x: r.x, y: r.y, k: r.width / 200 }; });
+      await page.mouse.dblclick(s.x + 100 * s.k, s.y + 20 * s.k); await page.waitForTimeout(600);
+      check(await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length) === n0 + 1, 'desktop: 雙擊曲線新增控制點');
+      const b2 = await box(); await page.mouse.dblclick(b2.x, b2.y); await page.waitForTimeout(600);
+      check(await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length) === n0, 'desktop: 雙擊控制點刪除');
+    }
     await page.click('#pane .fcard[data-fam="HAWT"]'); await page.waitForTimeout(800);
     await page.screenshot({ path: join(out, 'desktop-flow.png') });
     await page.click('#layoutBtn');

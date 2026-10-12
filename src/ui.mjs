@@ -66,11 +66,39 @@ export function paneAirfoil() {
 // Inline-SVG side view of the free-form envelope: r(z) mirrored about the axis, control points as dots.
 export function shapePreviewSvg(pts) {
   let cfg; try { cfg = A.customShape({ pts: pts.map(p => ({ zf: p.zf, r: p.rf })) }); } catch (e) { return ''; }
-  const W = 200, Hh = 150, pad = 8, cx = W / 2, half = cx - pad, rm = Math.max(1e-6, cfg.rMax), y = f => (Hh - pad - f * (Hh - 2 * pad)).toFixed(1);
+  const W = 200, Hh = 150, pad = 8, cx = W / 2, half = cx - pad, rm = Math.max(1.2, cfg.rMax), y = f => (Hh - pad - f * (Hh - 2 * pad)).toFixed(1);
   const right = [], left = [];
-  for (let i = 0; i <= 40; i++) { const f = i / 40, dx = Math.max(0.06 * rm, cfg.rf.y(f)) / rm * half; right.push(`${(cx + dx).toFixed(1)},${y(f)}`); left.push(`${(cx - dx).toFixed(1)},${y(f)}`); }
-  const dots = pts.map(p => `<circle cx="${(cx + p.rf / rm * half).toFixed(1)}" cy="${y(p.zf)}" r="2.5" fill="var(--c2)"/>`).join('');
-  return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" style="max-width:260px;display:block;margin:6px auto" role="img" aria-label="外形預覽(側視)"><line x1="${cx}" y1="2" x2="${cx}" y2="${Hh - 2}" stroke="var(--muted)" stroke-dasharray="3 3"/><polyline points="${right.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/><polyline points="${left.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>${dots}</svg>`;
+  for (let i = 0; i <= 40; i++) { const f = i / 40, dx = Math.max(0.06, cfg.rf.y(f)) / rm * half; right.push(`${(cx + dx).toFixed(1)},${y(f)}`); left.push(`${(cx - dx).toFixed(1)},${y(f)}`); }
+  const dots = pts.map((p, i) => `<g class="shpt" data-i="${i}" tabindex="0" role="button" aria-label="控制點 ${i + 1}:zf ${p.zf.toFixed(2)}、rf ${p.rf.toFixed(2)}"><circle cx="${(cx + p.rf / rm * half).toFixed(1)}" cy="${y(p.zf)}" r="8" fill="transparent"/><circle cx="${(cx + p.rf / rm * half).toFixed(1)}" cy="${y(p.zf)}" r="3.2" fill="var(--c2)"/></g>`).join('');
+  return `<svg id="shapeSvg" data-rm="${rm}" viewBox="0 0 ${W} ${Hh}" width="100%" style="max-width:260px;display:block;margin:6px auto;touch-action:none;cursor:crosshair" role="img" aria-label="外形編輯器(側視):拖曳控制點、雙擊曲線新增、雙擊控制點刪除"><line x1="${cx}" y1="2" x2="${cx}" y2="${Hh - 2}" stroke="var(--muted)" stroke-dasharray="3 3"/><polyline points="${right.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/><polyline points="${left.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>${dots}</svg>`;
+}
+// Drag control points in the preview (pointer events → mouse + touch); double-click empty space adds a point, double-click a point removes it.
+function shapeEditor(p) {
+  const box = p.querySelector('#shapePrev'); if (!box) return;
+  const geom = (svg, ev) => { const r = svg.getBoundingClientRect(), W = 200, Hh = 150, pad = 8, rm = +svg.dataset.rm, sx = W / r.width, sy = Hh / r.height;
+    const px = (ev.clientX - r.left) * sx, py = (ev.clientY - r.top) * sy;
+    return { zf: (Hh - pad - py) / (Hh - 2 * pad), rf: Math.abs(px - W / 2) / (W / 2 - pad) * rm }; };
+  const commit = pts => { S.vawt.shapePts = pts; renderPane(); scheduleRebuild(true); };
+  let drag = null, tmp = null;
+  box.addEventListener('pointerdown', ev => {
+    const g = ev.target.closest('.shpt'); if (!g) return;
+    drag = +g.dataset.i; tmp = null; g.setPointerCapture?.(ev.pointerId); ev.preventDefault();
+  });
+  box.addEventListener('pointermove', ev => {
+    if (drag == null) return;
+    const svg = box.querySelector('svg'), q = geom(svg, ev), cur = tmp || S.vawt.shapePts || FREE_SHAPE_DEFAULT;
+    tmp = moveShapePoint(cur, drag, q.zf, q.rf);
+    box.innerHTML = shapePreviewSvg(tmp);
+    const ta = p.querySelector('#shapeText'); if (ta) ta.value = shapePtsText(tmp);
+  });
+  const end = () => { if (drag == null) return; const pts = tmp; drag = null; tmp = null; if (pts) commit(pts); };
+  box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+  box.addEventListener('dblclick', ev => {
+    const svg = box.querySelector('svg'); if (!svg) return;
+    const g = ev.target.closest('.shpt'), cur = S.vawt.shapePts || FREE_SHAPE_DEFAULT;
+    if (g) { const q = removeShapePoint(cur, +g.dataset.i); if (q === cur) toast('至少需要 2 個控制點'); else commit(q); return; }
+    const q = addShapePoint(cur, geom(svg, ev).zf); if (q === cur) toast('無法在此新增控制點(已達 24 個或太靠近既有點)'); else commit(q);
+  });
 }
 export function conceptCards() {
   const cur = S.mode === 'HAWT' ? 'HAWT' : S.vawt.type;
@@ -120,7 +148,7 @@ export function paneRotor() {
         sel('vawt.material', '材料', Object.entries(MATERIALS).map(([k, m]) => [k, m.name])) +
         `<p class="note">Savonius 性能採經驗曲線(Cp 約 0.15–0.2,最佳 λ 約 0.7–0.9,重疊比 0.15–0.25 最佳),啟動轉矩大但效率低。</p>`);
     } else {
-      if (v.type === 'free') h += grp('外形控制點 r(z)', `<p class="note">每行一個控制點「zf, rf」:zf 為高度比例(0 = 底、1 = 頂),rf 為該高度半徑對最大半徑 R 的倍數(單調三次插值)。接近水平(傾角 > 60°)的段落只計阻力,可信度較低。</p>
+      if (v.type === 'free') h += grp('外形控制點 r(z)', `<p class="note">可直接在下方側視圖拖曳控制點、雙擊空白處新增、雙擊控制點刪除;或每行一個控制點「zf, rf」:zf 為高度比例(0 = 底、1 = 頂),rf 為該高度半徑對最大半徑 R 的倍數(單調三次插值)。接近水平(傾角 > 60°)的段落只計阻力,可信度較低。</p>
         <div class="row wide"><label for="shapeTpl">內建樣板</label><div style="display:flex;gap:6px"><select class="txt" id="shapeTpl">${Object.entries(FREE_SHAPE_TEMPLATES).map(([k, t]) => `<option value="${k}">${t.name}</option>`).join('')}</select><button class="btn" id="shapeTplLoad">載入</button></div></div>
         <textarea id="shapeText" class="txt" style="min-height:120px" aria-label="外形控制點" spellcheck="false">${esc(shapePtsText(v.shapePts || FREE_SHAPE_DEFAULT))}</textarea>
         <div class="btns"><button class="btn" id="shapeApply">套用控制點</button></div>
@@ -236,6 +264,7 @@ export function bindPane(p) {
     try { S.vawt.shapePts = parseShapePts(p.querySelector('#shapeText').value); toast('已套用 ' + S.vawt.shapePts.length + ' 個控制點'); renderPane(); scheduleRebuild(true); }
     catch (e) { toast(e.message); }
   });
+  shapeEditor(p);
   on('cpFileBtn', () => $('#cpFileIn').click());
   cpInfo(p);
   on('datFile', () => $('#fileIn').click());
