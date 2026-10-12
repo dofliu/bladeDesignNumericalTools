@@ -344,6 +344,7 @@ export function updateSummaries() {
     const Pd = 0.5 * rho * G.A * Vd ** 3 * G.cpMax;
     const rows = [];
     rows.push(['性能來源', rotorSource()], ['模型可信度', rotorTrust()]);
+    { const ps = polarSourceInfo(); if (ps.note) rows.push(['極曲線範圍', ps.note]); }
     if (S.mode === 'HAWT') {
       const sol = G.rows.reduce((s, x) => s + x.c * x.dr, 0) * S.hawt.B / (Math.PI * S.hawt.R ** 2);
       rows.push(['掃掠面積', fmt(G.A, 2) + ' m²'], ['實度', fmt(sol, 3)], ['單葉質量', fmt(G.bladeMass, 2) + ' kg'], ['轉動慣量 J', fmt(G.J, 3) + ' kg·m²']);
