@@ -72,6 +72,15 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
       check(await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length) === n0 + 1, 'desktop: 雙擊曲線新增控制點');
       const b2 = await box(); await page.mouse.dblclick(b2.x, b2.y); await page.waitForTimeout(600);
       check(await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length) === n0, 'desktop: 雙擊控制點刪除');
+      { // 鍵盤微調:聚焦控制點後按方向鍵 / Delete
+        const r0 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT)[3].rf);
+        await page.focus('#shapeSvg .shpt[data-i="3"]'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(500);
+        const r1 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT)[3].rf);
+        check(r1 > r0 + 0.015, `desktop: 方向鍵微調控制點半徑 ${r0.toFixed(3)} → ${r1.toFixed(3)}`);
+        check(await page.evaluate(() => document.activeElement?.classList.contains('shpt')), 'desktop: 微調後焦點留在控制點');
+        await page.keyboard.press('Delete'); await page.waitForTimeout(500);
+        check(await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length) === n0 - 1, 'desktop: Delete 鍵刪除控制點');
+      }
     }
     await page.click('#pane .fcard[data-fam="HAWT"]'); await page.waitForTimeout(800);
     await page.screenshot({ path: join(out, 'desktop-flow.png') });

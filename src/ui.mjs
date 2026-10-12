@@ -93,6 +93,20 @@ function shapeEditor(p) {
   });
   const end = () => { if (drag == null) return; const pts = tmp; drag = null; tmp = null; if (pts) commit(pts); };
   box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+  // Keyboard: arrows nudge the focused point (Shift = 5x step; up/down = zf, left/right = rf), Delete removes it.
+  box.addEventListener('keydown', ev => {
+    const g = ev.target.closest?.('.shpt'); if (!g) return;
+    const i = +g.dataset.i, cur = S.vawt.shapePts || FREE_SHAPE_DEFAULT, st = ev.shiftKey ? 0.05 : 0.01, rst = ev.shiftKey ? 0.1 : 0.02;
+    let q = null;
+    if (ev.key === 'Delete' || ev.key === 'Backspace') { q = removeShapePoint(cur, i); if (q === cur) { toast('至少需要 2 個控制點'); ev.preventDefault(); return; } }
+    else {
+      const dz = ev.key === 'ArrowUp' ? st : ev.key === 'ArrowDown' ? -st : 0, dr = ev.key === 'ArrowRight' ? rst : ev.key === 'ArrowLeft' ? -rst : 0;
+      if (!dz && !dr) return;
+      q = moveShapePoint(cur, i, cur[i].zf + dz, cur[i].rf + dr);
+    }
+    ev.preventDefault(); commit(q);
+    const j = Math.min(i, q.length - 1); setTimeout(() => p.querySelector(`.shpt[data-i="${j}"]`)?.focus(), 0);
+  });
   box.addEventListener('dblclick', ev => {
     const svg = box.querySelector('svg'); if (!svg) return;
     const g = ev.target.closest('.shpt'), cur = S.vawt.shapePts || FREE_SHAPE_DEFAULT;
