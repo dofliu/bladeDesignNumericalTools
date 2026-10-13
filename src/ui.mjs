@@ -74,7 +74,7 @@ export function shapePreviewSvg(pts) {
 }
 // Drag control points in the preview (pointer events → mouse + touch); double-click empty space adds a point, double-click a point removes it.
 function shapeEditor(p) {
-  const box = p.querySelector('#shapePrev'); if (!box) return;
+  const box = p.querySelector('#shapePrev'); if (!box || isMobile()) return;
   const geom = (svg, ev) => { const r = svg.getBoundingClientRect(), W = 200, Hh = 150, pad = 8, rm = +svg.dataset.rm, sx = W / r.width, sy = Hh / r.height;
     const px = (ev.clientX - r.left) * sx, py = (ev.clientY - r.top) * sy;
     return { zf: (Hh - pad - py) / (Hh - 2 * pad), rf: Math.abs(px - W / 2) / (W / 2 - pad) * rm }; };
@@ -231,10 +231,18 @@ export function renderPane() {
   p.innerHTML = f();
   p.querySelectorAll('[data-fam]').forEach(b => b.addEventListener('click', () => selectFamily(b.dataset.fam)));
   bindPane(p);
+  applyReadonly(p);
   p.scrollTop = st;
   updateSummaries();
   if (S.step === 'rotor') renderSecTable();
   renderQuick();
+}
+// 手機版只檢視(ROADMAP 8C-7):設計面板的編輯控制項全部停用並加上說明;上方「快速操作」(風速/風向/MPPT)與工作區操作不受影響。
+export function applyReadonly(p) {
+  p.classList.toggle('ro', isMobile());
+  if (!isMobile()) return;
+  p.querySelectorAll('input,select,textarea,button').forEach(e => { e.disabled = true; });
+  p.insertAdjacentHTML('afterbegin', '<div class="mnote" role="note">手機版僅供檢視設計參數;要修改設計請用桌面版(風速、風向與 MPPT 可在風洞畫面上方「快速操作」調整)。</div>');
 }
 export function renderQuick() {
   const q = $('#quickBody'); if (!q) return;
@@ -1006,7 +1014,7 @@ export function init() {
     $('#chartsHint').textContent = off ? '圖表已收合,3D 風洞放大顯示' : ''; if (!off) setTimeout(redrawStatic, 30);
   });
   $('#hudBtn').addEventListener('click', () => { $('#hud').classList.toggle('off'); });
-  MQ.addEventListener('change', () => { placeOpts(); if (!isMobile()) $('#app').classList.remove('m-set'); markNav(); setTimeout(renderWS, 50); });
+  MQ.addEventListener('change', () => { placeOpts(); renderPane(); if (!isMobile()) $('#app').classList.remove('m-set'); markNav(); setTimeout(renderWS, 50); });
   placeOpts();
   new ResizeObserver(() => { if (S.ws !== 'tunnel') renderWS(); }).observe($('main'));
   $('#themeBtn').addEventListener('click', () => {
