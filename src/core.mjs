@@ -955,6 +955,12 @@ function steadyPower(V) {
   return best ? { ...best, startsOK } : { w: 0, Pout: 0, Pa: 0, startsOK };
 }
 
+// 方案比較用噪音概估:水平軸設計點葉尖速度法在 50 m 處的 Lp(dB(A));無葉尖速度資料(垂直軸、舊方案)回傳 null
+function snapNoise(m) {
+  if (!m || !(m.vTip > 0) || !(m.R > 0)) return null;
+  return noiseEstimate(m.vTip, 2 * m.R, 50).Lp;
+}
+
 // 啟動模擬:從初始轉速(設計轉速的 w0Frac 倍,0 = 靜止)在固定風速下跑時域,回傳轉速達設計轉速 50% 的時間
 // (tHalf,未達為 null)、結束時的 λ 與是否超過設計轉速 50%。會直接改動 SIM,呼叫端自行還原。
 function startupRun(V, w0Frac, dur) {
@@ -970,4 +976,4 @@ function startupRun(V, w0Frac, dur) {
   return { tHalf, lambda: SIM.omega * G.R / V, started: tHalf !== null };
 }
 
-export { polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, snapNoise, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

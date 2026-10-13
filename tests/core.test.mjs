@@ -9,7 +9,7 @@ import * as A from '../src/aero.mjs';
 import * as GEO from '../src/geo.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS, snapNoise } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -277,6 +277,15 @@ test('噪音估計:尖速 5 次方律與球面擴散', () => {
   designHAWT(); computePerf();
   const n = noiseEstimate(S.hawt.tsr * S.hawt.Vd, 2 * S.hawt.R, 50);
   assert.ok(n.Lw > 60 && n.Lw < 100 && n.Lp < n.Lw);
+});
+
+test('方案比較噪音:snapNoise 與 noiseEstimate 一致,缺資料回傳 null', () => {
+  assert.equal(snapNoise({ R: 1.5 }), null);
+  assert.equal(snapNoise({ vTip: null, R: 1.5 }), null);
+  assert.equal(snapNoise(null), null);
+  const m = { vTip: 52.5, R: 1.5 };
+  assert.ok(Math.abs(snapNoise(m) - noiseEstimate(52.5, 3, 50).Lp) < 1e-12);
+  assert.ok(snapNoise({ vTip: 80, R: 1.5 }) > snapNoise(m));
 });
 
 test('BPM 後緣自噪音:轉速 5 次方律、距離平方反比、葉片數能量相加,設計點量級合理', () => {
