@@ -237,6 +237,13 @@ function idealAEP(m, ratedW) {
   return e;
 }
 
+/* AEP per swept area (kWh/m²) on a common basis: every design gets the same rated power density wPerM2 (W/m²), so the
+   ranking reflects the rotor (Cp,max × area), not the generator size each snapshot happened to be saved with. */
+function aepPerArea(m, wPerM2) {
+  if (!m || !(m.A > 0)) return NaN;
+  return idealAEP(m, wPerM2 > 0 ? wPerM2 * m.A : 0) / m.A;
+}
+
 /* Tip-speed noise estimate (HAWT), after the Hau/Wagner empirical law Lw = 50 log10(Vtip) + 10 log10(D) - 4 dB(A).
    Far field: hemispherical spreading Lp = Lw - 10 log10(2 pi r^2) minus air absorption (~0.005 dB/m). Rough, +-5 dB. */
 function noiseEstimate(vTip, D, dist = 50) {
@@ -978,4 +985,4 @@ function startCq(perf) {
 }
 function conceptNoiseLp(lamRef, R, Vref = 8) { return noiseEstimate(lamRef * Vref, 2 * R, 50).Lp; }
 
-export { startCq, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { startCq, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, aepPerArea, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

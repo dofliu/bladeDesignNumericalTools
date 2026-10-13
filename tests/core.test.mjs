@@ -9,7 +9,7 @@ import * as A from '../src/aero.mjs';
 import * as GEO from '../src/geo.mjs';
 
 const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simStep,
-  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
+  gammaFn, weibullPdf, parseWindSeries, windSeriesPdf, windDensity, capacityFactor, snapRated, idealAEP, aepPerArea, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, startupRun, MATERIALS } = core;
 
 function setMode(mode) {
   S.mode = mode;
@@ -363,6 +363,18 @@ test('成本與 LCOE 粗估:各項加總、與發電量成反比、材料單價�
   designHAWT(); computePerf();
   const d = costEstimate(G.mass, S.hawt.material, S.load.Pmax, G.A, 4000);
   assert.ok(d.lcoe > 1 && d.lcoe < 100, 'LCOE ' + d.lcoe);
+});
+
+test('aepPerArea:統一額定功率密度,與各方案存檔的發電機額定無關', () => {
+  const a = { A: 7, cpMax: 0.45, Pmax: 500 }, b = { A: 7, cpMax: 0.45, Pmax: 5000 };
+  // same rotor saved with different generators -> identical AEP/A (snapAEP-style per-snapshot rating would differ)
+  assert.notEqual(idealAEP(a, a.Pmax) / a.A, idealAEP(b, b.Pmax) / b.A);
+  assert.equal(aepPerArea(a, 300), aepPerArea(b, 300));
+  // better Cp,max wins on the common basis; bigger area alone does not change AEP/A
+  assert.ok(aepPerArea({ A: 7, cpMax: 0.48 }, 300) > aepPerArea(a, 300));
+  assert.ok(Math.abs(aepPerArea({ A: 14, cpMax: 0.45 }, 300) - aepPerArea(a, 300)) < 1e-9);
+  assert.ok(Math.abs(aepPerArea(a, 0) - idealAEP(a, 0) / 7) < 1e-9);
+  assert.ok(Number.isNaN(aepPerArea({ A: 0, cpMax: 0.4 }, 300)));
 });
 
 test('idealAEP:額定限幅使容量因數 ≤ 1、單調且未限額時等於不限幅', () => {
