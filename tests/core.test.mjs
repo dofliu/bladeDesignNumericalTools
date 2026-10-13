@@ -684,3 +684,9 @@ test('概念比較:起轉 Cq 與噪音概估(8C-6)', () => {
   // 噪音:尖速加倍 +15 dB
   assert.ok(Math.abs(conceptNoiseLp(14, 1.5) - conceptNoiseLp(7, 1.5) - 50 * Math.log10(2)) < 1e-9);
 });
+
+test('概念比較:familyName 家族標籤(8C-6)', () => {
+  assert.equal(core.familyName('HAWT'), '水平軸葉片');
+  assert.equal(core.familyName('VAWT', 'H'), 'H 型(直葉片)');
+  assert.equal(core.familyName('VAWT', 'nope'), '垂直軸');
+});
