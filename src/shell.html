@@ -236,6 +236,9 @@ aside .sidehead{display:none}
   .mnote{margin:0 0 8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--muted);font-size:12.5px;line-height:1.5}
   #pane.ro [disabled]{opacity:.75}
   #pane.ro .shpt{pointer-events:none}
+  #pane.ro .row:not(.wide){grid-template-columns:1fr auto}
+  #pane.ro .row input[type=range]{display:none}
+  #pane.ro .row .num input{border-color:transparent;background:transparent;width:70px}
   .bnav{display:grid;grid-template-columns:repeat(5,1fr);grid-row:3;grid-column:1;background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
   .bnav button{border:0;background:transparent;color:var(--muted);padding:7px 2px 6px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
   .bnav button svg{width:20px;height:20px}

@@ -42,6 +42,7 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     const ro = await page.evaluate(() => ({ note: !!document.querySelector('#pane .mnote'), n: document.querySelectorAll('#pane input,#pane select,#pane textarea,#pane button').length, off: document.querySelectorAll('#pane input:not([disabled]),#pane select:not([disabled]),#pane textarea:not([disabled]),#pane button:not([disabled])').length, q: document.querySelectorAll('#quickBody input:not([disabled])').length }));
     check(ro.note && ro.n > 0 && ro.off === 0, `mobile: 設計面板唯讀(控制項 ${ro.n} 個、未停用 ${ro.off})`);
     check(ro.q > 0, 'mobile: 快速操作控制項仍可用');
+    check(await page.evaluate(() => { const r = document.querySelector('#pane.ro .row:not(.wide) input[type=range]'); return !r || getComputedStyle(r).display === 'none'; }), 'mobile: 唯讀面板隱藏滑桿');
     await page.screenshot({ path: join(out, 'mobile-settings-readonly.png') });
     check(await page.evaluate(() => getComputedStyle(document.querySelector('#modeSeg')).display === 'none'), 'mobile: 風機型式切換已隱藏');
     await page.click('[data-mnav="tunnel"]'); await page.waitForTimeout(500);
