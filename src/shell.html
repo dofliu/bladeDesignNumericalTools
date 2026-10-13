@@ -192,7 +192,7 @@ aside .sidehead{display:none}
   .app{grid-template-columns:1fr!important;grid-template-rows:auto 1fr auto;height:100%}
   header{padding:6px 10px;gap:8px;flex-wrap:nowrap}
   header h1{font-size:15px}
-  header h1 small,.wsnav,.flownav,.flowhint,.flowstep,.sidetog,#layoutBtn{display:none!important}
+  header h1 small,.wsnav,.flownav,.flowhint,.flowstep,.sidetog,#layoutBtn,#modeSeg{display:none!important}
   header .seg button{padding:5px 9px;font-size:12.5px}
   header .iconbtn{padding:5px 8px;font-size:12.5px}
   aside{grid-row:2;grid-column:1;border-right:0;display:none!important;min-height:0}
@@ -251,7 +251,7 @@ aside .sidehead{display:none}
 <div class="app" id="app">
   <header>
     <h1>風力機葉片設計<small>虛擬風洞 · 葉片 · 流場 · 報告</small></h1>
-    <div class="seg" role="group" aria-label="風機型式">
+    <div class="seg" id="modeSeg" role="group" aria-label="風機型式">
       <button id="mHAWT" aria-pressed="true">水平軸</button>
       <button id="mVAWT" aria-pressed="false">垂直軸</button>
     </div>

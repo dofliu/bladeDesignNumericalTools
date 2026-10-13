@@ -522,6 +522,7 @@ export function chartOpts() {
     o.querySelector('#vavg2').addEventListener('change', e => { S.perf.Vavg = Math.max(1, +e.target.value || 5); redrawStatic(); });
     o.querySelector('#wbk2').addEventListener('change', e => { S.perf.k = Math.min(3.5, Math.max(1.2, +e.target.value || 2)); redrawStatic(); });
     o.querySelector('#snapSave2').addEventListener('click', saveSnap);
+    if (isMobile()) o.querySelector('#snapSave2').disabled = true;
   } else if (S.ctab === 'live') {
     o.innerHTML = `<button class="iconbtn" id="clrHist">清除紀錄</button>`;
     o.querySelector('#clrHist').addEventListener('click', () => { for (const k in SIM.hist) SIM.hist[k].length = 0; SIM.traj.length = 0; });
@@ -643,6 +644,7 @@ export function drawCompare() {
   if (box.contains(document.activeElement) && document.activeElement.dataset.name) return;
   box.innerHTML = h;
   box.querySelector('#snapSave').addEventListener('click', saveSnap);
+  if (isMobile()) box.querySelectorAll('#snapSave,[data-load],[data-del],[data-name]').forEach(e => { e.disabled = true; }); // 手機只檢視(8C-7)
   box.querySelectorAll('[data-vis]').forEach(e => e.addEventListener('change', () => { const s = SNAPS.find(x => x.id == e.dataset.vis); s.vis = e.checked; storeSnaps(); redrawStatic(); }));
   box.querySelectorAll('[data-name]').forEach(e => e.addEventListener('change', () => { const s = SNAPS.find(x => x.id == e.dataset.name); s.name = e.value.trim() || s.name; storeSnaps(); redrawStatic(); }));
   box.querySelectorAll('[data-load]').forEach(e => e.addEventListener('click', () => loadSnap(SNAPS.find(x => x.id == e.dataset.load))));
