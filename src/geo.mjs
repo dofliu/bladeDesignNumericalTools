@@ -83,6 +83,41 @@ export function customBladeShape(shape, helixDeg) {
   const { rf, tw, rMax } = shape;
   return zf => ({ r: Math.max(0.06 * rMax, rf.y(zf)), off: (tw ? tw.y(zf) : (helixDeg || 0) * zf) * Math.PI / 180 });
 }
+/* ---------- Archimedean screw blade (parametric; performance comes from imported Cp-lambda, not computed) ---------- */
+export const ARCH_DEFAULT = { D: 1.0, L: 1.2, blades: 3, turns: 0.75, thick: 0.004, hubD: 0.08, tipFrac: 1.0, nz: 96 };
+// Axis = +Z (axial, 0..L). Each blade is a helicoidal plate: at height z it is a radial strip from the hub to the
+// envelope radius r(z) = R*(1-(1-tipFrac)*z/L) (tipFrac<1 gives a cone), rotated by turns*2*pi*z/L and
+// `thick` thick in the tangential direction. Returns { pos, idx } of one closed solid per blade, merged.
+export function archimedeanBlade(opt) {
+  const o = Object.assign({}, ARCH_DEFAULT, opt);
+  const R = o.D / 2, rh = Math.min(o.hubD / 2, R * 0.9), nz = Math.max(2, Math.round(o.nz)), hw = o.thick / 2;
+  const meshes = [];
+  for (let b = 0; b < Math.max(1, Math.round(o.blades)); b++) {
+    const th0 = 2 * Math.PI * b / Math.round(o.blades);
+    const pos = new Float32Array((nz + 1) * 4 * 3), idx = [];
+    for (let k = 0; k <= nz; k++) {
+      const zf = k / nz, z = o.L * zf, ro = Math.max(rh * 1.05, R * (1 - (1 - o.tipFrac) * zf));
+      const th = th0 + 2 * Math.PI * o.turns * zf, c = Math.cos(th), s = Math.sin(th);
+      // local (radial, tangential) corners: in-hub -t, out -t, out +t, in +t
+      [[rh, -hw], [ro, -hw], [ro, hw], [rh, hw]].forEach(([r, t], j) => {
+        const i = (k * 4 + j) * 3;
+        pos[i] = r * c - t * s; pos[i + 1] = r * s + t * c; pos[i + 2] = z;
+      });
+    }
+    for (let k = 0; k < nz; k++) for (let j = 0; j < 4; j++) {
+      const a = k * 4 + j, bb = k * 4 + (j + 1) % 4, c2 = a + 4, d = bb + 4;
+      idx.push(a, bb, c2, bb, d, c2);
+    }
+    for (const [k, flip] of [[0, true], [nz, false]]) { // end caps (quad as 2 triangles)
+      const q = k * 4;
+      if (flip) idx.push(q, q + 2, q + 1, q, q + 3, q + 2); else idx.push(q, q + 1, q + 2, q, q + 2, q + 3);
+    }
+    meshes.push({ pos, idx: new Uint32Array(idx) });
+  }
+  return merge(meshes);
+}
+// Swept (frontal projection) area of the envelope: pi * (D/2)^2 for the maximum radius.
+export const archimedeanSweptArea = opt => { const o = Object.assign({}, ARCH_DEFAULT, opt); return Math.PI * (o.D / 2) ** 2 * Math.max(1, o.tipFrac) ** 2; };
 export function merge(meshes) {
   let np = 0, ni = 0; for (const m of meshes) { np += m.pos.length; ni += m.idx.length; }
   const pos = new Float32Array(np), idx = new Uint32Array(ni);
