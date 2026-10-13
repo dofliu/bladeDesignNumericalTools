@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-13 — ROADMAP 8C-6:概念比較(3/N)家族標籤
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `familyName(mode, vtype)`;方案比較表每列副標前加 `[家族名]`,快照存入 `family`(舊方案由 mode 與 cfg.vawt.type 推得)。
+- 驗證:check、npm test 82/82(新增 familyName 測試)、build、e2e 全過(追蹤率 93–97%);桌面與手機載入比較分頁確認標籤顯示。
+- 已知限制:尚未依家族排序/分組;桌面窄面板欄位仍擁擠;無啟動風速欄。
+- 下一步:8C-6 續(分組、版面),或 8C-7 手機檢視版。
+
 ## 2026-10-12 — ROADMAP 8C-6:概念比較(2/N)起轉 Cq 與噪音
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `startCq`(低 λ 0.2–0.6 平均 Cq,代表自啟動能力)與 `conceptNoiseLp`(葉尖速度法 50 m 噪音);方案比較表新增「起轉 Cq」「噪音」兩欄(噪音最低者標最佳),快照存入這兩個指標(舊方案缺欄顯示「–」)。

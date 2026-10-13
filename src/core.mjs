@@ -971,6 +971,11 @@ function startupRun(V, w0Frac, dur) {
 }
 
 // 概念比較用:低 λ(0.2–0.6)平均轉矩係數 Cq 與噪音(葉尖速度法,距離 50 m)。vTip 以設計 λ(水平軸)或 λopt(其他)乘參考風速。
+function familyName(mode, vtype) {
+  if (mode === 'HAWT') return '水平軸葉片';
+  const f = VAWT_FAMILIES[vtype];
+  return f ? f.name : '垂直軸';
+}
 function startCq(perf) {
   let sum = 0, n = 0;
   for (let i = 0; i < perf.lam.length; i++) if (perf.lam[i] >= 0.2 && perf.lam[i] <= 0.6 && isFinite(perf.cq[i])) { sum += perf.cq[i]; n++; }
@@ -978,4 +983,4 @@ function startCq(perf) {
 }
 function conceptNoiseLp(lamRef, R, Vref = 8) { return noiseEstimate(lamRef * Vref, 2 * R, 50).Lp; }
 
-export { startCq, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { familyName, startCq, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
