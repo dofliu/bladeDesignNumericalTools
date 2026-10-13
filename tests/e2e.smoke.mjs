@@ -43,6 +43,7 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     check(ro.note && ro.n > 0 && ro.off === 0, `mobile: 設計面板唯讀(控制項 ${ro.n} 個、未停用 ${ro.off})`);
     check(ro.q > 0, 'mobile: 快速操作控制項仍可用');
     await page.screenshot({ path: join(out, 'mobile-settings-readonly.png') });
+    check(await page.evaluate(() => getComputedStyle(document.querySelector('#modeSeg')).display === 'none'), 'mobile: 風機型式切換已隱藏');
     await page.click('[data-mnav="tunnel"]'); await page.waitForTimeout(500);
   }
   if (!mobile) { // 流程式外殼:五步驟各自切到對應工作區並標示目前步驟
