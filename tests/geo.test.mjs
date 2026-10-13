@@ -148,3 +148,33 @@ test('customBladeShape + vawtBlade: sphere envelope lofts to the expected boundi
   near(ymin, 0, 1e-6, 'bottom'); near(ymax, H, 1e-6, 'top');
   near(rmax, R, 0.1, 'max radius incl. half chord');
 });
+
+function edgeStats(mesh) {
+  const m = new Map(), key = (a, b) => (a < b ? a + ',' + b : b + ',' + a);
+  // weld vertices by position (corners are not shared between strips only by index, so use coordinates)
+  const id = new Map(), rep = i => { const k = [0, 1, 2].map(j => mesh.pos[i * 3 + j].toFixed(6)).join(); if (!id.has(k)) id.set(k, id.size); return id.get(k); };
+  for (let t = 0; t < mesh.idx.length; t += 3) for (let e = 0; e < 3; e++) {
+    const k = key(rep(mesh.idx[t + e]), rep(mesh.idx[t + (e + 1) % 3])); m.set(k, (m.get(k) || 0) + 1);
+  }
+  return [...m.values()];
+}
+
+test('archimedeanBlade: closed manifold, envelope and axial length match parameters', () => {
+  const o = { D: 0.8, L: 1.0, blades: 3, turns: 0.75, thick: 0.004, hubD: 0.06, nz: 64 };
+  const mesh = GEO.archimedeanBlade(o);
+  assert.ok(edgeStats(mesh).every(c => c === 2), 'every edge shared by exactly two triangles');
+  let rMax = 0, zMin = 1e9, zMax = -1e9;
+  for (let i = 0; i < mesh.pos.length; i += 3) { rMax = Math.max(rMax, Math.hypot(mesh.pos[i], mesh.pos[i + 1])); zMin = Math.min(zMin, mesh.pos[i + 2]); zMax = Math.max(zMax, mesh.pos[i + 2]); }
+  near(rMax, Math.hypot(0.4, 0.002), 1e-4, 'outer radius');
+  near(zMax - zMin, 1.0, 1e-6, 'axial length');
+  near(GEO.archimedeanSweptArea(o), Math.PI * 0.16, 1e-12, 'swept area');
+  assert.ok(GEO.stl(mesh, 'arch').includes('facet normal'));
+});
+
+test('archimedeanBlade: cone taper shrinks tip radius and blade count scales mesh', () => {
+  const m1 = GEO.archimedeanBlade({ blades: 1, nz: 16 }), m3 = GEO.archimedeanBlade({ blades: 3, nz: 16 });
+  assert.equal(m3.idx.length, 3 * m1.idx.length);
+  const c = GEO.archimedeanBlade({ D: 1, L: 1, tipFrac: 0.4, blades: 1, nz: 16 });
+  let rTop = 0; for (let i = 0; i < c.pos.length; i += 3) if (c.pos[i + 2] > 0.999) rTop = Math.max(rTop, Math.hypot(c.pos[i], c.pos[i + 1]));
+  near(rTop, 0.2, 0.01, 'tip radius');
+});
