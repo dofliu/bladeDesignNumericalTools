@@ -670,3 +670,17 @@ test('外形編輯器:moveShapePoint / addShapePoint / removeShapePoint 維持�
   const two = [{ zf: 0, rf: 1 }, { zf: 1, rf: 1 }];
   assert.equal(core.removeShapePoint(two, 0), two, '至少保留 2 點');
 });
+
+test('概念比較:起轉 Cq 與噪音概估(8C-6)', () => {
+  const { startCq, conceptNoiseLp } = core;
+  // 人工曲線:低 λ 區平均
+  assert.ok(Math.abs(startCq({ lam: [0.1, 0.2, 0.4, 0.6, 1], cq: [9, 0.1, 0.05, 0.03, 0.2] }) - 0.06) < 1e-9);
+  assert.equal(startCq({ lam: [1, 2], cq: [0.1, 0.1] }), null);
+  // Savonius(阻力型)起轉轉矩應明顯大於預設水平軸
+  S.vawt.type = 'sav'; setMode('VAWT');
+  const sav = startCq(G.perf);
+  setMode('HAWT');
+  assert.ok(sav > 0.1 && sav > startCq(G.perf), `sav ${sav}`);
+  // 噪音:尖速加倍 +15 dB
+  assert.ok(Math.abs(conceptNoiseLp(14, 1.5) - conceptNoiseLp(7, 1.5) - 50 * Math.log10(2)) < 1e-9);
+});
