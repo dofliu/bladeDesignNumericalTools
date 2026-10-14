@@ -63,7 +63,10 @@ export const Bench = (function () {
     built = sig;
     let h = '';
     if (sav) {
-      h += `<div class="card"><h2>Savonius 阻力型轉子</h2><div class="cbx"><p class="hint">Savonius 由半圓筒葉片構成,靠阻力差產生轉矩,沒有翼型剖面可分析。下圖為俯視幾何與經驗性能曲線;若要分析翼型葉片,請在「轉子」設定改選 H 型、螺旋型、Φ 型或 V 型。</p></div></div>
+      const t = S.vawt.type, info = t === 'arch' ? ['阿基米德螺旋轉子', '阿基米德螺旋沒有翼型剖面可分析;下圖為俯視外形示意與匯入的 Cp–λ 曲線,本工具不計算此轉子的氣動性能。外形請在「轉子」分頁調整。']
+        : t === 'custom' ? ['自訂性能曲線轉子', '此轉子沒有葉片幾何模型;下圖為特徵半徑示意與匯入的 Cp–λ 曲線。']
+        : ['Savonius 阻力型轉子', 'Savonius 由半圓筒葉片構成,靠阻力差產生轉矩,沒有翼型剖面可分析。下圖為俯視幾何與經驗性能曲線;若要分析翼型葉片,請在「轉子」設定改選 H 型、螺旋型、Φ 型或 V 型。'];
+      h += `<div class="card"><h2>${info[0]}</h2><div class="cbx"><p class="hint">${info[1]}</p></div></div>
         <div class="bgrid"><div class="card">${'<h2>俯視幾何</h2>'}<div class="cbx"><canvas id="bSav" style="height:300px"></canvas></div></div><div class="card span2"><h2>Cp–λ(${VAWT_FAMILIES[S.vawt.type].curveSub})</h2><div class="cbx"><canvas id="bSavCp" style="height:300px"></canvas></div></div></div>`;
       $b('benchInner').innerHTML = h; return;
     }
@@ -369,7 +372,19 @@ export const Bench = (function () {
       g.strokeStyle = Plot.css('--grid'); g.setLineDash([4, 4]); g.beginPath(); g.arc(cx, cy, v.R * s, 0, 7); g.stroke(); g.setLineDash([]);
       const n = Math.round(v.B);
       for (let k = 0; k < n; k++) { const a = SIM.theta + 2 * Math.PI * k / n, off = (r - e / 2); const x = cx + Math.cos(a) * off * s, y = cy - Math.sin(a) * off * s; g.strokeStyle = Plot.css('--ink'); g.lineWidth = 3; g.beginPath(); g.arc(x, y, r * s, -a, -a + Math.PI, false); g.stroke(); }
-      if (cu) { g.strokeStyle = Plot.css('--ink'); g.lineWidth = 3; g.beginPath(); g.moveTo(cx - Math.cos(SIM.theta) * v.R * s, cy + Math.sin(SIM.theta) * v.R * s); g.lineTo(cx + Math.cos(SIM.theta) * v.R * s, cy - Math.sin(SIM.theta) * v.R * s); g.stroke(); g.fillStyle = Plot.css('--muted'); g.textAlign = 'center'; g.fillText('匯入性能曲線,沒有葉片幾何模型(虛線為特徵半徑)', cx, H - 10); }
+      if (S.vawt.type === 'arch') { // top view (+Z toward viewer): tip edge traces a spiral from the far end (thin) to the near end (thick radial strip)
+        const a = S.arch, nb = Math.max(1, Math.round(a.blades)), rh = Math.min(a.hubD / 2, a.D / 2 * 0.9);
+        for (let b = 0; b < nb; b++) {
+          const th0 = SIM.theta + 2 * Math.PI * b / nb, pt = zf => { const th = th0 + 2 * Math.PI * a.turns * zf, ro = Math.max(rh * 1.05, a.D / 2 * (1 - (1 - a.tipFrac) * zf)); return [ro, th]; };
+          g.strokeStyle = Plot.css('--c1'); g.lineWidth = 1.5; g.beginPath();
+          for (let k = 0; k <= 24; k++) { const [ro, th] = pt(k / 24); const x = cx + Math.cos(th) * ro * s, y = cy - Math.sin(th) * ro * s; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
+          g.stroke();
+          for (let q = 1; q < 5; q++) { const [r2, t2] = pt(1 - q / 5); g.strokeStyle = Plot.css('--grid'); g.lineWidth = 2; g.beginPath(); g.moveTo(cx + Math.cos(t2) * rh * s, cy - Math.sin(t2) * rh * s); g.lineTo(cx + Math.cos(t2) * r2 * s, cy - Math.sin(t2) * r2 * s); g.stroke(); }
+          const [ro, th] = pt(1);
+          g.strokeStyle = Plot.css('--ink'); g.lineWidth = 3; g.beginPath(); g.moveTo(cx + Math.cos(th) * rh * s, cy - Math.sin(th) * rh * s); g.lineTo(cx + Math.cos(th) * ro * s, cy - Math.sin(th) * ro * s); g.stroke();
+        }
+        g.fillStyle = Plot.css('--muted'); g.textAlign = 'center'; g.fillText('俯視:粗線為近端、淡線為沿軸向各位置的葉片板', cx, H - 10);
+      } else if (cu) { g.strokeStyle = Plot.css('--ink'); g.lineWidth = 3; g.beginPath(); g.moveTo(cx - Math.cos(SIM.theta) * v.R * s, cy + Math.sin(SIM.theta) * v.R * s); g.lineTo(cx + Math.cos(SIM.theta) * v.R * s, cy - Math.sin(SIM.theta) * v.R * s); g.stroke(); g.fillStyle = Plot.css('--muted'); g.textAlign = 'center'; g.fillText('匯入性能曲線,沒有葉片幾何模型(虛線為特徵半徑)', cx, H - 10); }
       arrow(g, 10, 18, 60, 18, Plot.css('--c3'), 2);
     }
     const P = G.perf; Plot.draw($b('bSavCp'), { title: 'Cp 與 Cq vs λ', series: [{ x: P.lam, y: P.cp, color: Plot.css('--c1'), label: 'Cp' }, { x: P.lam, y: P.cq, color: Plot.css('--c2'), axis: 'R', label: 'Cq' }], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Cq' });
