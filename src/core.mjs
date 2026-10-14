@@ -117,7 +117,18 @@ const VAWT_FAMILIES = {
     badge: fmt => `<b>${VAWT_TYPES.custom}</b>,${S.custom.name || '匯入資料'},R ${fmt(S.custom.R, 2)} m,A ${fmt(G.A, 2)} m²`,
     title: fmt => `${VAWT_TYPES.custom} R ${fmt(S.custom.R, 2)} m`,
     condRows: (fmt, esc) => [['型式', VAWT_TYPES.custom], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts.length} 筆)`], ['特徵半徑 / 高度', `${fmt(S.custom.R, 2)} m / ${fmt(S.custom.H, 2)} m`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
-    csv: () => 'type,axis,R_m,H_m,swept_area_m2,mass_kg\ncustom,' + [S.custom.axis, S.custom.R, S.custom.H, G.A.toFixed(4), S.custom.mass].join(','), curveTitle: '匯入曲線', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' }
+    csv: () => 'type,axis,R_m,H_m,swept_area_m2,mass_kg\ncustom,' + [S.custom.axis, S.custom.R, S.custom.H, G.A.toFixed(4), S.custom.mass].join(','), curveTitle: '匯入曲線', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有幾何模型可分析。' },
+  arch: { name: '阿基米德螺旋(匯入性能)', pane: 'arch', noAirfoil: true, scene: 'arch',
+    design: (cfg, mat) => { // geometry from S.arch; mass / inertia from solid helicoidal plates, swept area from the envelope
+      const a = S.arch, R = a.D / 2, rh = Math.min(a.hubD / 2, R * 0.9), n = Math.max(1, Math.round(a.blades));
+      const ro = (R + R * a.tipFrac) / 2, vol = (ro - rh) * a.L * a.thick, mb = vol * mat.rho;
+      G.R = R * Math.max(1, a.tipFrac); G.A = GEO.archimedeanSweptArea(a); G.bladeMass = mb; G.mass = mb * n;
+      G.J = Math.max(1e-3, n * mb * (ro * ro + ro * rh + rh * rh) / 3 * 1.05 + 0.01);
+    }, source: '匯入曲線(使用者提供,本工具不計算)',
+    badge: fmt => `<b>${VAWT_TYPES.arch}</b>,${Math.round(S.arch.blades)} 葉,D ${fmt(S.arch.D, 2)} m,L ${fmt(S.arch.L, 2)} m,${S.custom.name || '匯入資料'}`,
+    title: fmt => `${VAWT_TYPES.arch} D ${fmt(S.arch.D, 2)} m`,
+    condRows: (fmt, esc) => [['型式', VAWT_TYPES.arch], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts ? S.custom.pts.length : 0} 筆);本工具不計算螺旋轉子的氣動性能`], ['葉片數 / 每片圈數', `${Math.round(S.arch.blades)} / ${fmt(S.arch.turns, 2)}`], ['外徑 / 軸向長度', `${fmt(S.arch.D, 2)} m / ${fmt(S.arch.L, 2)} m`], ['板厚 / 輪轂直徑', `${fmt(S.arch.thick * 1000, 1)} mm / ${fmt(S.arch.hubD * 1000, 0)} mm`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
+    csv: () => 'type,D_m,L_m,blades,turns,thick_m,hubD_m,tipFrac,swept_area_m2,mass_kg\narchimedean,' + [S.arch.D, S.arch.L, S.arch.blades, S.arch.turns, S.arch.thick, S.arch.hubD, S.arch.tipFrac, G.A.toFixed(4), G.mass.toFixed(3)].join(','), curveTitle: '阿基米德螺旋(匯入曲線)', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有流管模型可分析。' }
 };
 // 8C-3: concept-card metadata (typical values from this tool's own models; qualitative notes, not guarantees)
 const ROTOR_CARDS = {
@@ -128,6 +139,7 @@ const ROTOR_CARDS = {
   V: { cp: '0.25–0.33', lam: 'λ 2.5–4', start: '差', trust: '中低:DMST 近似', note: '葉片傾斜,上寬下窄;風切下可能有利。' },
   free: { cp: '依外形而定', lam: 'λ 2–5', start: '依外形而定', trust: '中低:自訂外形 DMST,陡斜段僅計阻力', note: '以 r(z) 控制點描述任意旋轉外形。' },
   sav: { cp: '0.10–0.25', lam: 'λ 0.6–1.2', start: '佳,低風速可自行啟動', trust: '低:經驗曲線', note: '阻力型,低速高轉矩、效率低。' },
+  arch: { cp: '依匯入資料', lam: '依匯入資料', start: '依匯入資料', trust: '匯入資料:本工具不計算', note: '外形由參數產生(可匯出 STL 列印),性能須匯入實測或 CFD 的 Cp–λ。' },
   custom: { cp: '依匯入資料', lam: '依匯入資料', start: '依匯入資料', trust: '匯入資料:本工具不計算', note: '貼上論文、CFD 或實驗的 Cp–λ 曲線。' },
 };
 // 8C-3: "which path for my shape" guide (3 routes from ROADMAP 8C-3); fam = family selected by the button
@@ -185,6 +197,7 @@ const S = {
     cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5, furl: false, vFurl: 11, furlMax: 60, furlRate: 4 },
   perf: { Vavg: 5.5, k: 2, series: null, cost: {} },
   // Imported Cp-lambda rotor (vawt.type 'custom', ROADMAP 8A): performance comes entirely from user data (pts from A.parseCpCurve)
+  arch: { D: 1.0, L: 1.2, blades: 3, turns: 0.75, thick: 0.004, hubD: 0.08, tipFrac: 1.0 },
   custom: { axis: 'v', R: 1.0, H: 2.0, area: 0, mass: 20, J: 0, pts: null, text: '', warn: [], name: '' }
 };
 
@@ -651,7 +664,7 @@ function computePerf() {
     G.perf.step = DLAM;
     G.yawCurves = { 0: G.perf };
     scheduleYawBuckets(G.gen);
-  } else if (S.vawt.type === 'custom') {
+  } else if (S.vawt.type === 'custom' || S.vawt.type === 'arch') {
     if (!S.custom.pts) throw new Error('自訂性能曲線尚未匯入資料');
     G.perf = curveArrays(A.customCurve({ pts: S.custom.pts }));
     G.perf.step = 0.05;

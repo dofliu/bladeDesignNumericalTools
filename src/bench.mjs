@@ -365,7 +365,7 @@ export const Bench = (function () {
   function renderSav() {
     const F = fitCv($b('bSav'));
     if (F) {
-      const { g, W, H } = F, cu = S.vawt.type === 'custom', v = cu ? { ...S.vawt, R: S.custom.R, B: 0, overlap: 0 } : S.vawt, s = Math.min(W, H) / (2.6 * v.R), cx = W / 2, cy = H / 2, r = v.R / (2 - v.overlap) , e = v.overlap * 2 * r;
+      const { g, W, H } = F, cu = S.vawt.type === 'custom' || S.vawt.type === 'arch', v = cu ? { ...S.vawt, R: S.vawt.type === 'arch' ? G.R : S.custom.R, B: 0, overlap: 0 } : S.vawt, s = Math.min(W, H) / (2.6 * v.R), cx = W / 2, cy = H / 2, r = v.R / (2 - v.overlap) , e = v.overlap * 2 * r;
       g.strokeStyle = Plot.css('--grid'); g.setLineDash([4, 4]); g.beginPath(); g.arc(cx, cy, v.R * s, 0, 7); g.stroke(); g.setLineDash([]);
       const n = Math.round(v.B);
       for (let k = 0; k < n; k++) { const a = SIM.theta + 2 * Math.PI * k / n, off = (r - e / 2); const x = cx + Math.cos(a) * off * s, y = cy - Math.sin(a) * off * s; g.strokeStyle = Plot.css('--ink'); g.lineWidth = 3; g.beginPath(); g.arc(x, y, r * s, -a, -a + Math.PI, false); g.stroke(); }
