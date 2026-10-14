@@ -624,6 +624,7 @@ test('ROTOR_GUIDE:三條路徑各有標題、說明,且指向存在的家族', (
   assert.equal(core.ROTOR_GUIDE.length, 3);
   const fams = new Set(core.rotorCardList().map(([k]) => k));
   for (const g of core.ROTOR_GUIDE) { assert.ok(g.title && g.note && g.action); assert.ok(fams.has(g.fam), g.fam); }
+  assert.equal(core.ROTOR_GUIDE.find(g => g.id === 'param').fam, 'arch');
 });
 
 test('rotorTrust:每個家族與水平軸都有可信度標示', () => {

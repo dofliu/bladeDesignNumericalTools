@@ -145,7 +145,7 @@ const ROTOR_CARDS = {
 // 8C-3: "which path for my shape" guide (3 routes from ROADMAP 8C-3); fam = family selected by the button
 const ROTOR_GUIDE = [
   { id: 'lift', title: '升力型垂直軸、外形可用 r(z) 與扭轉描述', fam: 'free', action: '使用自訂垂直軸外形', note: '以 DMST 計算性能;陡斜段僅計阻力,可信度中低。' },
-  { id: 'param', title: '有規律的外形,但現有模型算不了(例如螺旋、特殊截面)', fam: 'custom', action: '參數化家族 + 匯入性能', note: '幾何由工具產生,性能貼上論文、CFD 或實驗的 Cp–λ 曲線(本工具不計算)。' },
+  { id: 'param', title: '有規律的外形,但現有模型算不了(例如螺旋、特殊截面)', fam: 'arch', action: '使用阿基米德螺旋家族 + 匯入性能', note: '幾何由工具產生(可匯出 STL 列印),性能貼上論文、CFD 或實驗的 Cp–λ 曲線(本工具不計算)。' },
   { id: 'cad', title: '完全自由的 CAD 外形', fam: 'custom', action: '匯入性能曲線', note: '匯入外形(STL)尚在規劃(8E);目前只能匯入該外形的性能曲線。' },
 ];
 const rotorCardList = () => [['HAWT', ROTOR_CARDS.HAWT], ...Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, { ...ROTOR_CARDS[k], name: f.name }])];
