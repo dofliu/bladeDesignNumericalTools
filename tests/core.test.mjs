@@ -471,7 +471,7 @@ test('自訂性能曲線轉子:內建示意範例可解析、無警告,Cp,max/λ
 test('家族註冊表:3D 場景規格(shape / struts)與重構前的內嵌公式一致', () => {
   const F = core.VAWT_FAMILIES, near = (a, b, k) => assert.ok(Math.abs(a - b) < 1e-12, `${k}: ${a} vs ${b}`);
   for (const [k, f] of Object.entries(F)) {
-    assert.ok(['blades', 'savonius', 'envelope'].includes(f.scene), k + ' scene');
+    assert.ok(['blades', 'savonius', 'envelope', 'arch'].includes(f.scene), k + ' scene');
     if (f.scene === 'blades') assert.ok(typeof f.shape === 'function' && typeof f.struts === 'function', k + ' shape/struts');
   }
   const v = { R: 1.2, H: 2.5, c: 0.15, helix: 120, struts: 2 }, y0 = 0.75, ph = 0.4;
@@ -548,7 +548,7 @@ test('VAWT_FAMILIES design():各家族面積/質量/慣量與重構前一致', (
 
 test('VAWT_FAMILIES 面板欄位:pane/rLabel/hasStruts/hasHelix 與重構前的型式判斷一致', () => {
   const F = core.VAWT_FAMILIES;
-  const pane = { H: 'dmst', helical: 'dmst', phi: 'dmst', V: 'dmst', sav: 'sav', custom: 'custom', free: 'dmst' };
+  const pane = { H: 'dmst', helical: 'dmst', phi: 'dmst', V: 'dmst', sav: 'sav', custom: 'custom', arch: 'arch', free: 'dmst' };
   const rl = { phi: '赤道半徑 R', V: '頂端半徑 R', H: '轉子半徑 R', helical: '轉子半徑 R', free: '最大半徑 R' };
   for (const k of Object.keys(F)) {
     assert.equal(F[k].pane, pane[k], k);
@@ -689,4 +689,28 @@ test('概念比較:familyName 家族標籤(8C-6)', () => {
   assert.equal(core.familyName('HAWT'), '水平軸葉片');
   assert.equal(core.familyName('VAWT', 'H'), 'H 型(直葉片)');
   assert.equal(core.familyName('VAWT', 'nope'), '垂直軸');
+});
+
+test('阿基米德螺旋家族(type arch):幾何衍生量、匯入曲線性能、未匯入時報錯、可信度', () => {
+  const saved = { mode: S.mode, type: S.vawt.type, pts: S.custom.pts, arch: { ...S.arch }, tun: { ...S.tun }, load: { ...S.load } };
+  try {
+    S.mode = 'VAWT'; S.vawt.type = 'arch'; S.custom.pts = null;
+    designVAWT();
+    assert.throws(() => computePerf(), /尚未匯入/);
+    const { pts } = A.parseCpCurve(core.CUSTOM_EXAMPLES.lift.text);
+    S.custom.pts = pts; S.custom.name = '示意';
+    Object.assign(S.arch, { D: 2.4, L: 2.5, blades: 3, turns: 1, thick: 0.004, hubD: 0.1, tipFrac: 1 });
+    designVAWT(); computePerf();
+    assert.ok(Math.abs(G.A - Math.PI * 1.44) < 1e-9, `A ${G.A}`);
+    assert.equal(G.R, 1.2);
+    assert.ok(G.mass > 0 && G.J > 0 && G.bladeMass * 3 - G.mass < 1e-9);
+    assert.ok(Math.abs(G.cpMax - 0.32) < 0.01, `Cp,max ${G.cpMax}`);
+    assert.ok(core.noAirfoil(S.vawt) && /匯入/.test(core.rotorTrust()) && /不計算/.test(core.rotorSource()));
+    assert.ok(core.VAWT_FAMILIES.arch.csv().includes('archimedean'));
+    autoMatchGen();
+    const track = trackingRatio('po', 6, 70);
+    assert.ok(track >= 0.9, `arch po 6 m/s tracking ${(track * 100).toFixed(1)}%`);
+  } finally {
+    S.mode = saved.mode; S.vawt.type = saved.type; S.custom.pts = saved.pts; Object.assign(S.arch, saved.arch); Object.assign(S.tun, saved.tun); Object.assign(S.load, saved.load);
+  }
 });
