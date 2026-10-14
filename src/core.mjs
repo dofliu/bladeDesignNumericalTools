@@ -127,7 +127,7 @@ const VAWT_FAMILIES = {
     }, source: '匯入曲線(使用者提供,本工具不計算)',
     badge: fmt => `<b>${VAWT_TYPES.arch}</b>,${Math.round(S.arch.blades)} 葉,D ${fmt(S.arch.D, 2)} m,L ${fmt(S.arch.L, 2)} m,${S.custom.name || '匯入資料'}`,
     title: fmt => `${VAWT_TYPES.arch} D ${fmt(S.arch.D, 2)} m`,
-    condRows: (fmt, esc) => [['型式', VAWT_TYPES.arch], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts ? S.custom.pts.length : 0} 筆);本工具不計算螺旋轉子的氣動性能`], ['葉片數 / 每片圈數', `${Math.round(S.arch.blades)} / ${fmt(S.arch.turns, 2)}`], ['外徑 / 軸向長度', `${fmt(S.arch.D, 2)} m / ${fmt(S.arch.L, 2)} m`], ['板厚 / 輪轂直徑', `${fmt(S.arch.thick * 1000, 1)} mm / ${fmt(S.arch.hubD * 1000, 0)} mm`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
+    condRows: (fmt, esc) => [['型式', VAWT_TYPES.arch], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts ? S.custom.pts.length : 0} 筆);本工具不計算螺旋轉子的氣動性能${isDemoCurve() ? '。<b>目前使用內建示意曲線,不是實測資料,結果僅供示範</b>' : ''}`], ['葉片數 / 每片圈數', `${Math.round(S.arch.blades)} / ${fmt(S.arch.turns, 2)}`], ['外徑 / 軸向長度', `${fmt(S.arch.D, 2)} m / ${fmt(S.arch.L, 2)} m`], ['板厚 / 輪轂直徑', `${fmt(S.arch.thick * 1000, 1)} mm / ${fmt(S.arch.hubD * 1000, 0)} mm`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
     csv: () => 'type,D_m,L_m,blades,turns,thick_m,hubD_m,tipFrac,swept_area_m2,mass_kg\narchimedean,' + [S.arch.D, S.arch.L, S.arch.blades, S.arch.turns, S.arch.thick, S.arch.hubD, S.arch.tipFrac, G.A.toFixed(4), G.mass.toFixed(3)].join(','), curveTitle: '阿基米德螺旋(匯入曲線)', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有流管模型可分析。' }
 };
 // 8C-3: concept-card metadata (typical values from this tool's own models; qualitative notes, not guarantees)
@@ -181,6 +181,7 @@ const rotorSource = () => {
   return '計算:BEM(葉片元素動量理論)+ ' + polarSourceInfo().short;
 };
 // Schematic example curves for the imported-curve rotor. NOT measured data (lambda, Cp[, Cq] per line).
+const isDemoCurve = () => /^示意/.test(S.custom.name || '');
 const CUSTOM_EXAMPLES = {
   lift: { name: '示意:升力型(Cp,max 約 0.32 @ λ 3.5,非實測)', text: '# 示意曲線,非實測資料\n# lambda, Cp\n' + Array.from({ length: 15 }, (_, i) => { const l = 0.5 * (i + 1), x = l / 3.5; return l.toFixed(1) + ', ' + (0.32 * x * Math.exp(1 - x)).toFixed(4); }).join('\n') },
   drag: { name: '示意:阻力型(Cp,max 約 0.18 @ λ 0.8,非實測)', text: '# 示意曲線,非實測資料\n# lambda, Cp\n' + Array.from({ length: 16 }, (_, i) => { const l = 0.1 * (i + 1), x = l / 0.8; return l.toFixed(1) + ', ' + Math.max(0, 0.18 * x * (2 - x)).toFixed(4); }).join('\n') },
@@ -996,4 +997,4 @@ function startCq(perf) {
 }
 function conceptNoiseLp(lamRef, R, Vref = 8) { return noiseEstimate(lamRef * Vref, 2 * R, 50).Lp; }
 
-export { familyName, startCq, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { isDemoCurve, familyName, startCq, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

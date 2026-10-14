@@ -693,7 +693,7 @@ test('概念比較:familyName 家族標籤(8C-6)', () => {
 });
 
 test('阿基米德螺旋家族(type arch):幾何衍生量、匯入曲線性能、未匯入時報錯、可信度', () => {
-  const saved = { mode: S.mode, type: S.vawt.type, pts: S.custom.pts, arch: { ...S.arch }, tun: { ...S.tun }, load: { ...S.load } };
+  const saved = { mode: S.mode, type: S.vawt.type, name: S.custom.name, pts: S.custom.pts, arch: { ...S.arch }, tun: { ...S.tun }, load: { ...S.load } };
   try {
     S.mode = 'VAWT'; S.vawt.type = 'arch'; S.custom.pts = null;
     designVAWT();
@@ -708,10 +708,13 @@ test('阿基米德螺旋家族(type arch):幾何衍生量、匯入曲線性能�
     assert.ok(Math.abs(G.cpMax - 0.32) < 0.01, `Cp,max ${G.cpMax}`);
     assert.ok(core.noAirfoil(S.vawt) && /匯入/.test(core.rotorTrust()) && /不計算/.test(core.rotorSource()));
     assert.ok(core.VAWT_FAMILIES.arch.csv().includes('archimedean'));
+    S.custom.name = core.CUSTOM_EXAMPLES.lift.name; assert.ok(core.isDemoCurve());
+    assert.ok(core.VAWT_FAMILIES.arch.condRows(String, String).some(r => r[1].includes('示意曲線')));
+    S.custom.name = '實測資料'; assert.ok(!core.isDemoCurve());
     autoMatchGen();
     const track = trackingRatio('po', 6, 70);
     assert.ok(track >= 0.9, `arch po 6 m/s tracking ${(track * 100).toFixed(1)}%`);
   } finally {
-    S.mode = saved.mode; S.vawt.type = saved.type; S.custom.pts = saved.pts; Object.assign(S.arch, saved.arch); Object.assign(S.tun, saved.tun); Object.assign(S.load, saved.load);
+    S.mode = saved.mode; S.vawt.type = saved.type; S.custom.pts = saved.pts; S.custom.name = saved.name; Object.assign(S.arch, saved.arch); Object.assign(S.tun, saved.tun); Object.assign(S.load, saved.load);
   }
 });
