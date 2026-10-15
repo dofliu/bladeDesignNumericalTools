@@ -353,6 +353,24 @@ function finishSTL(pos) {
   const idx = new Uint32Array(pos.length / 3); for (let i = 0; i < idx.length; i++) idx[i] = i;
   return { pos, idx, tris: idx.length / 3 };
 }
+// 網格閉合檢查:以相對容差焊接重合頂點,數每條邊被幾個三角形共用(閉合流形每條邊恰為 2)
+export function meshClosure(mesh) {
+  const P = mesh.pos, n = P.length / 3; let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < P.length; i++) { const k = i % 3; if (P[i] < lo[k]) lo[k] = P[i]; if (P[i] > hi[k]) hi[k] = P[i]; }
+  const q = Math.max(Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) * 1e-6, 1e-12), ids = new Map(), vid = new Uint32Array(n);
+  for (let i = 0; i < n; i++) {
+    const k = Math.round(P[i * 3] / q) + ',' + Math.round(P[i * 3 + 1] / q) + ',' + Math.round(P[i * 3 + 2] / q);
+    let id = ids.get(k); if (id === undefined) { id = ids.size; ids.set(k, id); } vid[i] = id;
+  }
+  const V = ids.size, cnt = new Map(); let degenerate = 0;
+  for (let t = 0; t < mesh.idx.length; t += 3) {
+    const a = vid[mesh.idx[t]], b = vid[mesh.idx[t + 1]], c = vid[mesh.idx[t + 2]];
+    if (a === b || b === c || a === c) { degenerate++; continue; }
+    for (const [u, v] of [[a, b], [b, c], [c, a]]) { const key = Math.min(u, v) * V + Math.max(u, v); cnt.set(key, (cnt.get(key) || 0) + 1); }
+  }
+  let open = 0, nonManifold = 0; for (const c of cnt.values()) { if (c === 1) open++; else if (c > 2) nonManifold++; }
+  return { open, nonManifold, degenerate, edges: cnt.size, closed: open === 0 && nonManifold === 0 };
+}
 // 單位係數 → 公尺;axis 'x'|'y'|'z' 轉成工具內部的 z 軸為旋轉軸(其餘軸輪替)
 export function transformSTL(mesh, unit, axis) {
   const s = { mm: 1e-3, cm: 1e-2, m: 1, in: 0.0254 }[unit || 'mm']; if (!s) throw new Error('未知單位 ' + unit);

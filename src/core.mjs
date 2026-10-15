@@ -142,17 +142,20 @@ const VAWT_FAMILIES = {
 };
 // 8E: imported STL mesh (raw as parsed; the prepared copy is rebuilt when unit / axis / density change). File never leaves the browser.
 const STL_LIMITS = { bytes: 30e6, trisWarn: 100000, trisMax: 400000 };
-const STL_DATA = { raw: null, key: '', mesh: null, metrics: null, warn: '' };
+const STL_DATA = { raw: null, key: '', mesh: null, metrics: null, warn: '', closure: null };
 function loadStl(data, name) {
   const size = typeof data === 'string' ? data.length : data.byteLength;
   if (size > STL_LIMITS.bytes) throw new Error(`STL 檔案太大(${(size / 1e6).toFixed(1)} MB,上限 ${STL_LIMITS.bytes / 1e6} MB)`);
   const m = GEO.parseSTL(data);
   if (m.tris > STL_LIMITS.trisMax) throw new Error(`STL 面數過多(${m.tris} 個三角形,上限 ${STL_LIMITS.trisMax}),請先在 CAD / MeshLab 簡化`);
-  STL_DATA.raw = m; STL_DATA.key = ''; STL_DATA.warn = m.tris > STL_LIMITS.trisWarn ? `面數較多(${m.tris} 個三角形),3D 顯示與重新計算可能較慢,建議簡化` : '';
+  const cl = GEO.meshClosure(m), w = [];
+  if (m.tris > STL_LIMITS.trisWarn) w.push(`面數較多(${m.tris} 個三角形),3D 顯示與重新計算可能較慢,建議簡化`);
+  if (!cl.closed) w.push(`網格未完全閉合(${cl.open} 條開放邊${cl.nonManifold ? `、${cl.nonManifold} 條非流形邊` : ''}),體積、質量與慣量可能不準,掃掠面積不受影響`);
+  STL_DATA.raw = m; STL_DATA.key = ''; STL_DATA.closure = cl; STL_DATA.warn = w.join(';');
   S.stl.name = name || 'STL';
   return m;
 }
-function clearStl() { STL_DATA.raw = null; STL_DATA.key = ''; STL_DATA.mesh = null; STL_DATA.metrics = null; STL_DATA.warn = ''; S.stl.name = ''; }
+function clearStl() { STL_DATA.raw = null; STL_DATA.key = ''; STL_DATA.mesh = null; STL_DATA.metrics = null; STL_DATA.warn = ''; STL_DATA.closure = null; S.stl.name = ''; }
 // transformed mesh (m, rotation axis = z) + metrics; null when nothing is loaded
 function stlPrepare() {
   if (!STL_DATA.raw) return null;

@@ -749,6 +749,9 @@ test('匯入外形家族(type stl):STL 圓柱的衍生量、單位與旋轉軸�
     assert.ok(cosN < 1 && G.cpMax > 0.2 && /不計算/.test(core.rotorSource()));
     assert.ok(core.VAWT_FAMILIES.stl.condRows(String, String).some(r => /cyl\.stl/.test(r[1])));
     assert.ok(core.VAWT_FAMILIES.stl.csv().startsWith('type,name,unit'));
+    assert.equal(core.STL_DATA.warn, '', '閉合圓柱無警告');
+    { const lines = txt.split('facet normal'), cut = 'solid t\nfacet normal' + lines.slice(2).join('facet normal'); // 去掉第一個三角形 → 開放邊
+      core.loadStl(cut, 'open.stl'); assert.ok(/未完全閉合/.test(core.STL_DATA.warn) && core.STL_DATA.closure.open > 0); core.loadStl(txt, 'cyl.stl'); }
     S.stl.unit = 'm'; designVAWT(); assert.ok(G.R > 400, `unit m R ${G.R}`); // 單位切換重新計算
     assert.throws(() => core.loadStl('not an stl', 'x.stl'), /無法解析/);
     assert.throws(() => core.loadStl(new ArrayBuffer(core.STL_LIMITS.bytes + 1), 'big.stl'), /太大/);
