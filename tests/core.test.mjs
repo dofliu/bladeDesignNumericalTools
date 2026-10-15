@@ -22,6 +22,9 @@ function trackingRatio(ctrl, V, dur) {
   S.tun.TI = 0; S.tun.V = V; S.load.ctrl = ctrl;
   SIM.omega = G.lopt * V / G.R * 0.7; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null;
   SIM.wcap = -1; SIM.pAvg = 0; SIM.latch = false; SIM.n = 0; SIM.po.wref = -1;
+  // Start every run from the same P&O state: otherwise the perturbation direction left over by earlier tests that ran
+  // random turbulence decides which side P&O starts climbing from (custom/Savonius 6 m/s gave 91.1% or 87.7% at random).
+  Object.assign(SIM.po, { acc: 0, cnt: 0, tim: 0, last: 0, dir: 1 }); SIM.Vmeas = V; SIM.gust = 0; SIM.gustT = -1;
   let e = 0, a = 0;
   for (let t = 0; t < dur; t += 0.004) {
     simStep(0.004);
