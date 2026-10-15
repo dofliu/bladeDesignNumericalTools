@@ -328,3 +328,66 @@ export function zip(files) { // [{name, text}]
   e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
   return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
 }
+/* ---------- STL import (8E): parse, unit scaling, revolved-envelope swept area, inertia ---------- */
+export function parseSTL(data) { // ArrayBuffer | Uint8Array | string -> {pos:Float32Array(mm 原單位), idx:Uint32Array, tris}
+  let bytes = null, text = null;
+  if (typeof data === 'string') text = data;
+  else bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+  if (bytes) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const n = bytes.byteLength >= 84 ? dv.getUint32(80, true) : -1;
+    if (n >= 0 && 84 + n * 50 === bytes.byteLength) { // binary
+      const pos = new Float32Array(n * 9);
+      for (let t = 0; t < n; t++) for (let k = 0; k < 9; k++) pos[t * 9 + k] = dv.getFloat32(84 + t * 50 + 12 + k * 4, true);
+      return finishSTL(pos);
+    }
+    text = new TextDecoder().decode(bytes);
+  }
+  const re = /vertex\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)/g, v = [];
+  let m; while ((m = re.exec(text))) v.push(+m[1], +m[2], +m[3]);
+  if (!v.length || v.length % 9) throw new Error('STL 格式無法解析(找不到完整三角形)');
+  return finishSTL(Float32Array.from(v));
+}
+function finishSTL(pos) {
+  for (let i = 0; i < pos.length; i++) if (!isFinite(pos[i])) throw new Error('STL 含有非數值座標');
+  const idx = new Uint32Array(pos.length / 3); for (let i = 0; i < idx.length; i++) idx[i] = i;
+  return { pos, idx, tris: idx.length / 3 };
+}
+// 單位係數 → 公尺;axis 'x'|'y'|'z' 轉成工具內部的 z 軸為旋轉軸(其餘軸輪替)
+export function transformSTL(mesh, unit, axis) {
+  const s = { mm: 1e-3, cm: 1e-2, m: 1, in: 0.0254 }[unit || 'mm']; if (!s) throw new Error('未知單位 ' + unit);
+  const p = new Float32Array(mesh.pos.length);
+  for (let i = 0; i < p.length; i += 3) {
+    const x = mesh.pos[i] * s, y = mesh.pos[i + 1] * s, z = mesh.pos[i + 2] * s;
+    if (axis === 'x') { p[i] = y; p[i + 1] = z; p[i + 2] = x; }
+    else if (axis === 'y') { p[i] = z; p[i + 1] = x; p[i + 2] = y; }
+    else { p[i] = x; p[i + 1] = y; p[i + 2] = z; }
+  }
+  return { pos: p, idx: mesh.idx };
+}
+// 以 z 為旋轉軸(公尺)。垂直軸:∫2r(z)dz(r 為該高度頂點最大半徑,以 nb 分箱);水平軸:π·rMax²
+export function stlMetrics(mesh, opt) {
+  const o = Object.assign({ density: 0, nb: 64, horizontal: false }, opt), P = mesh.pos;
+  let zmin = Infinity, zmax = -Infinity, rmax = 0, vol = 0, Jz = 0;
+  for (let i = 0; i < P.length; i += 3) { zmin = Math.min(zmin, P[i + 2]); zmax = Math.max(zmax, P[i + 2]); rmax = Math.max(rmax, Math.hypot(P[i], P[i + 1])); }
+  const L = zmax - zmin, rb = new Float64Array(o.nb);
+  for (let i = 0; i < P.length; i += 3) {
+    const b = Math.min(o.nb - 1, Math.floor((P[i + 2] - zmin) / (L || 1) * o.nb));
+    rb[b] = Math.max(rb[b], Math.hypot(P[i], P[i + 1]));
+  }
+  for (let b = 1; b < o.nb; b++) if (!rb[b]) rb[b] = rb[b - 1]; // 空箱補值
+  let area = 0; for (let b = 0; b < o.nb; b++) area += 2 * rb[b] * (L / o.nb);
+  if (o.horizontal) area = Math.PI * rmax * rmax;
+  // 以四面體符號體積累加體積與對 z 軸慣量(閉合網格;Jz 以均勻密度 ρ∫(x²+y²)dV 近似)
+  for (let t = 0; t < mesh.idx.length; t += 3) {
+    const a = mesh.idx[t] * 3, b = mesh.idx[t + 1] * 3, c = mesh.idx[t + 2] * 3;
+    const v = (P[a] * (P[b + 1] * P[c + 2] - P[b + 2] * P[c + 1]) - P[a + 1] * (P[b] * P[c + 2] - P[b + 2] * P[c]) + P[a + 2] * (P[b] * P[c + 1] - P[b + 1] * P[c])) / 6;
+    vol += v;
+    // 四面體(原點,a,b,c)對 z 軸慣量:|6V|/20 × Σ(對稱二次式)/… 以 x²+y² 的頂點積分式
+    const xs = [P[a], P[b], P[c]], ys = [P[a + 1], P[b + 1], P[c + 1]];
+    let q = 0; for (let i = 0; i < 3; i++) { q += xs[i] * xs[i] + ys[i] * ys[i]; for (let j = i + 1; j < 3; j++) q += xs[i] * xs[j] + ys[i] * ys[j]; }
+    Jz += v * q / 10; // ∫(x²+y²)dV 對原點為頂點的四面體 = V/10·Σ_{i≤j}(…) (含原點頂點為 0)
+  }
+  vol = Math.abs(vol); Jz = Math.abs(Jz);
+  return { area, rmax, zmin, zmax, length: L, volume: vol, mass: vol * o.density, J: Jz * o.density };
+}
