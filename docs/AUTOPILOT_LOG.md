@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-15 — ROADMAP 8E:匯入外形(STL)核心
+
+- 做了什麼:無開著的 `[autopilot]` PR。`geo.mjs` 新增 `parseSTL`(ASCII/binary 自動判斷)、`transformSTL`(單位 mm/cm/m/in、旋轉軸 x/y/z 轉為內部 z 軸)、`stlMetrics`(垂直軸 ∫2r dz 掃掠面積、水平軸 πr²、體積/質量/對軸轉動慣量)。尚未接 UI。
+- 驗證:check、npm test、build、e2e 見 PR;圓柱 STL 的面積 2RL、體積、慣量 mR²/2、ASCII/binary 一致皆通過。
+- 已知限制:慣量假設閉合網格與均勻密度;面積為頂點分箱的包絡近似;球/圓盤測試與介面(8E 介面)待辦。
+- 下一步:8E 介面(上傳 STL、3D 顯示、搭配匯入曲線)。
+
 ## 2026-10-14 — ROADMAP 8D:報告標示示意曲線
 
 - 做了什麼:無開著的 `[autopilot]` PR。`isDemoCurve()` 判斷目前匯入曲線是否為內建示意;arch 家族設計條件列與報告模型限制說明在示意曲線時明確標「非實測」。8D 報告子項完成(幾何參數與不計算氣動性能的說明先前已在)。

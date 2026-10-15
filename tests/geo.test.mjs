@@ -178,3 +178,36 @@ test('archimedeanBlade: cone taper shrinks tip radius and blade count scales mes
   let rTop = 0; for (let i = 0; i < c.pos.length; i += 3) if (c.pos[i + 2] > 0.999) rTop = Math.max(rTop, Math.hypot(c.pos[i], c.pos[i + 1]));
   near(rTop, 0.2, 0.01, 'tip radius');
 });
+
+function cylMesh(R, Lz, N) { // 閉合圓柱(z 0..Lz),供 STL 匯入測試
+  const pos = [], idx = []; const ring = (z) => { for (let i = 0; i < N; i++) { const a = 2 * Math.PI * i / N; pos.push(R * Math.cos(a), R * Math.sin(a), z); } };
+  ring(0); ring(Lz); pos.push(0, 0, 0, 0, 0, Lz); const c0 = 2 * N, c1 = 2 * N + 1;
+  for (let i = 0; i < N; i++) { const j = (i + 1) % N; idx.push(i, j, N + j, i, N + j, N + i, c0, j, i, c1, N + i, N + j); }
+  return { pos: Float32Array.from(pos), idx: Uint32Array.from(idx) };
+}
+test('STL 匯入:ASCII 與 binary 一致,mm→m,圓柱面積/體積/慣量對照解析值', () => {
+  const R = 0.5, L = 2, m = cylMesh(R * 1000, L * 1000, 96); // 以 mm 建
+  const ascii = GEO.stl({ pos: Float32Array.from(m.pos, v => v / 1000), idx: m.idx }, 'cyl');
+  const a = GEO.parseSTL(ascii);
+  const bin = new ArrayBuffer(84 + a.tris * 50), dv = new DataView(bin);
+  dv.setUint32(80, a.tris, true);
+  for (let t = 0; t < a.tris; t++) for (let k = 0; k < 9; k++) dv.setFloat32(84 + t * 50 + 12 + k * 4, a.pos[t * 9 + k], true);
+  const b = GEO.parseSTL(bin);
+  assert.equal(a.tris, b.tris);
+  const ma = GEO.stlMetrics(GEO.transformSTL(a, 'mm', 'z'), { density: 1000 });
+  const mb = GEO.stlMetrics(GEO.transformSTL(b, 'mm', 'z'), { density: 1000 });
+  near(ma.area, mb.area, 1e-9, 'ASCII/binary 面積一致');
+  near(ma.area, 2 * R * L, 0.03, '垂直軸掃掠面積 2RL');
+  near(ma.volume, Math.PI * R * R * L, 0.02, '體積 πR²L');
+  near(ma.J, 0.5 * ma.mass * R * R, 0.02 * ma.J, '慣量 mR²/2');
+  const mh = GEO.stlMetrics(GEO.transformSTL(a, 'mm', 'z'), { horizontal: true });
+  near(mh.area, Math.PI * R * R, 0.01, '水平軸圓盤面積');
+});
+test('STL 匯入:旋轉軸指定與錯誤處理', () => {
+  const m = cylMesh(0.1, 1, 24), mx = { pos: Float32Array.from(m.pos.map((v, i) => v)), idx: m.idx };
+  for (let i = 0; i < mx.pos.length; i += 3) { const z = mx.pos[i + 2]; mx.pos[i + 2] = mx.pos[i]; mx.pos[i] = z; } // 軸改為 x
+  const t = GEO.stlMetrics(GEO.transformSTL(mx, 'm', 'x'), {});
+  near(t.length, 1, 1e-6, '沿 x 軸長度轉成 z'); near(t.rmax, 0.1, 1e-6, '半徑');
+  assert.throws(() => GEO.parseSTL('solid x\nendsolid x'));
+  assert.throws(() => GEO.transformSTL(m, 'ft', 'z'));
+});
