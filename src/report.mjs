@@ -96,9 +96,12 @@ export const Report = (function () {
     } else if (!noAirfoil(S.vawt)) {
       const sol = S.vawt.B * S.vawt.c / S.vawt.R; out.push(`實度 Bc/R = ${fmt(sol, 3)};最佳尖速比 ${fmt(G.lopt, 2)}、Cp,max ${fmt(G.cpMax, 3)}。實度越高最佳尖速比越低、啟動越容易但最高效率下降。`);
       if (S.vawt.type === 'free') { const sf = freeSteepFraction(); out.push(sf > 0.01 ? `自訂外形有約 ${fmt(sf * 100, 0)}% 的葉片高度傾角超過 60°(接近水平的橫段),DMST 在這些段只計阻力、不產生轉矩,此外形的 Cp 可信度較低,建議以風洞實驗或 CFD 驗證。` : '自訂外形沒有傾角超過 60° 的葉片段;DMST 仍未含流線彎曲與動態失速,傾角較大處的 Cp 偏樂觀。'); }
+    } else if (S.vawt.type === 'arch' || S.vawt.type === 'custom') {
+      out.push(`性能完全來自匯入的 Cp–λ 曲線(${S.custom.name || '匯入資料'}),本工具不計算此轉子的氣動性能;Cp 與模擬結果的可信度取決於該資料。`);
+      if (/^示意/.test(S.custom.name || '')) out.push('目前使用的是內建「示意」曲線,不是實測或 CFD 資料,模擬結果只能用來檢視流程,不可當作此外形的實際性能;請匯入自己的 Cp–λ 資料後再評估。');
     }
     if (t) {
-      const mid = t.curve.filter(c => c.V >= 6 && c.V <= 10 && c.ideal > 0);
+      const mid =t.curve.filter(c => c.V >= 6 && c.V <= 10 && c.ideal > 0);
       const tr = mid.length ? mid.reduce((s, c) => s + c.Po / c.ideal, 0) / mid.length : null;
       if (tr != null) out.push(tr > 0.92 ? `6–10 m/s 區間實測輸出達理想 MPPT 的 ${(tr * 100).toFixed(0)}%,追蹤效果良好。` : `6–10 m/s 區間實測輸出只有理想 MPPT 的 ${(tr * 100).toFixed(0)}%;可嘗試最佳尖速比/最佳轉矩控制,或調整 P&O 擾動步長與週期。`);
       const trip = t.curve.find(c => c.trips > 0);

@@ -67,6 +67,7 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     check(await page.evaluate(() => document.querySelectorAll('#pane .gitem [data-guide]').length) === 3, 'desktop: 概念步驟顯示「我的形狀該選哪條路」引導');
     await page.click('#pane [data-guide="param"]'); await page.waitForTimeout(800);
     check(await page.evaluate(() => document.querySelector('#pane .fcard[data-fam="arch"]').getAttribute('aria-pressed') === 'true'), 'desktop: 引導「參數化家族」按鈕切到阿基米德螺旋');
+    check(await page.evaluate(() => { const b = Report.build(null).body; return b.includes('本工具不計算此轉子的氣動性能') && b.includes('內建「示意」曲線'); }), 'desktop: 螺旋家族報告註明不計算氣動性能與示意曲線警告');
     await page.click('.flownav [data-flow="geometry"]'); await page.waitForTimeout(800);
     check(await page.evaluate(() => { const c = document.querySelector('#bSav'); if (!c || !c.width) return false; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n > 500; }), 'desktop: 阿基米德螺旋單葉片俯視圖有繪出內容');
     await page.click('.flownav [data-flow="concept"]'); await page.waitForTimeout(400);
