@@ -835,7 +835,37 @@
     return { u, v, w };
   }
 
+  /* Tip-vortex strength from far-wake axial momentum: B helices of circulation Γ (pitch p=2π(1-2a)/λ, in R) act like a solenoid whose
+     axial induction BΓ/p must equal the far-wake deficit 2a, so Γ = 2a·p/B (units V·R). Lightly-loaded, uniform-loading approximation. */
+  function tipVortexGamma(B, lam, aTip) {
+    const a = clamp(aTip, 0, 0.45); return 2 * a * 2 * Math.PI * (1 - 2 * a) / (Math.max(lam, 1e-6) * B);
+  }
+  /* Relaxed free wake: start from the prescribed wake, then iteratively re-march every tip vortex from the disk using the local
+     Biot-Savart velocity of the previous iterate (axial 1+u, radial v_r; angular step fixed by ωt=λτ). No vortex roll-up/merging,
+     no far-wake truncation correction, the first segment's own singular contribution is removed by the core. Units R, V∞. */
+  function freeWake(B, lam, aTip, opts = {}) {
+    const iters = opts.iters == null ? 4 : opts.iters, core = opts.core || 0.05, mix = opts.mix || 0.6;
+    let wake = tipVortexWake(B, lam, aTip, opts);
+    const gam = tipVortexGamma(B, lam, aTip); if (gam === 0) return { wake, gamma: gam };
+    const dth = wake[0].length > 1 ? Math.abs(wake[0][1].th - wake[0][0].th) : 0, dt = dth / Math.max(lam, 1e-6);
+    for (let it = 0; it < iters; it++) {
+      const next = wake.map(L => {
+        const out = [L[0]]; let x = L[0].x, r = L[0].r;
+        for (let i = 1; i < L.length; i++) {
+          const q = biotSavart(wake, L[i - 1], gam, core), th = L[i - 1].th;
+          const vr = q.v * Math.cos(th) + q.w * Math.sin(th);
+          x += (1 + q.u) * dt; r = Math.max(0.2, r + vr * dt);
+          const t2 = L[i].th; out.push({ x: L[i].x + mix * (x - L[i].x), r: L[i].r + mix * (r - L[i].r), th: t2, y: 0, z: 0 });
+          x = out[i].x; r = out[i].r;
+        }
+        for (const p of out) { p.y = p.r * Math.cos(p.th); p.z = p.r * Math.sin(p.th); }
+        return out;
+      });
+      wake = next;
+    }
+    return { wake, gamma: gam };
+  }
 
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart, tipVortexGamma, freeWake };

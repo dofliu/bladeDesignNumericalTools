@@ -221,6 +221,27 @@ test('biotSavart:圓形渦環軸上誘導速度對照解析解 Γ R²/(2(R²+x²
   near(q1.u, 2 * A.biotSavart([ring], { x: 1, y: 0, z: 0 }, 1, 1e-4).u, 1e-9, 'Γ 線性');
 });
 
+test('自由渦尾流:Γ 與遠尾流軸向誘導一致、鬆弛後節距/膨脹合理、a=0 無變化', () => {
+  const B = 3, lam = 7, a = 0.3, per = 48;
+  const g = A.tipVortexGamma(B, lam, a);
+  near(g, 2 * a * 2 * Math.PI * (1 - 2 * a) / (lam * B), 1e-12, 'Γ 公式');
+  // 長尾流內部軸上的 Biot-Savart 軸向誘導 ≈ −2a(速度虧損,誤差 < 10%)
+  const w0 = A.tipVortexWake(B, lam, a, { turns: 40, perTurn: per });
+  const q = A.biotSavart(w0, { x: 6, y: 0, z: 0 }, g, 0.05);
+  assert.ok(q.u < 0, '尾流內軸向速度下降');
+  near(-q.u / (2 * a), 1, 0.1, '軸向誘導 vs 2a');
+  // 鬆弛後遠尾流節距接近 2π(1−2a)/λ、半徑膨脹
+  const f = A.freeWake(B, lam, a, { turns: 8, perTurn: per, iters: 4 });
+  const L = f.wake[0], n = L.length - 1;
+  near((L[n].x - L[n - per].x) / (2 * Math.PI * (1 - 2 * a) / lam), 1, 0.1, '節距比');
+  assert.ok(L[n].r > 1.1 && L[n].r < 1.6, '尾流半徑膨脹 ' + L[n].r);
+  for (let i = 1; i <= n; i++) assert.ok(L[i].x > L[i - 1].x, '軸向單調');
+  // a=0:Γ=0,回到未誘導的螺旋
+  const z = A.freeWake(1, lam, 0, { turns: 2, perTurn: per });
+  assert.equal(z.gamma, 0);
+  near(z.wake[0][per].x, 2 * Math.PI / lam, 1e-9, 'a=0 節距');
+});
+
 test('parseCpCurve:標題/分隔符號、缺 Cq 推得、λ 遞增、Betz 警告與錯誤', () => {
   const r = A.parseCpCurve('lambda,Cp\n# 註解\n0.5, 0.10\n1.0;0.20\n1.5\t0.25 0.2\n');
   assert.equal(r.pts.length, 3);
