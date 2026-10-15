@@ -2,6 +2,21 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-15 — 全面檢查與文件更新(互動工作階段,使用者要求)
+
+- 做了什麼:對全部 10 個轉子家族逐一切換,掃過 4 個設定步驟、5 個圖表分頁、4 個工作區、匯出、離線報告、20 秒模擬、方案儲存/載入/比較、深色模式、手機版,並檢查畫面上有無 NaN/undefined 與主控台錯誤;另用 ESLint `no-undef`(跨模組 export 名稱當 globals)掃全部原始碼。
+- 找到並修正 4 個問題:
+  1. 報告「下載 HTML」按下即 `ReferenceError: save is not defined`——`ui.mjs` 的 `save()` 在 ESM 遷移後沒有 export,report 取不到全域。
+  2. 啟用切出風速且功率曲線測試觸發保護時,報告結論引用 `runTests` 內的區域變數 `Vmax`,整份報告產生失敗。
+  3. 在單葉片工作區切換到無翼型家族(Savonius/匯入曲線/螺旋/STL)時,主迴圈 `Bench.tick` 可能早於版面重建而存取不存在的畫布(偶發主控台錯誤)。
+  4. 經典版面也顯示流程步驟導覽(`.seg{display:inline-flex}` 蓋過 `.flownav{display:none}`),1440 寬時標頭按鈕文字被擠成兩行;流程版面在 1300px 以下步驟被截掉。
+- 不穩定的單元測試:`tests/core.test.mjs` 的自訂曲線轉子(Savonius 取樣)6 m/s P&O 追蹤率約每 6 次失敗 1 次(91.1% 或 87.7%),原因是 `trackingRatio` 沒有重設 P&O 狀態,初始擾動方向沿用前面隨機紊流測試留下的值。改為每次從初始 P&O 狀態開始,門檻不變,連續 18 次執行全過;控制器對起始方向敏感一事列入 ROADMAP 第 4 項。
+- 其他:移除已無作用的 `src/package.json`;e2e 新增 4 項檢查(報告切出結論、報告 Blob 下載、Bench.tick 競態、經典版面隱藏流程導覽),皆先在舊版重現失敗。
+- 文件:`README.md` 改寫(功能、連線需求、結構、測試);新增 `docs/USER_GUIDE.md` 使用說明;`CLAUDE.md` 架構表改為全 ESM + 單一 Vite 入口、補轉子家族註冊表、跨模組 export 規則、對外連線例外、各家族實測 Cp;`docs/ROADMAP.md` 新增狀態總覽與檢查中發現的待辦;`docs/AUTOPILOT.md` 更新容器 e2e 做法。
+- 驗證:`npm run check`(10 檔)、`npm test` 90/90(連續 8 次)、`npm run build`、`npm run test:e2e` 47 項全過(MPPT 追蹤率 93–97%);桌面 1440/1100/900 與手機 390 截圖檢查。
+- 未修(已列入 ROADMAP):啟用變槳時報告仍記錄保護跳脫且結論文字不符;three.js/Google Fonts 對外連線;窄桌面 3D 徽章與視角按鈕重疊;12 個未使用變數。
+- 下一步:照常依 ROADMAP 第 6 項(自由渦尾流接上畫面)繼續。
+
 ## 2026-10-15 — ROADMAP 6:自由渦尾流核心
 
 - 做了什麼:無開著的 `[autopilot]` PR;第 8 項只剩需使用者決定/進行中的 UI 子項,回到第 3–7 項。`aero.mjs` 新增 `tipVortexGamma`(Γ = 2a·p/B,由遠尾流軸向動量)與 `freeWake`(以 `biotSavart` 迭代重新積分葉尖渦位置)。尚未接 UI。

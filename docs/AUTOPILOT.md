@@ -60,6 +60,7 @@
 
 ## 環境備忘(Claude Code 雲端容器)
 
-- Node 22 與 Playwright(全域安裝,Chromium 在 `/opt/pw-browsers`,容器已設定 `PLAYWRIGHT_BROWSERS_PATH`,不必另設 `CHROME_PATH`)已預裝。e2e 用 ESM `import 'playwright'`,不吃 `NODE_PATH`,可以暫時 `ln -sfn /opt/node22/lib/node_modules node_modules` 再執行,跑完用 `rm -f node_modules` 刪掉這個連結,**不要 commit**。若專案已加入 devDependencies,改用 `npm ci`。
+- Node 22 與 Playwright(全域安裝,Chromium 在 `/opt/pw-browsers`,容器已設定 `PLAYWRIGHT_BROWSERS_PATH`,不必另設 `CHROME_PATH`)已預裝。建置需要 devDependency `vite`:先 `npm ci`。e2e 用 ESM `import 'playwright'`,不吃 `NODE_PATH`;`npm ci` 之後只把 Playwright 連進專案的 `node_modules`:`ln -sfn /opt/node22/lib/node_modules/playwright node_modules/playwright && ln -sfn /opt/node22/lib/node_modules/playwright-core node_modules/playwright-core`(`node_modules/` 已在 `.gitignore`,不會被 commit)。不要再把整個 `node_modules` 連到全域目錄,那樣會找不到 `vite`。
+- 建議每次大改後順手跑一次跨模組名稱檢查(做法見 `CLAUDE.md`「常用指令」):模組靠裸全域溝通,漏 `export` 只有執行到才會壞。
 - cdnjs 可能被網路政策擋住:`npm pack three@0.128.0 && tar xzf three-0.128.0.tgz package/build/three.min.js`,把 `THREE_LOCAL` 指到解出的檔案(放在 scratchpad,不要放進 repo)。
 - 沒有 `gh` CLI:用 GitHub MCP 工具(`mcp__github__create_pull_request`、`mcp__github__merge_pull_request` 等)建立與合併 PR。
