@@ -397,6 +397,8 @@ export const Bench = (function () {
     const lam = lamNow();
     if (S.mode === 'HAWT') renderHAWT(lam); else renderVAWT(lam);
   }
-  function tick() { if (S.mode === 'VAWT' && noAirfoil(S.vawt)) renderSav(); }
+  // The main loop can tick before render() has rebuilt the layout for a just-switched family (rebuild and setWS are deferred),
+  // so only redraw when the current DOM was built for this family.
+  function tick() { if (S.mode === 'VAWT' && noAirfoil(S.vawt) && built === S.mode + S.vawt.type) renderSav(); }
   return { render, tick, state: B, sectionAt, secWorld, hawtAt, vawtAt, drawPlan, drawSec, drawStack, drawSpan, reset() { built = ''; } };
 })();

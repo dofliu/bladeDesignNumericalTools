@@ -114,6 +114,13 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.screenshot({ path: join(out, 'desktop-flow.png') });
     await page.click('#layoutBtn');
     check(await page.evaluate(() => getComputedStyle(document.querySelector('.wsnav')).display !== 'none'), 'desktop: 可切回經典版面');
+    check(await page.evaluate(() => getComputedStyle(document.querySelector('.flownav')).display === 'none'), 'desktop: 經典版面隱藏流程步驟導覽');
+    { // 回歸:單葉片工作區切到無翼型家族時,主迴圈 tick 可能早於版面重建,不可存取不存在的畫布
+      await page.evaluate(() => { selectFamily('free'); setWS('blade'); }); await page.waitForTimeout(1500);
+      const r = await page.evaluate(() => { const t = S.vawt.type; S.vawt.type = 'sav'; try { Bench.tick(); return 'ok'; } catch (e) { return e.message; } finally { S.vawt.type = t; } });
+      check(r === 'ok', `desktop: 單葉片工作區切換家族時 Bench.tick 不報錯(${r})`);
+      await page.evaluate(() => { selectFamily('HAWT'); setWS('tunnel'); }); await page.waitForTimeout(1200);
+    }
   }
   check(errors.length === 0, `${vp.tag}: no page errors ${errors.slice(0, 3).join(' | ')}`);
   await page.close();
@@ -132,6 +139,15 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
   }
   await page.click('.modal #expShow');
   check(await page.$eval('.modal #expTxt', t => !t.classList.contains('hidden') && t.value.length > 100), 'export: manual text fallback shown on request');
+  await page.keyboard.press('Escape'); await page.evaluate(() => document.querySelectorAll('.modal').forEach(m => m.remove()));
+  // 報告:啟用切出風速(預設水平軸 14 m/s 以上會觸發保護)時結論可產生,且「下載 HTML」走 Blob 下載
+  await page.evaluate(() => { S.load.cutOut = true; setWS('report'); }); await page.waitForTimeout(800);
+  await page.click('#rpGo');
+  await page.waitForFunction(() => /已產生|失敗/.test(document.querySelector('#rpProg').textContent), null, { timeout: 300000 });
+  const rp = await page.evaluate(() => ({ prog: document.querySelector('#rpProg').textContent, txt: document.querySelector('#rpView').innerText }));
+  check(/已產生/.test(rp.prog) && /切出風速/.test(rp.txt), `report: 啟用切出風速時可產生報告(${rp.prog.slice(0, 20)})`);
+  const [rdl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }).catch(() => null), page.click('#rpDl')]);
+  check(rdl && /^wind-turbine-report-\d{8}\.html$/.test(rdl.suggestedFilename()), `report: 下載 HTML 為 Blob 下載 ${rdl ? rdl.suggestedFilename() : 'none'}`);
   await page.close();
 }
 

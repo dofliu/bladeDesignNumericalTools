@@ -890,7 +890,7 @@ export function blobSave(filename, data) {
   } catch (e) { return false; }
 }
 // returns 'api' (claude.ai downloads), 'blob' (browser download started, may be blocked silently), or false
-async function save(filename, data) {
+export async function save(filename, data) {
   if (downloads) {
     try { await downloads.save({ filename, data }); toast('已儲存 ' + filename); } catch (e) { if (e && e.code !== 'declined') toast('無法儲存:' + (e.message || e.code)); }
     return 'api';

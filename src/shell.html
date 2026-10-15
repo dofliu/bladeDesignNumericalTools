@@ -40,7 +40,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .app.noside{grid-template-columns:1fr}.app.noside aside{display:none}
 header{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel);position:relative;z-index:3}
 .wsnav button{padding:6px 14px}
-.flownav{display:none}
+header .flownav{display:none} /* more specific than .seg{display:inline-flex}, so classic layout really hides the flow nav */
 .app.flow .flownav{display:inline-flex}
 .app.flow .wsnav{display:none}
 .flownav button{padding:6px 12px}
@@ -49,6 +49,7 @@ header{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:8px 14p
 .app.flow .flowstep{display:inline-flex;gap:4px}
 .flowstep button{white-space:nowrap;padding:6px 10px}
 @media (max-width:1700px){.app.flow .flowhint{display:none}}
+@media (max-width:1300px){.app.flow header h1 small{display:none}.app.flow header{flex-wrap:wrap;row-gap:6px}}
 .sidetog{display:inline-flex}
 header h1{font-size:17px;font-weight:600;margin:0;letter-spacing:.01em;white-space:nowrap}
 header h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:8px}
@@ -56,7 +57,7 @@ header h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:8p
 .seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;color:var(--muted);white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .hspace{flex:1}
-.iconbtn{border:1px solid var(--line);background:var(--panel2);border-radius:var(--radius);padding:6px 10px;cursor:pointer}
+.iconbtn{border:1px solid var(--line);background:var(--panel2);border-radius:var(--radius);padding:6px 10px;cursor:pointer;white-space:nowrap}
 .iconbtn:hover{border-color:var(--accent)}
 /* side panel */
 aside{border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
