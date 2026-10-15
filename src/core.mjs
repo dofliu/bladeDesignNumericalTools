@@ -128,8 +128,42 @@ const VAWT_FAMILIES = {
     badge: fmt => `<b>${VAWT_TYPES.arch}</b>,${Math.round(S.arch.blades)} 葉,D ${fmt(S.arch.D, 2)} m,L ${fmt(S.arch.L, 2)} m,${S.custom.name || '匯入資料'}`,
     title: fmt => `${VAWT_TYPES.arch} D ${fmt(S.arch.D, 2)} m`,
     condRows: (fmt, esc) => [['型式', VAWT_TYPES.arch], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts ? S.custom.pts.length : 0} 筆);本工具不計算螺旋轉子的氣動性能${isDemoCurve() ? '。<b>目前使用內建示意曲線,不是實測資料,結果僅供示範</b>' : ''}`], ['葉片數 / 每片圈數', `${Math.round(S.arch.blades)} / ${fmt(S.arch.turns, 2)}`], ['外徑 / 軸向長度', `${fmt(S.arch.D, 2)} m / ${fmt(S.arch.L, 2)} m`], ['板厚 / 輪轂直徑', `${fmt(S.arch.thick * 1000, 1)} mm / ${fmt(S.arch.hubD * 1000, 0)} mm`], ['掃掠面積', fmt(G.A, 2) + ' m²'], ['轉子質量', fmt(G.mass, 2) + ' kg']],
-    csv: () => 'type,D_m,L_m,blades,turns,thick_m,hubD_m,tipFrac,swept_area_m2,mass_kg\narchimedean,' + [S.arch.D, S.arch.L, S.arch.blades, S.arch.turns, S.arch.thick, S.arch.hubD, S.arch.tipFrac, G.A.toFixed(4), G.mass.toFixed(3)].join(','), curveTitle: '阿基米德螺旋(匯入曲線)', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有流管模型可分析。' }
+    csv: () => 'type,D_m,L_m,blades,turns,thick_m,hubD_m,tipFrac,swept_area_m2,mass_kg\narchimedean,' + [S.arch.D, S.arch.L, S.arch.blades, S.arch.turns, S.arch.thick, S.arch.hubD, S.arch.tipFrac, G.A.toFixed(4), G.mass.toFixed(3)].join(','), curveTitle: '阿基米德螺旋(匯入曲線)', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有流管模型可分析。' },
+  stl: { name: '匯入外形(STL + 匯入性能)', pane: 'stl', noAirfoil: true, scene: 'stl',
+    design: (cfg, mat) => { // swept area / inertia from the revolved envelope of the mesh (placeholder dimensions until a file is loaded)
+      const d = stlPrepare(), m = d && d.metrics;
+      if (m && m.rmax > 0 && m.length > 0) { G.R = m.rmax; G.A = m.area; G.mass = Math.max(0.01, m.mass); G.bladeMass = G.mass; G.J = Math.max(1e-3, m.J); }
+      else { G.R = 0.5; G.A = 1.2; G.mass = 10; G.bladeMass = 10; G.J = 0.6; }
+    }, source: '匯入曲線(使用者提供,本工具不計算)',
+    badge: fmt => `<b>${VAWT_TYPES.stl}</b>,${S.stl.name || '尚未匯入外形'},R ${fmt(G.R, 2)} m,A ${fmt(G.A, 2)} m²,${S.custom.name || '匯入資料'}`,
+    title: fmt => `${VAWT_TYPES.stl} R ${fmt(G.R, 2)} m`,
+    condRows: (fmt, esc) => [['型式', VAWT_TYPES.stl], ['外形來源', STL_DATA.raw ? `匯入 STL:${esc(S.stl.name)}(${STL_DATA.raw.tris} 個三角形,單位 ${S.stl.unit},旋轉軸 ${S.stl.axis})` : '尚未匯入 STL,以預設尺寸示意'], ['性能來源', `匯入曲線(使用者提供:${esc(S.custom.name || '匯入資料')},${S.custom.pts ? S.custom.pts.length : 0} 筆);本工具不計算此外形的氣動性能${isDemoCurve() ? '。<b>目前使用內建示意曲線,不是實測資料,結果僅供示範</b>' : ''}`], ['最大半徑 / 軸向長度', STL_DATA.metrics ? `${fmt(STL_DATA.metrics.rmax, 3)} m / ${fmt(STL_DATA.metrics.length, 3)} m` : '—'], ['掃掠面積', fmt(G.A, 2) + ' m²(旋轉包絡近似)'], ['轉子質量', fmt(G.mass, 2) + ' kg(實心均勻密度 ' + S.stl.density + ' kg/m³ × 體積)']],
+    csv: () => 'type,name,unit,axis,density,swept_area_m2,rmax_m,length_m,mass_kg,J_kgm2\nstl,' + [JSON.stringify(S.stl.name), S.stl.unit, S.stl.axis, S.stl.density, G.A.toFixed(4), G.R.toFixed(4), STL_DATA.metrics ? STL_DATA.metrics.length.toFixed(4) : '', G.mass.toFixed(3), G.J.toFixed(4)].join(','), curveTitle: '匯入外形(匯入曲線)', curveSub: '匯入曲線', flowNote: '此轉子使用匯入的性能曲線,沒有流管模型可分析。' }
 };
+// 8E: imported STL mesh (raw as parsed; the prepared copy is rebuilt when unit / axis / density change). File never leaves the browser.
+const STL_LIMITS = { bytes: 30e6, trisWarn: 100000, trisMax: 400000 };
+const STL_DATA = { raw: null, key: '', mesh: null, metrics: null, warn: '' };
+function loadStl(data, name) {
+  const size = typeof data === 'string' ? data.length : data.byteLength;
+  if (size > STL_LIMITS.bytes) throw new Error(`STL 檔案太大(${(size / 1e6).toFixed(1)} MB,上限 ${STL_LIMITS.bytes / 1e6} MB)`);
+  const m = GEO.parseSTL(data);
+  if (m.tris > STL_LIMITS.trisMax) throw new Error(`STL 面數過多(${m.tris} 個三角形,上限 ${STL_LIMITS.trisMax}),請先在 CAD / MeshLab 簡化`);
+  STL_DATA.raw = m; STL_DATA.key = ''; STL_DATA.warn = m.tris > STL_LIMITS.trisWarn ? `面數較多(${m.tris} 個三角形),3D 顯示與重新計算可能較慢,建議簡化` : '';
+  S.stl.name = name || 'STL';
+  return m;
+}
+function clearStl() { STL_DATA.raw = null; STL_DATA.key = ''; STL_DATA.mesh = null; STL_DATA.metrics = null; STL_DATA.warn = ''; S.stl.name = ''; }
+// transformed mesh (m, rotation axis = z) + metrics; null when nothing is loaded
+function stlPrepare() {
+  if (!STL_DATA.raw) return null;
+  const k = [S.stl.unit, S.stl.axis, S.stl.density].join('|');
+  if (STL_DATA.key !== k) {
+    STL_DATA.mesh = GEO.transformSTL(STL_DATA.raw, S.stl.unit, S.stl.axis);
+    STL_DATA.metrics = GEO.stlMetrics(STL_DATA.mesh, { density: S.stl.density });
+    STL_DATA.key = k;
+  }
+  return STL_DATA;
+}
 // 8C-3: concept-card metadata (typical values from this tool's own models; qualitative notes, not guarantees)
 const ROTOR_CARDS = {
   HAWT: { name: '水平軸(n 葉 BEM)', cp: '0.40–0.48', lam: 'λ 5–9', start: '需較高風速(約 3–4 m/s 以上)', trust: '中高:BEM + 半經驗極曲線', note: '效率最高、最成熟;需對風(偏航)。' },
@@ -139,6 +173,7 @@ const ROTOR_CARDS = {
   V: { cp: '0.25–0.33', lam: 'λ 2.5–4', start: '差', trust: '中低:DMST 近似', note: '葉片傾斜,上寬下窄;風切下可能有利。' },
   free: { cp: '依外形而定', lam: 'λ 2–5', start: '依外形而定', trust: '中低:自訂外形 DMST,陡斜段僅計阻力', note: '以 r(z) 控制點描述任意旋轉外形。' },
   sav: { cp: '0.10–0.25', lam: 'λ 0.6–1.2', start: '佳,低風速可自行啟動', trust: '低:經驗曲線', note: '阻力型,低速高轉矩、效率低。' },
+  stl: { cp: '依匯入資料', lam: '依匯入資料', start: '依匯入資料', trust: '匯入資料:本工具不計算', note: '上傳 CAD 匯出的 STL 做 3D 顯示與掃掠面積、質量、慣量估算;性能須匯入實測或 CFD 的 Cp–λ。' },
   arch: { cp: '依匯入資料', lam: '依匯入資料', start: '依匯入資料', trust: '匯入資料:本工具不計算', note: '外形由參數產生(可匯出 STL 列印),性能須匯入實測或 CFD 的 Cp–λ。' },
   custom: { cp: '依匯入資料', lam: '依匯入資料', start: '依匯入資料', trust: '匯入資料:本工具不計算', note: '貼上論文、CFD 或實驗的 Cp–λ 曲線。' },
 };
@@ -146,7 +181,7 @@ const ROTOR_CARDS = {
 const ROTOR_GUIDE = [
   { id: 'lift', title: '升力型垂直軸、外形可用 r(z) 與扭轉描述', fam: 'free', action: '使用自訂垂直軸外形', note: '以 DMST 計算性能;陡斜段僅計阻力,可信度中低。' },
   { id: 'param', title: '有規律的外形,但現有模型算不了(例如螺旋、特殊截面)', fam: 'arch', action: '使用阿基米德螺旋家族 + 匯入性能', note: '幾何由工具產生(可匯出 STL 列印),性能貼上論文、CFD 或實驗的 Cp–λ 曲線(本工具不計算)。' },
-  { id: 'cad', title: '完全自由的 CAD 外形', fam: 'custom', action: '匯入性能曲線', note: '匯入外形(STL)尚在規劃(8E);目前只能匯入該外形的性能曲線。' },
+  { id: 'cad', title: '完全自由的 CAD 外形', fam: 'stl', action: '匯入外形(STL)+ 匯入性能', note: '上傳 STL 取得 3D 顯示、掃掠面積與質量估算(檔案只在瀏覽器內處理),性能貼上該外形的 Cp–λ 曲線(本工具不計算)。' },
 ];
 const rotorCardList = () => [['HAWT', ROTOR_CARDS.HAWT], ...Object.entries(VAWT_FAMILIES).map(([k, f]) => [k, { ...ROTOR_CARDS[k], name: f.name }])];
 // 8C-4: one-line model-credibility label for the active rotor (same text as the concept cards)
@@ -199,6 +234,8 @@ const S = {
   perf: { Vavg: 5.5, k: 2, series: null, cost: {} },
   // Imported Cp-lambda rotor (vawt.type 'custom', ROADMAP 8A): performance comes entirely from user data (pts from A.parseCpCurve)
   arch: { D: 1.0, L: 1.2, blades: 3, turns: 0.75, thick: 0.004, hubD: 0.08, tipFrac: 1.0 },
+  // Imported STL shape (vawt.type 'stl', ROADMAP 8E): geometry from the user's mesh (kept in STL_DATA, not in S), performance from imported Cp-lambda
+  stl: { unit: 'mm', axis: 'z', density: 1200, name: '' },
   custom: { axis: 'v', R: 1.0, H: 2.0, area: 0, mass: 20, J: 0, pts: null, text: '', warn: [], name: '' }
 };
 
@@ -665,7 +702,7 @@ function computePerf() {
     G.perf.step = DLAM;
     G.yawCurves = { 0: G.perf };
     scheduleYawBuckets(G.gen);
-  } else if (S.vawt.type === 'custom' || S.vawt.type === 'arch') {
+  } else if (S.vawt.type === 'custom' || S.vawt.type === 'arch' || S.vawt.type === 'stl') {
     if (!S.custom.pts) throw new Error('自訂性能曲線尚未匯入資料');
     G.perf = curveArrays(A.customCurve({ pts: S.custom.pts }));
     G.perf.step = 0.05;
@@ -997,4 +1034,4 @@ function startCq(perf) {
 }
 function conceptNoiseLp(lamRef, R, Vref = 8) { return noiseEstimate(lamRef * Vref, 2 * R, 50).Lp; }
 
-export { isDemoCurve, familyName, startCq, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { STL_DATA, STL_LIMITS, loadStl, clearStl, stlPrepare, isDemoCurve, familyName, startCq, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

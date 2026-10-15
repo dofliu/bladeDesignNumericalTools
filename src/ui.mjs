@@ -45,7 +45,7 @@ export function paneAirfoil() {
   const H = S.mode === 'HAWT';
   let h = '';
   h += grp(H ? '沿展長的翼型分布' : '翼型選擇', H ? stationEditor()
-    : (S.vawt.type === 'arch' ? `<p class="note">阿基米德螺旋轉子沒有翼型模型;外形由「轉子」分頁的參數產生,性能來自匯入的 Cp–λ 資料。</p>` : S.vawt.type === 'custom' ? `<p class="note">自訂性能曲線轉子沒有葉片幾何模型,不使用翼型;性能完全來自「轉子」分頁匯入的 Cp–λ 資料。</p>` : S.vawt.type === 'sav' ? `<p class="note">Savonius 為阻力型轉子,由半圓筒葉片構成,不使用翼型;請到「轉子」設定重疊比與端板。</p>` : sel('af.vawt', '葉片翼型', afOptions(), { kind: 'af' }) +
+    : (S.vawt.type === 'stl' ? `<p class="note">匯入外形(STL)轉子不使用翼型;外形來自上傳的 STL,性能來自匯入的 Cp–λ 資料。</p>` : S.vawt.type === 'arch' ? `<p class="note">阿基米德螺旋轉子沒有翼型模型;外形由「轉子」分頁的參數產生,性能來自匯入的 Cp–λ 資料。</p>` : S.vawt.type === 'custom' ? `<p class="note">自訂性能曲線轉子沒有葉片幾何模型,不使用翼型;性能完全來自「轉子」分頁匯入的 Cp–λ 資料。</p>` : S.vawt.type === 'sav' ? `<p class="note">Savonius 為阻力型轉子,由半圓筒葉片構成,不使用翼型;請到「轉子」設定重疊比與端板。</p>` : sel('af.vawt', '葉片翼型', afOptions(), { kind: 'af' }) +
       `<p class="note">垂直軸葉片會經歷正負攻角交替,常用對稱翼型(NACA 00xx)。厚翼型失速較緩和、有助於啟動。</p>`));
   h += grp('自訂 NACA 翼型', `<div class="row wide"><label for="nacaIn">4 或 5 位數</label><div style="display:flex;gap:6px"><input class="txt" id="nacaIn" placeholder="例:2418、23015" inputmode="numeric"><button class="btn" id="nacaAdd">加入</button></div></div>`);
   h += grp('匯入翼型資料庫座標', `<p class="note">支援 Selig 與 Lednicer 格式的 .dat 座標檔,可直接使用 UIUC Airfoil Coordinates Database、Airfoil Tools 下載的檔案(例如 S809、SG6043、FX 63-137、DU 93-W-210)。</p>
@@ -124,8 +124,20 @@ export function conceptCards() {
 export function selectFamily(k) {
   if (k === 'HAWT') { if (S.mode !== 'HAWT') setMode('HAWT'); else renderPane(); return; }
   S.vawt.type = k;
-  if ((k === 'custom' || k === 'arch') && !S.custom.pts) loadCpText(CUSTOM_EXAMPLES.lift.text, CUSTOM_EXAMPLES.lift.name, true);
+  if ((k === 'custom' || k === 'arch' || k === 'stl') && !S.custom.pts) loadCpText(CUSTOM_EXAMPLES.lift.text, CUSTOM_EXAMPLES.lift.name, true);
   if (S.mode !== 'VAWT') setMode('VAWT'); else { pendingStart = true; scheduleRebuild(true); renderPane(); }
+}
+// 8E: STL upload block (status + unit / axis / density); metrics shown after a file is loaded
+function stlPaneHtml() {
+  const d = stlPrepare(), m = d && d.metrics, st = S.stl;
+  const info = m ? `<div class="kv">${[['檔案', `${esc(st.name)}(${d.raw.tris} 個三角形)`], ['最大半徑 / 軸向長度', `${fmt(m.rmax, 3)} m / ${fmt(m.length, 3)} m`], ['掃掠面積(旋轉包絡)', fmt(m.area, 3) + ' m²'], ['體積 / 質量', `${fmt(m.volume * 1e3, 2)} L / ${fmt(m.mass, 2)} kg`], ['對旋轉軸慣量', fmt(m.J, 3) + ' kg·m²']].map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join('')}</div>${STL_DATA.warn ? `<p class="note">注意:${esc(STL_DATA.warn)}。</p>` : ''}`
+    : '<p class="note">尚未匯入 STL,3D 場景顯示預設圓柱包絡。請上傳 CAD 匯出的 .stl(ASCII 或 binary,上限 30 MB、40 萬個三角形)。</p>';
+  return `<div class="btns"><button class="btn" id="stlFileBtn">匯入 STL 檔</button>${m ? '<button class="btn ghost" id="stlClear">清除外形</button>' : ''}</div>` + info +
+    sel('stl.unit', '檔案單位', [['mm', '公釐 (mm)'], ['cm', '公分 (cm)'], ['m', '公尺 (m)'], ['in', '英吋 (in)']], { kind: 'geoPane' }) +
+    sel('stl.axis', '旋轉軸(STL 座標軸)', [['z', 'Z 軸'], ['y', 'Y 軸'], ['x', 'X 軸']], { kind: 'geoPane' }) +
+    rng('stl.density', '等效密度(實心均勻)', 50, 8000, 10, 'kg/m³', { kind: 'geoPane' }) +
+    sel('vawt.material', '材料', Object.entries(MATERIALS).map(([k, m]) => [k, m.name])) +
+    `<p class="note">本工具只用 STL 做 3D 顯示,並以旋轉包絡近似掃掠面積 ∫2r dz、以閉合網格體積 × 密度估算質量與轉動慣量(網格不閉合時體積與慣量不準);不從 STL 計算氣動性能。λ 以最大半徑計,Cp 請以此掃掠面積為基準。</p>`;
 }
 export function paneRotor() {
   let h = $('#app').classList.contains('flow') && flowStepOf(S.ws, S.step) === 'concept' ? conceptCards() : '';
@@ -147,13 +159,14 @@ export function paneRotor() {
     const v = S.vawt;
     h += grp('型式', sel('vawt.type', '轉子結構', Object.entries(VAWT_TYPES), { kind: 'type' }));
     const pk = VAWT_FAMILIES[v.type].pane;
-    if (pk === 'custom' || pk === 'arch') {
+    if (pk === 'custom' || pk === 'arch' || pk === 'stl') {
       const c = S.custom;
-      h += grp('性能曲線(匯入資料)', `<p class="note">${pk === 'arch' ? '阿基米德螺旋的外形由下方參數產生,但' : '此轉子沒有葉片幾何模型:'}性能完全由你提供的 Cp–λ 資料決定(論文、CFD、風洞實驗),準確度取決於資料來源;Cp 請以下方「掃掠面積」為基準。每行一組「λ, Cp[, Cq]」,可含標題或 # 註解,λ 須遞增。</p>
+      h += grp('性能曲線(匯入資料)', `<p class="note">${pk === 'stl' ? '外形來自上傳的 STL,但' : pk === 'arch' ? '阿基米德螺旋的外形由下方參數產生,但' : '此轉子沒有葉片幾何模型:'}性能完全由你提供的 Cp–λ 資料決定(論文、CFD、風洞實驗),準確度取決於資料來源;Cp 請以下方「掃掠面積」為基準。每行一組「λ, Cp[, Cq]」,可含標題或 # 註解,λ 須遞增。</p>
         <div class="row wide"><label for="cpEx">示意範例(非實測)</label><div style="display:flex;gap:6px"><select class="txt" id="cpEx">${Object.entries(CUSTOM_EXAMPLES).map(([k, e]) => `<option value="${k}">${e.name}</option>`).join('')}</select><button class="btn" id="cpExLoad">載入</button></div></div>
         <textarea id="cpText" class="txt" style="min-height:110px" aria-label="Cp–λ 資料" placeholder="lambda, Cp&#10;0.5, 0.05&#10;1.0, 0.12&#10;...">${esc(c.text || '')}</textarea>
         <div class="btns"><button class="btn" id="cpApply">套用資料</button><button class="btn ghost" id="cpFileBtn">匯入 CSV 檔</button></div><div class="kv" id="cpInfo"></div>`);
-      if (pk === 'arch') h += grp('螺旋幾何(本工具只產生外形,不計算氣動性能)', rng('arch.D', '外徑 D', 0.2, 10, 0.01, 'm') + rng('arch.L', '軸向長度 L', 0.2, 10, 0.05, 'm') + rng('arch.blades', '葉片數', 1, 6, 1, '片') + rng('arch.turns', '每片繞軸圈數', 0.1, 3, 0.05, '圈') +
+      if (pk === 'stl') h += grp('匯入外形(STL,只在瀏覽器內處理,不上傳)', stlPaneHtml());
+      else if (pk === 'arch') h += grp('螺旋幾何(本工具只產生外形,不計算氣動性能)', rng('arch.D', '外徑 D', 0.2, 10, 0.01, 'm') + rng('arch.L', '軸向長度 L', 0.2, 10, 0.05, 'm') + rng('arch.blades', '葉片數', 1, 6, 1, '片') + rng('arch.turns', '每片繞軸圈數', 0.1, 3, 0.05, '圈') +
         rng('arch.thick', '板厚', 0.001, 0.03, 0.0005, 'm') + rng('arch.hubD', '輪轂直徑', 0.02, 1, 0.01, 'm') + rng('arch.tipFrac', '尾端半徑比(1 = 圓柱、< 1 = 錐形)', 0.3, 1, 0.05, '') +
         sel('vawt.material', '材料', Object.entries(MATERIALS).map(([k, m]) => [k, m.name])) +
         `<p class="note">每片為隨軸向旋轉的螺旋板(平直徑向條帶,非真實 Liam F1 曲面);λ 以外徑最大半徑計,掃掠面積 = π(D/2)²。3D 顯示的是實際螺旋板,可從匯出視窗下載單一葉片 STL(mm)。內建「示意」曲線不是實測,請貼上自己的實驗或 CFD 資料。</p>`);
@@ -292,6 +305,8 @@ export function bindPane(p) {
   });
   shapeEditor(p);
   on('cpFileBtn', () => $('#cpFileIn').click());
+  on('stlFileBtn', () => $('#stlFileIn').click());
+  on('stlClear', () => { clearStl(); renderPane(); scheduleRebuild(true); });
   cpInfo(p);
   on('datFile', () => $('#fileIn').click());
   on('datAdd', () => { const t = p.querySelector('#datText').value; if (t.trim()) importDat(t, null); });
@@ -350,7 +365,7 @@ function cpInfo(p) {
   kv(box, [['資料來源', esc(c.name || '匯入資料') + '(使用者提供)'], ['資料點數', pts.length + ' 筆,λ ' + fmt(pts[0].l, 2) + '–' + fmt(pts[pts.length - 1].l, 2)], ['資料中 Cp,max', fmt(mx.Cp, 3) + ' @ λ ' + fmt(mx.l, 2)], ...(c.warn || []).map(w => ['警告', esc(w)])]);
 }
 export function onChange(path, kind, el) {
-  if (kind === 'type' || kind === 'pane') { if (kind === 'type') { if (path === 'vawt.type' && (S.vawt.type === 'custom' || S.vawt.type === 'arch') && !S.custom.pts) loadCpText(CUSTOM_EXAMPLES.lift.text, CUSTOM_EXAMPLES.lift.name, true); pendingStart = true; scheduleRebuild(true); } renderPane(); if (path === 'load.ctrl' && S.load.ctrl === 'manual') SIM.D = S.load.D; return; }
+  if (kind === 'type' || kind === 'pane') { if (kind === 'type') { if (path === 'vawt.type' && (S.vawt.type === 'custom' || S.vawt.type === 'arch' || S.vawt.type === 'stl') && !S.custom.pts) loadCpText(CUSTOM_EXAMPLES.lift.text, CUSTOM_EXAMPLES.lift.name, true); pendingStart = true; scheduleRebuild(true); } renderPane(); if (path === 'load.ctrl' && S.load.ctrl === 'manual') SIM.D = S.load.D; return; }
   if (kind === 'geoPane') { renderPane(); scheduleRebuild(true); return; }
   if (path === 'hawt.aMode') { renderPane(); }
   if (path === 'load.D' && S.load.ctrl === 'manual') SIM.D = S.load.D;
@@ -452,6 +467,14 @@ export function buildScene() {
     G.y0 = y0;
     const fam = VAWT_FAMILIES[v.type];
     if (fam.scene === 'envelope') { const c = S.custom, y1 = Math.max(0.35, 0.3 * c.H); Scene3D.setScale(c.R, y1, 'VAWT', c.H); G.y0 = y1; Scene3D.buildEnvelope({ R: c.R, H: c.H, y0: y1 }); return; }
+    if (fam.scene === 'stl') { // imported mesh: rotation axis +Z (after transformSTL) -> vertical (Y up), bottom at y1; empty -> envelope placeholder
+      const d = stlPrepare(), m = d && d.metrics;
+      if (!m) { const y1 = 0.6; Scene3D.setScale(0.5, y1, 'VAWT', 1.2); G.y0 = y1; Scene3D.buildEnvelope({ R: 0.5, H: 1.2, y0: y1 }); return; }
+      const y1 = Math.max(0.35, 0.3 * m.length), src = d.mesh.pos, p = new Float32Array(src.length);
+      for (let i = 0; i < p.length; i += 3) { p[i] = src[i]; p[i + 1] = y1 + src[i + 2] - m.zmin; p[i + 2] = -src[i + 1]; }
+      Scene3D.setScale(m.rmax, y1, 'VAWT', m.length); G.y0 = y1;
+      Scene3D.buildVAWT([{ pos: p, idx: d.mesh.idx }], { H: m.length, R: m.rmax, y0: y1, struts: [], markPos: [m.rmax, y1 + m.length, 0] }); return;
+    }
     if (fam.scene === 'arch') { // screw axis +Z -> vertical (Y up), the rotor group spins about Y
       const a = S.arch, y1 = Math.max(0.35, 0.3 * a.L), m = GEO.archimedeanBlade(a), p = m.pos;
       for (let i = 0; i < p.length; i += 3) { const x = p[i], y = p[i + 1], z = p[i + 2]; p[i] = x; p[i + 1] = y1 + z; p[i + 2] = -y; }
@@ -573,7 +596,7 @@ export function saveSnap() {
   const usedCols = new Set(SNAPS.map(s => s.ci));
   let ci = 0; while (usedCols.has(ci) && ci < SNAP_COL.length - 1) ci++;
   SNAPS.push({ id: Date.now(), ci, vis: true, name: `方案 ${String.fromCharCode(65 + SNAPS.length)}:${designName()}`, ...curMetrics(),
-    cfg: { hawt: JSON.parse(JSON.stringify(S.hawt)), vawt: JSON.parse(JSON.stringify(S.vawt)), st: S.af.st.map(s => ({ ...s })), vaf: S.af.vawt, cdMax: S.af.cdMax, arch: { ...S.arch }, custom: S.custom.pts ? JSON.parse(JSON.stringify(S.custom)) : null }, imp, pimp });
+    cfg: { hawt: JSON.parse(JSON.stringify(S.hawt)), vawt: JSON.parse(JSON.stringify(S.vawt)), st: S.af.st.map(s => ({ ...s })), vaf: S.af.vawt, cdMax: S.af.cdMax, arch: { ...S.arch }, stl: { ...S.stl }, custom: S.custom.pts ? JSON.parse(JSON.stringify(S.custom)) : null }, imp, pimp });
   storeSnaps(); toast('已儲存為比較方案'); if (S.ctab === 'cmp') redrawStatic();
 }
 export function loadSnap(sn) {
@@ -587,6 +610,7 @@ export function loadSnap(sn) {
   const c = JSON.parse(JSON.stringify(sn.cfg));
   S.hawt = Object.assign(S.hawt, c.hawt); S.vawt = Object.assign(S.vawt, c.vawt);
   if (c.arch) Object.assign(S.arch, c.arch);
+  if (c.stl) Object.assign(S.stl, c.stl);
   if (c.custom) Object.assign(S.custom, c.custom);
   S.af.st = c.st.map(s => ({ f: s.f, k: mk(s.k) })); S.af.vawt = mk(c.vaf); S.af.cdMax = c.cdMax;
   for (const [k, t] of Object.entries(sn.pimp || {})) S.af.polarImp[mk(k)] = t;
@@ -672,7 +696,7 @@ export function redrawStatic() {
 export function drawAirfoil() {
   if (S.mode === 'VAWT' && noAirfoil(S.vawt)) {
     const P = G.perf;
-    Plot.draw(cv[0], { title: (S.vawt.type === 'arch' ? '阿基米德螺旋轉子' : S.vawt.type === 'custom' ? '自訂性能曲線轉子' : 'Savonius 為阻力型轉子') + ',沒有翼型極曲線(可信度 ' + rotorTrust().split(':')[0] + ')', series: [{ x: P.lam, y: P.cp, color: col('--c1'), label: 'Cp' }, { x: P.lam, y: P.cq, color: col('--c2'), axis: 'R', label: 'Cq' }], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Cq' });
+    Plot.draw(cv[0], { title: (S.vawt.type === 'stl' ? '匯入外形(STL)轉子' : S.vawt.type === 'arch' ? '阿基米德螺旋轉子' : S.vawt.type === 'custom' ? '自訂性能曲線轉子' : 'Savonius 為阻力型轉子') + ',沒有翼型極曲線(可信度 ' + rotorTrust().split(':')[0] + ')', series: [{ x: P.lam, y: P.cp, color: col('--c1'), label: 'Cp' }, { x: P.lam, y: P.cq, color: col('--c2'), axis: 'R', label: 'Cq' }], xlabel: '尖速比 λ', ylabel: 'Cp', ylabelR: 'Cq' });
     Plot.draw(cv[1], { title: '改到「性能曲線」與「葉片分析」看轉矩特性', series: [], xlim: [0, 1], ylim: [0, 1] });
     Plot.draw(cv[2], { series: [], xlim: [0, 1], ylim: [0, 1] });
     return;
@@ -1040,6 +1064,10 @@ export function init() {
   try { const t = localStorage.getItem('wt-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { Scene3D.applyTheme(); redrawStatic(); });
   $('#cpFileIn').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { loadCpText(t, f.name); renderPane(); }); e.target.value = ''; });
+  $('#stlFileIn').addEventListener('change', e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    f.arrayBuffer().then(b => { loadStl(b, f.name); toast('已匯入 STL:' + f.name); renderPane(); scheduleRebuild(true); }).catch(err => toast(err.message || 'STL 匯入失敗'));
+  });
   $('#fileIn').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => importDat(t, f.name)); e.target.value = ''; });
   new ResizeObserver(() => { if (S.ws === 'tunnel') redrawStatic(); }).observe($('#cbody'));
   S.ws = 'tunnel'; markNav();

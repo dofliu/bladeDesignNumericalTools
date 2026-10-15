@@ -471,7 +471,7 @@ test('自訂性能曲線轉子:內建示意範例可解析、無警告,Cp,max/λ
 test('家族註冊表:3D 場景規格(shape / struts)與重構前的內嵌公式一致', () => {
   const F = core.VAWT_FAMILIES, near = (a, b, k) => assert.ok(Math.abs(a - b) < 1e-12, `${k}: ${a} vs ${b}`);
   for (const [k, f] of Object.entries(F)) {
-    assert.ok(['blades', 'savonius', 'envelope', 'arch'].includes(f.scene), k + ' scene');
+    assert.ok(['blades', 'savonius', 'envelope', 'arch', 'stl'].includes(f.scene), k + ' scene');
     if (f.scene === 'blades') assert.ok(typeof f.shape === 'function' && typeof f.struts === 'function', k + ' shape/struts');
   }
   const v = { R: 1.2, H: 2.5, c: 0.15, helix: 120, struts: 2 }, y0 = 0.75, ph = 0.4;
@@ -548,7 +548,7 @@ test('VAWT_FAMILIES design():各家族面積/質量/慣量與重構前一致', (
 
 test('VAWT_FAMILIES 面板欄位:pane/rLabel/hasStruts/hasHelix 與重構前的型式判斷一致', () => {
   const F = core.VAWT_FAMILIES;
-  const pane = { H: 'dmst', helical: 'dmst', phi: 'dmst', V: 'dmst', sav: 'sav', custom: 'custom', arch: 'arch', free: 'dmst' };
+  const pane = { H: 'dmst', helical: 'dmst', phi: 'dmst', V: 'dmst', sav: 'sav', custom: 'custom', arch: 'arch', stl: 'stl', free: 'dmst' };
   const rl = { phi: '赤道半徑 R', V: '頂端半徑 R', H: '轉子半徑 R', helical: '轉子半徑 R', free: '最大半徑 R' };
   for (const k of Object.keys(F)) {
     assert.equal(F[k].pane, pane[k], k);
@@ -716,5 +716,45 @@ test('阿基米德螺旋家族(type arch):幾何衍生量、匯入曲線性能�
     assert.ok(track >= 0.9, `arch po 6 m/s tracking ${(track * 100).toFixed(1)}%`);
   } finally {
     S.mode = saved.mode; S.vawt.type = saved.type; S.custom.pts = saved.pts; S.custom.name = saved.name; Object.assign(S.arch, saved.arch); Object.assign(S.tun, saved.tun); Object.assign(S.load, saved.load);
+  }
+});
+
+// 8E: 匯入外形(STL)家族——以程式產生的圓柱 STL 驗證幾何衍生量、單位/旋轉軸、匯入曲線性能與上限檢查
+function cylinderAsciiStl(R, L, n = 48) {
+  const v = [], tri = (a, b, c) => v.push(a, b, c), pt = (k, z) => [R * Math.cos(2 * Math.PI * k / n), R * Math.sin(2 * Math.PI * k / n), z];
+  for (let k = 0; k < n; k++) {
+    const a = pt(k, 0), b = pt(k + 1, 0), c = pt(k, L), d = pt(k + 1, L);
+    tri(a, b, c); tri(b, d, c); tri([0, 0, 0], b, a); tri([0, 0, L], c, d);
+  }
+  return 'solid t\n' + [...Array(v.length / 3)].map((_, t) => 'facet normal 0 0 0\nouter loop\n' + v.slice(t * 3, t * 3 + 3).map(p => `vertex ${p[0]} ${p[1]} ${p[2]}`).join('\n') + '\nendloop\nendfacet').join('\n') + '\nendsolid t\n';
+}
+test('匯入外形家族(type stl):STL 圓柱的衍生量、單位與旋轉軸、匯入曲線性能、檔案上限', () => {
+  const saved = { mode: S.mode, type: S.vawt.type, name: S.custom.name, pts: S.custom.pts, stl: { ...S.stl }, tun: { ...S.tun }, load: { ...S.load } };
+  try {
+    S.mode = 'VAWT'; S.vawt.type = 'stl'; core.clearStl();
+    const { pts } = A.parseCpCurve(core.CUSTOM_EXAMPLES.lift.text);
+    S.custom.pts = pts; S.custom.name = '示意';
+    designVAWT(); computePerf(); // 未匯入 STL:預設尺寸,仍可建置
+    assert.ok(G.A > 0 && G.R === 0.5);
+    Object.assign(S.stl, { unit: 'mm', axis: 'y', density: 1000 }); // 圓柱沿 y 軸:R 0.5 m、L 1.2 m,單位 mm
+    const txt = cylinderAsciiStl(500, 1200).replace(/vertex ([-\d.e+]+) ([-\d.e+]+) ([-\d.e+]+)/g, (m, x, y, z) => `vertex ${x} ${z} ${-y}`);
+    core.loadStl(txt, 'cyl.stl');
+    designVAWT(); computePerf();
+    const cosN = Math.cos(Math.PI / 48); // 48 邊形內接,體積/掃掠面積略小於圓柱
+    assert.ok(Math.abs(G.R - 0.5) < 1e-3, `R ${G.R}`);
+    assert.ok(Math.abs(G.A - 2 * 0.5 * 1.2) < 0.03, `A ${G.A}`);
+    const vol = 0.5 * 48 * 0.5 * 0.5 * Math.sin(2 * Math.PI / 48) * 1.2;
+    assert.ok(Math.abs(G.mass - vol * 1000) / (vol * 1000) < 1e-3, `mass ${G.mass}`);
+    assert.ok(Math.abs(G.J - 0.5 * G.mass * 0.25) / G.J < 0.02, `J ${G.J}`);
+    assert.ok(cosN < 1 && G.cpMax > 0.2 && /不計算/.test(core.rotorSource()));
+    assert.ok(core.VAWT_FAMILIES.stl.condRows(String, String).some(r => /cyl\.stl/.test(r[1])));
+    assert.ok(core.VAWT_FAMILIES.stl.csv().startsWith('type,name,unit'));
+    S.stl.unit = 'm'; designVAWT(); assert.ok(G.R > 400, `unit m R ${G.R}`); // 單位切換重新計算
+    assert.throws(() => core.loadStl('not an stl', 'x.stl'), /無法解析/);
+    assert.throws(() => core.loadStl(new ArrayBuffer(core.STL_LIMITS.bytes + 1), 'big.stl'), /太大/);
+    core.clearStl(); designVAWT(); assert.equal(G.R, 0.5);
+    assert.equal(core.ROTOR_GUIDE.find(g => g.id === 'cad').fam, 'stl');
+  } finally {
+    core.clearStl(); S.mode = saved.mode; S.vawt.type = saved.type; S.custom.pts = saved.pts; S.custom.name = saved.name; Object.assign(S.stl, saved.stl); Object.assign(S.tun, saved.tun); Object.assign(S.load, saved.load);
   }
 });

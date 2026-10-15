@@ -63,7 +63,7 @@ export const Bench = (function () {
     built = sig;
     let h = '';
     if (sav) {
-      const t = S.vawt.type, info = t === 'arch' ? ['阿基米德螺旋轉子', '阿基米德螺旋沒有翼型剖面可分析;下圖為俯視外形示意與匯入的 Cp–λ 曲線,本工具不計算此轉子的氣動性能。外形請在「轉子」分頁調整。']
+      const t = S.vawt.type, info = t === 'stl' ? ['匯入外形(STL)轉子', '匯入外形沒有翼型剖面可分析;下圖為最大半徑示意與匯入的 Cp–λ 曲線,本工具不計算此外形的氣動性能。外形與單位請在「轉子」分頁設定。'] : t === 'arch' ? ['阿基米德螺旋轉子', '阿基米德螺旋沒有翼型剖面可分析;下圖為俯視外形示意與匯入的 Cp–λ 曲線,本工具不計算此轉子的氣動性能。外形請在「轉子」分頁調整。']
         : t === 'custom' ? ['自訂性能曲線轉子', '此轉子沒有葉片幾何模型;下圖為特徵半徑示意與匯入的 Cp–λ 曲線。']
         : ['Savonius 阻力型轉子', 'Savonius 由半圓筒葉片構成,靠阻力差產生轉矩,沒有翼型剖面可分析。下圖為俯視幾何與經驗性能曲線;若要分析翼型葉片,請在「轉子」設定改選 H 型、螺旋型、Φ 型或 V 型。'];
       h += `<div class="card"><h2>${info[0]}</h2><div class="cbx"><p class="hint">${info[1]}</p></div></div>
@@ -368,7 +368,7 @@ export const Bench = (function () {
   function renderSav() {
     const F = fitCv($b('bSav'));
     if (F) {
-      const { g, W, H } = F, cu = S.vawt.type === 'custom' || S.vawt.type === 'arch', v = cu ? { ...S.vawt, R: S.vawt.type === 'arch' ? G.R : S.custom.R, B: 0, overlap: 0 } : S.vawt, s = Math.min(W, H) / (2.6 * v.R), cx = W / 2, cy = H / 2, r = v.R / (2 - v.overlap) , e = v.overlap * 2 * r;
+      const { g, W, H } = F, cu = S.vawt.type === 'custom' || S.vawt.type === 'arch' || S.vawt.type === 'stl', v = cu ? { ...S.vawt, R: S.vawt.type === 'custom' ? S.custom.R : G.R, B: 0, overlap: 0 } : S.vawt, s = Math.min(W, H) / (2.6 * v.R), cx = W / 2, cy = H / 2, r = v.R / (2 - v.overlap) , e = v.overlap * 2 * r;
       g.strokeStyle = Plot.css('--grid'); g.setLineDash([4, 4]); g.beginPath(); g.arc(cx, cy, v.R * s, 0, 7); g.stroke(); g.setLineDash([]);
       const n = Math.round(v.B);
       for (let k = 0; k < n; k++) { const a = SIM.theta + 2 * Math.PI * k / n, off = (r - e / 2); const x = cx + Math.cos(a) * off * s, y = cy - Math.sin(a) * off * s; g.strokeStyle = Plot.css('--ink'); g.lineWidth = 3; g.beginPath(); g.arc(x, y, r * s, -a, -a + Math.PI, false); g.stroke(); }

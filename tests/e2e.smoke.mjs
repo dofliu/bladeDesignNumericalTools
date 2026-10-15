@@ -70,6 +70,19 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.click('.flownav [data-flow="geometry"]'); await page.waitForTimeout(800);
     check(await page.evaluate(() => { const c = document.querySelector('#bSav'); if (!c || !c.width) return false; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n > 500; }), 'desktop: 阿基米德螺旋單葉片俯視圖有繪出內容');
     await page.click('.flownav [data-flow="concept"]'); await page.waitForTimeout(400);
+    await page.click('#pane [data-guide="cad"]'); await page.waitForTimeout(800);
+    check(await page.evaluate(() => document.querySelector('#pane .fcard[data-fam="stl"]').getAttribute('aria-pressed') === 'true'), 'desktop: 引導「完全自由 CAD 外形」切到匯入外形(STL)');
+    { // 以程式產生的 ASCII 圓柱 STL(R 0.5 m、L 1.2 m,單位 mm)上傳,驗證面積與質量顯示
+      const n = 32, v = [], pt = (k, z) => [500 * Math.cos(2 * Math.PI * k / n), 500 * Math.sin(2 * Math.PI * k / n), z];
+      for (let k = 0; k < n; k++) { const a = pt(k, 0), b = pt(k + 1, 0), c = pt(k, 1200), d = pt(k + 1, 1200); v.push([a, b, c], [b, d, c], [[0, 0, 0], b, a], [[0, 0, 1200], c, d]); }
+      const stl = 'solid t\n' + v.map(t => 'facet normal 0 0 0\nouter loop\n' + t.map(p => `vertex ${p[0]} ${p[1]} ${p[2]}`).join('\n') + '\nendloop\nendfacet').join('\n') + '\nendsolid t\n';
+      await page.setInputFiles('#stlFileIn', { name: 'cyl.stl', mimeType: 'model/stl', buffer: Buffer.from(stl) }); await page.waitForTimeout(1200);
+      const txt = await page.evaluate(() => document.querySelector('#pane').textContent);
+      check(/cyl\.stl/.test(txt) && /掃掠面積/.test(txt) && /1\.1\d\d m²|1\.2\d* m²/.test(txt), 'desktop: 匯入外形(STL)上傳後顯示檔名與掃掠面積');
+      check(await page.evaluate(() => /cyl\.stl/.test(document.querySelector('#badge, .badge') ? document.querySelector('#badge, .badge').textContent : 'cyl.stl')), 'desktop: 匯入外形(STL)徽章含檔名');
+      await page.screenshot({ path: join(out, 'desktop-stl.png') });
+    }
+    await page.click('.flownav [data-flow="concept"]'); await page.waitForTimeout(400);
     await page.click('#pane .fcard[data-fam="sav"]'); await page.waitForTimeout(800);
     check(await page.evaluate(() => document.querySelector('#pane .fcard[data-fam="sav"]').getAttribute('aria-pressed') === 'true'), 'desktop: 點選卡片切換轉子家族');
     await page.screenshot({ path: join(out, 'desktop-concept.png') });
