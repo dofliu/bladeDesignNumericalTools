@@ -211,3 +211,16 @@ test('STL 匯入:旋轉軸指定與錯誤處理', () => {
   assert.throws(() => GEO.parseSTL('solid x\nendsolid x'));
   assert.throws(() => GEO.transformSTL(m, 'ft', 'z'));
 });
+test('STL 匯入:meshClosure 閉合圓柱 vs 缺頂蓋 / 非流形', () => {
+  const m = cylMesh(1, 2, 24), c = GEO.meshClosure(m);
+  assert.equal(c.closed, true); assert.equal(c.open, 0);
+  const keep = []; for (let t = 0; t < m.idx.length; t += 3) if (![m.idx[t], m.idx[t + 1], m.idx[t + 2]].includes(49)) keep.push(m.idx[t], m.idx[t + 1], m.idx[t + 2]);
+  const open = { pos: m.pos, idx: Uint32Array.from(keep) }; // 去掉頂蓋 24 個三角形(含頂心頂點 49)
+  const co = GEO.meshClosure(open);
+  assert.equal(co.closed, false); assert.equal(co.open, 24);
+  const nm = { pos: m.pos, idx: Uint32Array.from([...m.idx, ...m.idx.slice(0, 3)]) }; // 重複一個三角形 → 邊被 3 面共用
+  assert.ok(GEO.meshClosure(nm).nonManifold >= 3);
+  // 焊接:相同座標、不同頂點索引仍視為同一點(parseSTL 每個三角形頂點各自獨立)
+  const p = GEO.parseSTL(GEO.stl({ pos: m.pos, idx: m.idx }, 'c'));
+  assert.equal(GEO.meshClosure(p).closed, true);
+});

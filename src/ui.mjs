@@ -131,7 +131,7 @@ export function selectFamily(k) {
 function stlPaneHtml() {
   const d = stlPrepare(), m = d && d.metrics, st = S.stl;
   const info = m ? `<div class="kv">${[['檔案', `${esc(st.name)}(${d.raw.tris} 個三角形)`], ['最大半徑 / 軸向長度', `${fmt(m.rmax, 3)} m / ${fmt(m.length, 3)} m`], ['掃掠面積(旋轉包絡)', fmt(m.area, 3) + ' m²'], ['體積 / 質量', `${fmt(m.volume * 1e3, 2)} L / ${fmt(m.mass, 2)} kg`], ['對旋轉軸慣量', fmt(m.J, 3) + ' kg·m²']].map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join('')}</div>${STL_DATA.warn ? `<p class="note">注意:${esc(STL_DATA.warn)}。</p>` : ''}`
-    : '<p class="note">尚未匯入 STL,3D 場景顯示預設圓柱包絡。請上傳 CAD 匯出的 .stl(ASCII 或 binary,上限 30 MB、40 萬個三角形)。</p>';
+    : (st.name ? `<p class="note">方案或設定記錄的檔案「${esc(st.name)}」需要重新上傳:STL 檔不存入方案,重新整理頁面後也會遺失。目前 3D 場景顯示預設圓柱包絡。</p>` : '') + '<p class="note">尚未匯入 STL,3D 場景顯示預設圓柱包絡。請上傳 CAD 匯出的 .stl(ASCII 或 binary,上限 30 MB、40 萬個三角形)。</p>';
   return `<div class="btns"><button class="btn" id="stlFileBtn">匯入 STL 檔</button>${m ? '<button class="btn ghost" id="stlClear">清除外形</button>' : ''}</div>` + info +
     sel('stl.unit', '檔案單位', [['mm', '公釐 (mm)'], ['cm', '公分 (cm)'], ['m', '公尺 (m)'], ['in', '英吋 (in)']], { kind: 'geoPane' }) +
     sel('stl.axis', '旋轉軸(STL 座標軸)', [['z', 'Z 軸'], ['y', 'Y 軸'], ['x', 'X 軸']], { kind: 'geoPane' }) +
