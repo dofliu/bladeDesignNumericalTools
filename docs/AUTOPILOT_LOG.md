@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-15 — ROADMAP 6:自由渦尾流核心
+
+- 做了什麼:無開著的 `[autopilot]` PR;第 8 項只剩需使用者決定/進行中的 UI 子項,回到第 3–7 項。`aero.mjs` 新增 `tipVortexGamma`(Γ = 2a·p/B,由遠尾流軸向動量)與 `freeWake`(以 `biotSavart` 迭代重新積分葉尖渦位置)。尚未接 UI。
+- 驗證:check、npm test、build、e2e 見 PR;新增測試:長尾流軸向誘導 −0.58 vs −0.6、節距誤差 < 10%、a=0 不變。
+- 已知限制:無渦捲起/合併、均勻負載近似、尚未與 BEM Cp 比對、未接流場畫面。
+- 下一步:把 `freeWake` 接上流場側視圖,並以誘導速度與 BEM Cp 比對。
+
 ## 2026-10-15 — ROADMAP 8E:匯入外形(STL)介面(2/2)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`geo.mjs` 新增 `meshClosure`(焊接重合頂點後數邊被共用次數,回報開放邊/非流形邊/退化三角形);`loadStl` 對未閉合網格加警告並存於 `STL_DATA.closure`,面板顯示;方案載入後有檔名但沒有網格時提示需重新上傳。8E 完成。

@@ -87,7 +87,8 @@
 - 轉子:自由渦尾流(prescribed / free wake)顯示葉尖渦;
   - [x] 預設螺旋尾流葉尖渦(2026-10-08):`aero.mjs` 新增 `tipVortexWake`(依葉尖誘導 a 對流 + 流管膨脹,遠尾流節距 2π(1−2a)/λ),流場工作區 HAWT 側視圖可勾選疊圖;`tests/aero.test.mjs` 解析值驗證。
   - [x] Biot-Savart 渦線誘導速度(2026-10-08):`aero.mjs` 新增 `biotSavart(lines, p, gamma, core)`(直線段公式 + 核心正規化),`tests/aero.test.mjs` 以圓形渦環軸上解析解 Γ R²/(2(R²+x²)^1.5) 驗證(誤差 < 0.5%)。尚未接到尾流演化。
-  - [ ] 自由渦尾流(以 `biotSavart` 讓 `tipVortexWake` 的渦點隨誘導速度對流、設定葉尖渦強度 Γ、與 BEM Cp 比對 < 5%)與 OpenFOAM 匯出。
+  - [x] 自由渦尾流核心(2026-10-15):`aero.mjs` 新增 `tipVortexGamma`(由遠尾流軸向動量 BΓ/p = 2a 推得 Γ = 2a·p/B)與 `freeWake`(以先前迭代的 Biot-Savart 速度從轉子盤重新積分各葉尖渦,鬆弛迭代);測試驗證長尾流軸向誘導 ≈ −2a(誤差 < 10%)、節距 ±10%、半徑膨脹。尚未接 UI、未做渦捲起、尚未與 BEM Cp 比對。
+  - [ ] 自由渦尾流剩餘:接上流場側視圖(勾選切換)、以渦尾流誘導速度算 Cp 並與 BEM 比對 < 5%、OpenFOAM 匯出。原規格:(以 `biotSavart` 讓 `tipVortexWake` 的渦點隨誘導速度對流、設定葉尖渦強度 Γ、與 BEM Cp 比對 < 5%)與 OpenFOAM 匯出。
   - (原項目)或匯出幾何給 OpenFOAM 做 CFD,並把結果讀回。
 - 驗收:分離點隨攻角移動趨勢合理;BEM 與渦尾流 Cp 差異 < 5%。
 
