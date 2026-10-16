@@ -840,6 +840,24 @@
   function tipVortexGamma(B, lam, aTip) {
     const a = clamp(aTip, 0, 0.45); return 2 * a * 2 * Math.PI * (1 - 2 * a) / (Math.max(lam, 1e-6) * B);
   }
+  /* Disk-averaged axial induction factor from the (relaxed) tip-vortex wake: Biot-Savart axial velocity deficit sampled on the rotor
+     plane (area-weighted over nr radii × na azimuths, hub excluded), a_w = -u/V∞. Also returns the ideal-actuator Cp = 4a(1-a)² and
+     Ct = 4a(1-a) it implies. Uniform-loading, tip-vortex-only (no root/bound vortex, no tip-loss, no wake rotation) so it is an
+     independent consistency check of BEM's mean induction, not a replacement for it. Units R, V∞. */
+  function wakeDiskInduction(B, lam, aTip, opts = {}) {
+    const nr = opts.nr || 8, na = opts.na || 6, core = opts.core || 0.05, rHub = opts.rHub || 0.1;
+    const f = freeWake(B, lam, aTip, { turns: 40, perTurn: 24, iters: 2, ...opts });
+    let s = 0, w = 0;
+    for (let i = 0; i < nr; i++) {
+      const r = rHub + (1 - rHub) * (i + 0.5) / nr;
+      for (let k = 0; k < na; k++) {
+        const th = 2 * Math.PI * (k + 0.5) / na;
+        s += -biotSavart(f.wake, { x: 0, y: r * Math.cos(th), z: r * Math.sin(th) }, f.gamma, core).u * r; w += r;
+      }
+    }
+    const a = w > 0 ? s / w : 0;
+    return { a, Cp: 4 * a * (1 - a) * (1 - a), Ct: 4 * a * (1 - a), gamma: f.gamma };
+  }
   /* Relaxed free wake: start from the prescribed wake, then iteratively re-march every tip vortex from the disk using the local
      Biot-Savart velocity of the previous iterate (axial 1+u, radial v_r; angular step fixed by ωt=λτ). No vortex roll-up/merging,
      no far-wake truncation correction, the first segment's own singular contribution is removed by the core. Units R, V∞. */
@@ -868,4 +886,4 @@
 
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart, tipVortexGamma, freeWake };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart, tipVortexGamma, freeWake, wakeDiskInduction };
