@@ -866,6 +866,31 @@
     return { wake, gamma: gam };
   }
 
+  /* Wake-based Cp check of a BEM solution. From the BEM state at tip-speed ratio lam take the thrust-weighted mean induction ā,
+     build the free wake (Γ from ā), then sample the wake's axial Biot-Savart velocity on the rotor disk (mean over the azimuth,
+     radius-weighted by annulus area, r in [Rhub/R, 1)) → ā_w = −⟨u⟩. Power then follows from thrust and the disk velocity,
+     Cp_wake = Ct·(1−ā_w) (no profile drag, no swirl loss), compared with the BEM Cp = Cp_BEM and ideal Ct·(1−ā).
+     Lightly-loaded / uniform-loading approximation: only the mean induction level is checked, not its radial shape. */
+  function wakeCp(cfg, V, lam, opts = {}) {
+    const bem = bemPoint(cfg, V, lam * V / cfg.R, 0, 0, {}), R = cfg.R, B = cfg.B;
+    let tw = 0, ta = 0;
+    for (let i = 0; i < bem.elems.length; i++) {
+      const e = bem.elems[i], w = e.W * e.W * e.cl * cfg.rows[i].c * cfg.rows[i].dr; tw += w; ta += w * e.a * e.F;
+    }
+    const aBem = tw > 0 ? ta / tw : 0, rh = cfg.Rhub / R;
+    const fw = freeWake(B, lam, aBem, { turns: opts.turns || 12, perTurn: opts.perTurn || 48, iters: opts.iters == null ? 3 : opts.iters });
+    const nr = opts.nr || 10, nth = opts.nth || 6; let s = 0, sw = 0;
+    for (let i = 0; i < nr; i++) {
+      const r = rh + (1 - rh) * (i + 0.5) / nr;
+      for (let k = 0; k < nth; k++) {
+        const th = 2 * Math.PI * (k + 0.5) / (nth * B);
+        s += r * biotSavart(fw.wake, { x: 0, y: r * Math.cos(th), z: r * Math.sin(th) }, fw.gamma, 0.05).u; sw += r;
+      }
+    }
+    const aW = -s / sw;
+    return { aBem, aWake: aW, Ct: bem.Ct, CpBem: bem.Cp, CpWake: bem.Ct * (1 - aW), CpIdeal: bem.Ct * (1 - aBem) };
+  }
+
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart, tipVortexGamma, freeWake };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart, tipVortexGamma, freeWake, wakeCp };

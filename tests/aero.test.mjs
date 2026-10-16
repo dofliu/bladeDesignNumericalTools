@@ -301,3 +301,17 @@ test('8B: monotoneCubic 通過控制點、不過衝;自訂外形傾角與扭轉'
   assert.throws(() => A.vawtSlices({ type: 'custom', H: 1, pts: [{ zf: 0, r: 1 }] }), /2 個控制點/);
   assert.throws(() => A.vawtSlices({ type: 'custom', H: 1, pts: [{ zf: 0.5, r: 1 }, { zf: 0.5, r: 1 }] }), /遞增/);
 });
+
+test('wakeCp:渦尾流盤面誘導速度與 BEM 比對(輕載入 < 5%,設計載入偏低為已知限制)', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('4412'))), b = A.bestLD(ps, 3e5);
+  const mk = (chordScale, tsr) => ({ R: 1.5, Rhub: 0.15, B: 3, rho: 1.225, mu: 1.81e-5, polarFor: () => ps,
+    rows: A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr, aDes: b.a, clDes: b.cl, nSec: 16, linearize: false, chordScale, twistScale: 1, maxChordRatio: 0.2 }) });
+  for (const tsr of [5, 7]) { // 輕載入(ā≈0.11):Cp_wake 與理想 Ct(1−ā) 差 < 5%,ā_w 與 ā 差 < 15%
+    const w = A.wakeCp(mk(0.3, tsr), 8, tsr, { turns: 12 });
+    near(w.CpWake / w.CpIdeal, 1, 0.05, `輕載入 Cp 比 λ${tsr}`); near(w.aWake / w.aBem, 1, 0.15, `輕載入 a 比 λ${tsr}`);
+    assert.ok(w.CpBem < w.CpWake, 'BEM 含阻力損失,應低於無阻力的渦尾流估計');
+  }
+  // 設計載入(ā≈0.33):簡化渦尾流(均勻負載、無根渦、有限尾流)低估盤面誘導約 30%,Cp 因而偏高;記錄現況
+  const h = A.wakeCp(mk(1, 7), 8, 7, { turns: 12 });
+  assert.ok(h.aWake / h.aBem > 0.55 && h.aWake / h.aBem < 0.85, '設計載入 a 比 ' + h.aWake / h.aBem);
+});
