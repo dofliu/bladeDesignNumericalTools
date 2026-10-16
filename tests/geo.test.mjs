@@ -224,3 +224,16 @@ test('STL 匯入:meshClosure 閉合圓柱 vs 缺頂蓋 / 非流形', () => {
   const p = GEO.parseSTL(GEO.stl({ pos: m.pos, idx: m.idx }, 'c'));
   assert.equal(GEO.meshClosure(p).closed, true);
 });
+test('OpenFOAM 匯出:檔案齊全且帶入風速/尺度', () => {
+  const fs = GEO.openfoamCase({ R: 1.5, V: 8, lam: 7, stlName: 'b.stl' });
+  const names = fs.map(x => x.name);
+  for (const n of ['system/blockMeshDict', 'system/snappyHexMeshDict', 'system/controlDict', 'system/fvSchemes', 'system/fvSolution', 'constant/transportProperties', 'constant/turbulenceProperties', '0/U', '0/p', '0/k', '0/omega', '0/nut', 'Allrun', 'README.txt']) assert.ok(names.includes(n), n);
+  const get = n => fs.find(x => x.name === n).text;
+  assert.match(get('0/U'), /internalField uniform \(8 0 0\)/);
+  assert.match(get('system/snappyHexMeshDict'), /file "b\.stl"/);
+  assert.match(get('system/blockMeshDict'), /-3 -1\.5 -1\.5/); // 上游 2R
+  assert.match(get('README.txt'), /rad\/s/);
+  assert.equal(new Set(names).size, names.length);
+  // 大括號必須成對
+  for (const x of fs) if (x.name.startsWith('0/') || x.name.startsWith('system/')) assert.equal((x.text.match(/\{/g) || []).length, (x.text.match(/\}/g) || []).length, x.name);
+});

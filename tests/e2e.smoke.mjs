@@ -125,7 +125,7 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
   await prep(page);
   await page.goto(url); await page.waitForTimeout(2000);
   await page.click('#exportBtn');
-  for (const [x, name] of [['geo', 'hawt_geometry.csv'], ['perf', 'hawt_performance.csv'], ['zip', 'hawt_design.zip']]) {
+  for (const [x, name] of [['geo', 'hawt_geometry.csv'], ['perf', 'hawt_performance.csv'], ['zip', 'hawt_design.zip'], ['foam', 'hawt_openfoam_case.zip']]) {
     const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }).catch(() => null), page.click(`.modal [data-x="${x}"]`)]);
     const size = dl ? (await readFileSync(await dl.path())).length : 0;
     check(dl && dl.suggestedFilename() === name && size > 100, `export ${x}: Blob download ${dl ? dl.suggestedFilename() : 'none'} (${size} B)`);
