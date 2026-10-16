@@ -160,12 +160,14 @@ const res = await page.evaluate(() => {
     for (let t = 0; t < 120; t += 0.004) { simStep(0.004); if (t > 48) { e += SIM.out.el.Pout; a += 0.5 * air().rho * G.A * SIM.out.V ** 3; } }
     out.push({ mode: 'custom', ctrl, V: 9, track: (e / a) / (G.cpMax * 0.92 * S.load.eta) });
   }
+  updateBadge(); out.push({ badgeDemo: /示意曲線,非實測/.test(document.querySelector('#badge').textContent) });
   const n0 = SNAPS.length; saveSnap(); const sn = SNAPS[SNAPS.length - 1], name = S.custom.name, np = S.custom.pts.length;
   S.custom.pts = null; S.custom.name = ''; loadSnap(sn);
   out.push({ snap: SNAPS.length === n0 + 1 && S.custom.name === name && S.custom.pts && S.custom.pts.length === np && !!G.perf });
   SNAPS.length = n0; storeSnaps();
   return out;
 });
+check(res.some(r => r.badgeDemo), 'custom rotor: 徽章標示示意曲線非實測');
 check(res.some(r => r.snap), 'custom rotor: snapshot save/load restores S.custom');
 for (const r of res.filter(r => r.ctrl)) check(r.track >= 0.9, `${r.mode} ${r.ctrl} ${r.V} m/s tracking ${(r.track * 100).toFixed(0)}%`);
 await browser.close();

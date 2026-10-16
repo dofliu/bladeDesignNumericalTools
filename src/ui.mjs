@@ -497,7 +497,9 @@ export function updateBadge() {
   let t;
   if (S.mode === 'HAWT') t = `<b>水平軸 ${Math.round(S.hawt.B)} 葉</b>,R ${fmt(S.hawt.R, 2)} m,${stSorted().map(s => afLabel(s.k).replace('NACA ', '')).join(' → ')},${{ bem: 'BEM 扭角', opt: 'Schmitz 扭角', linear: '線性扭角' }[S.hawt.twMode]},λd ${fmt(S.hawt.tsr, 1)}`;
   else t = VAWT_FAMILIES[S.vawt.type].badge(fmt, afLabel);
-  $('#badge').innerHTML = t + `<br><span>可信度 ${esc(rotorTrust())}</span>`;
+  const imported = S.mode === 'VAWT' && ['custom', 'arch', 'stl'].includes(S.vawt.type);
+  const warn = !imported ? '' : !S.custom.pts ? '<br><span class="warn">尚未匯入性能曲線,無法模擬</span>' : isDemoCurve() ? '<br><span class="warn">目前為內建示意曲線,非實測資料</span>' : '';
+  $('#badge').innerHTML = t + `<br><span>可信度 ${esc(rotorTrust())}</span>` + warn;
 }
 
 /* ---------- charts ---------- */

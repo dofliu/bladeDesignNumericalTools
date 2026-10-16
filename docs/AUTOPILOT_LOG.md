@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-16 — ROADMAP 8D:家族註冊收尾(示意曲線提示)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`updateBadge` 在 custom/arch/stl 家族於 3D 風洞徽章顯示紅字警示(內建示意曲線非實測 / 尚未匯入曲線);e2e 新增檢查。8D 家族註冊勾完成。
+- 驗證:check、npm test(92/92)、build、e2e 全過(追蹤率 93–97%);桌面截圖確認警示顯示,手機版徽章本來即隱藏。
+- 已知限制:手機版不顯示徽章,故無此警示(報告內仍有)。
+- 下一步:第 6 項剩餘(葉根渦/徑向 Γ)或 8C 流程外殼待辦。
+
 ## 2026-10-16 — ROADMAP 6:OpenFOAM 匯出
 
 - 做了什麼:無開著的 `[autopilot]` PR。`geo.mjs` 新增 `openfoamCase`,匯出視窗新增 OpenFOAM 案例骨架 ZIP(blockMesh、snappyHexMesh、simpleFoam + kOmegaSST、0/ 場、Allrun、README、葉片 STL)。
