@@ -161,9 +161,10 @@ aside .sidehead{display:none}
 .cbody.g3{grid-template-columns:repeat(3,1fr)}
 .cbody.g2{grid-template-columns:repeat(2,1fr)}
 .cmpbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;min-height:0;font-size:12px}
-.cmpbox table{width:100%;table-layout:fixed;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.cmpbox table{width:100%;min-width:760px;table-layout:fixed;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .cmpbox th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:500;text-align:right;padding:6px 4px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cmpbox th:first-child,.cmpbox td:first-child{text-align:left}
+.cmpbox th:first-child,.cmpbox td:first-child{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1}
+.cmpbox th:first-child{z-index:2}
 .cmpbox td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top;white-space:nowrap}
 .cmpbox td.nm{white-space:normal;overflow:hidden}
 .cmpbox tr.grp td{background:var(--grid);font-size:11px;padding:2px 6px;color:var(--muted)}
@@ -177,6 +178,7 @@ aside .sidehead{display:none}
 .cmpbox .acts button{font-size:11px;padding:2px 6px}
 .cmpbox .empty{padding:14px;color:var(--muted);line-height:1.6}
 .cmpbox .cur td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.cmpbox .cur td:first-child{background:color-mix(in srgb,var(--accent) 6%,var(--panel))}
 .cbody.cmp{grid-template-columns:1fr 1fr 1.35fr}
 @media (max-width:1100px){.cbody.cmp{grid-template-columns:1fr 1fr}.cbody.cmp .cmpbox{grid-column:1/-1;min-height:200px}}
 .stn{border:1px solid var(--line);border-radius:var(--radius);padding:6px 8px 2px;margin-bottom:6px;background:var(--bg)}
