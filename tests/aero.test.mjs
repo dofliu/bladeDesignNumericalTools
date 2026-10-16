@@ -242,6 +242,20 @@ test('自由渦尾流:Γ 與遠尾流軸向誘導一致、鬆弛後節距/膨脹
   near(z.wake[0][per].x, 2 * Math.PI / lam, 1e-9, 'a=0 節距');
 });
 
+test('wakeDiskInduction:與 BEM 平均誘導比對(記錄偏差帶)、a=0 為 0', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('4412'))), b = A.bestLD(ps, 3e5);
+  const rows = A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr: 7, aDes: b.a, clDes: b.cl, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChordRatio: 0.2 });
+  const cfg = { R: 1.5, Rhub: 0.15, B: 3, rows, rho: 1.225, mu: 1.81e-5, polarFor: () => ps };
+  const r = A.bemPoint(cfg, 8, 7 * 8 / 1.5, 0, 0, {});
+  const aBar = (1 - Math.sqrt(1 - r.Ct)) / 2;
+  const w = A.wakeDiskInduction(3, 7, aBar, { nr: 4, na: 4 });
+  // 僅葉尖渦、均勻負載:渦尾流圓盤誘導約為 BEM 動量平均 a 的 0.65–0.95 倍(實測 0.77),Cp 高估 < 30%
+  const ratio = w.a / aBar;
+  assert.ok(ratio > 0.65 && ratio < 0.95, 'a_w/a_BEM ' + ratio);
+  assert.ok(w.Cp / r.Cp > 1 && w.Cp / r.Cp < 1.3, 'Cp 比 ' + w.Cp / r.Cp);
+  assert.equal(A.wakeDiskInduction(3, 7, 0).a, 0);
+});
+
 test('parseCpCurve:標題/分隔符號、缺 Cq 推得、λ 遞增、Betz 警告與錯誤', () => {
   const r = A.parseCpCurve('lambda,Cp\n# 註解\n0.5, 0.10\n1.0;0.20\n1.5\t0.25 0.2\n');
   assert.equal(r.pts.length, 3);

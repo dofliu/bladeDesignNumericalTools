@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-16 — ROADMAP 6:渦尾流圓盤誘導與 BEM 比對
+
+- 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `wakeDiskInduction`(自由渦尾流於轉子盤面的平均軸向誘導 → 理想 Cp/Ct)。
+- 結果誠實記錄:與 BEM 比對**未達 < 5%**——a_wake 約為 BEM 平均 a 的 0.71–0.80 倍,理想 Cp 高估 12–25%(僅葉尖渦、均勻負載)。測試只釘住偏差帶,未放寬任何既有門檻。
+- 驗證:check、npm test、build、e2e 見 PR(本次僅改 aero.mjs 新增函式,無 UI 變更)。
+- 下一步:加葉根渦與 BEM 徑向 Γ 分布、尾流旋轉以縮小差距;OpenFOAM 匯出。
+
 ## 2026-10-15 — ROADMAP 6:自由渦尾流接上流場側視圖
 
 - 做了什麼:無開著的 `[autopilot]` PR。流場工作區 HAWT 控制列新增「自由渦尾流(Biot-Savart 迭代)」勾選(`F.freev`),勾選時以 `A.freeWake` 的結果繪製葉尖渦,取代預設螺旋尾流。
