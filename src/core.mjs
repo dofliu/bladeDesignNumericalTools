@@ -1035,6 +1035,12 @@ function startCq(perf) {
   for (let i = 0; i < perf.lam.length; i++) if (perf.lam[i] >= 0.2 && perf.lam[i] <= 0.6 && isFinite(perf.cq[i])) { sum += perf.cq[i]; n++; }
   return n ? sum / n : null;
 }
+// 概念比較用:靜止起轉風速概估。氣動轉矩 0.5ρAV²R·Cq(Cq 取低 λ 平均)克服靜摩擦 T0(取與 frictionT 同一尺度 0.01·額定轉矩)時的風速。
+function startWindSpeed(cq, A, R, T0 = null) {
+  if (!(cq > 0) || !(A > 0) || !(R > 0)) return null;
+  const t0 = T0 != null ? T0 : 0.01 * (G.Prated || 100) / (G.wRated || 20);
+  return Math.sqrt(2 * t0 / (air().rho * A * R * cq));
+}
 function conceptNoiseLp(lamRef, R, Vref = 8) { return noiseEstimate(lamRef * Vref, 2 * R, 50).Lp; }
 
-export { STL_DATA, STL_LIMITS, loadStl, clearStl, stlPrepare, isDemoCurve, familyName, startCq, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { STL_DATA, STL_LIMITS, loadStl, clearStl, stlPrepare, isDemoCurve, familyName, startCq, startWindSpeed, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

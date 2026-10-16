@@ -686,6 +686,18 @@ test('概念比較:起轉 Cq 與噪音概估(8C-6)', () => {
   assert.ok(Math.abs(conceptNoiseLp(14, 1.5) - conceptNoiseLp(7, 1.5) - 50 * Math.log10(2)) < 1e-9);
 });
 
+test('概念比較:起轉風速概估(8C-6)', () => {
+  const { startWindSpeed } = core;
+  assert.equal(startWindSpeed(0, 1, 1), null);
+  assert.equal(startWindSpeed(-0.1, 1, 1), null);
+  const rho = core.air().rho;
+  assert.ok(Math.abs(startWindSpeed(0.1, 2, 1, 0.5) - Math.sqrt(2 * 0.5 / (rho * 2 * 1 * 0.1))) < 1e-9);
+  assert.ok(startWindSpeed(0.2, 2, 1, 0.5) < startWindSpeed(0.1, 2, 1, 0.5), 'Cq 越大起轉風速越低');
+  setMode('HAWT');
+  const v = startWindSpeed(core.startCq(G.perf), G.A, G.R);
+  assert.ok(v == null || (v > 0 && v < 30), `v ${v}`);
+});
+
 test('概念比較:familyName 家族標籤(8C-6)', () => {
   assert.equal(core.familyName('HAWT'), '水平軸葉片');
   assert.equal(core.familyName('VAWT', 'H'), 'H 型(直葉片)');

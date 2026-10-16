@@ -584,7 +584,7 @@ export function curMetrics() {
   const P = G.perf, cm = G.cpMax; let lo = null, hi = null;
   for (let i = 0; i < P.lam.length; i++) if (P.cp[i] >= 0.9 * cm) { if (lo == null) lo = P.lam[i]; hi = P.lam[i]; }
   const H = S.mode === 'HAWT', R = G.R;
-  const m = { mode: S.mode, family: familyName(S.mode, S.vawt.type), trust: rotorTrust(), A: G.A, R, cpMax: cm, lopt: G.lopt, band: [lo, hi], mass: H ? G.bladeMass : G.mass, massTot: G.mass, mat: H ? S.hawt.material : S.vawt.material, cost: { ...(S.perf.cost || {}) }, Pmax: S.load.Pmax, startCq: startCq(P), noise: conceptNoiseLp(H ? S.hawt.tsr : G.lopt, R, H ? S.hawt.Vd : 8), cpDes: H ? G.cpDesign : null, lamD: H ? S.hawt.tsr : null,
+  const m = { mode: S.mode, family: familyName(S.mode, S.vawt.type), trust: rotorTrust(), A: G.A, R, cpMax: cm, lopt: G.lopt, band: [lo, hi], mass: H ? G.bladeMass : G.mass, massTot: G.mass, mat: H ? S.hawt.material : S.vawt.material, cost: { ...(S.perf.cost || {}) }, Pmax: S.load.Pmax, startCq: startCq(P), vStart: startWindSpeed(startCq(P), G.A, R), noise: conceptNoiseLp(H ? S.hawt.tsr : G.lopt, R, H ? S.hawt.Vd : 8), cpDes: H ? G.cpDesign : null, lamD: H ? S.hawt.tsr : null,
     lam: r4(P.lam), cp: r4(P.cp.map(v => Math.max(-0.2, v))), sub: designSub() };
   if (H) Object.assign(m, { rr: r4(G.rows.map(x => x.r / R)), cR: r4(G.rows.map(x => x.c / R)), tw: r4(G.rows.map(x => x.tw)), aAct: r4(G.rows.map(x => x.aAct)), aD: r4(G.rows.map(x => x.aD)), tc: r4(G.afs.map(a => a.t)) });
   return m;
@@ -660,14 +660,14 @@ export function drawCompare() {
   const lcoes = rows.map((r, i) => r.massTot != null ? costEstimate(r.massTot, r.mat, snapRated(r), r.A, aeps[i], r.cost).lcoe : NaN), bestL = Math.min(...lcoes.filter(isFinite));
   const bw = r => r.band && r.band[0] != null ? r.band[1] - r.band[0] : 0, bestBw = Math.max(...rows.map(bw));
   const cls = (val, b) => Math.abs(val - b) < 1e-9 && rows.length > 1 ? 'best' : '';
-  let h = `<table><colgroup><col style="width:21%"><col style="width:8%"><col style="width:7%"><col style="width:11%"><col style="width:10%"><col style="width:10%"><col style="width:8%"><col style="width:9%"><col style="width:8%"><col style="width:8%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、輸出限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷ 掃掠面積:跨家族比較的基準(同風況、同發電機額定)">AEP/A<br><small>kWh/m²</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="低 λ(0.2–0.6)平均轉矩係數 Cq:越大越容易自行起轉(> 0.05 可自啟,< 0.02 通常需輔助起轉)">起轉<br><small>Cq</small></th><th title="噪音概估:葉尖速度法,距離 50 m,參考風速 8 m/s(水平軸用設計點),僅供相對比較">噪音<br><small>dB 50m</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;
+  let h = `<table><colgroup><col style="width:19%"><col style="width:8%"><col style="width:6%"><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:7%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:8%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、輸出限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷ 掃掠面積:跨家族比較的基準(同風況、同發電機額定)">AEP/A<br><small>kWh/m²</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="低 λ(0.2–0.6)平均轉矩係數 Cq:越大越容易自行起轉(> 0.05 可自啟,< 0.02 通常需輔助起轉)">起轉<br><small>Cq</small></th><th title="靜止起轉風速概估:氣動轉矩 0.5ρAV²R·Cq 克服靜摩擦(約 1% 額定轉矩)的風速,越小越容易起轉;Cq ≤ 0 者無法自啟">起轉風速<br><small>m/s</small></th><th title="噪音概估:葉尖速度法,距離 50 m,參考風速 8 m/s(水平軸用設計點),僅供相對比較">噪音<br><small>dB 50m</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;
   const famOf = r => r.family || (r.mode === 'HAWT' ? familyName('HAWT') : r.cfg && r.cfg.vawt ? familyName('VAWT', r.cfg.vawt.type) : '');
   const order = rows.map((r, i) => i).sort((a, b) => (rows[a].cur ? 0 : 1) - (rows[b].cur ? 0 : 1) || (famOf(rows[a]) > famOf(rows[b]) ? 1 : famOf(rows[a]) < famOf(rows[b]) ? -1 : 0) || a - b); // 目前設計置頂,其餘依家族分組(穩定排序)
   const nFam = new Set(rows.filter(r => !r.cur).map(famOf)).size;
   let lastFam = null;
   order.forEach(i => {
     const r = rows[i];
-    if (!r.cur && nFam > 1 && famOf(r) !== lastFam) { lastFam = famOf(r); h += `<tr class="grp"><td colspan="10"><b>${esc(lastFam || '其他')}</b></td></tr>`; }
+    if (!r.cur && nFam > 1 && famOf(r) !== lastFam) { lastFam = famOf(r); h += `<tr class="grp"><td colspan="11"><b>${esc(lastFam || '其他')}</b></td></tr>`; }
     const sw = r.cur ? `<span class="sw" style="background:transparent;border:1.5px dashed ${col('--ink')}"></span>` : `<input type="checkbox" data-vis="${r.id}" ${r.vis ? 'checked' : ''} aria-label="顯示"><span class="sw" style="background:${col(SNAP_COL[r.ci])}"></span>`;
     const fam = famOf(r);
     const sub = `${fam ? `[${esc(fam)}] ` : ''}${r.sub} · 掃掠 ${fmt(r.A, 2)} m²${r.trust ? ` · 可信度 ${esc(r.trust.split(':')[0])}` : ''}${r.cpDes != null ? ` · Cp(λd) ${fmt(r.cpDes, 3)}` : ''} · ${fmt(r.mass, 2)} kg${r.mode === 'HAWT' ? '/葉' : ''}`;
@@ -677,6 +677,7 @@ export function drawCompare() {
       <td class="${cls(aeps[i] / r.A, bestAepA)}">${fmt(aeps[i] / r.A, 0)}</td>
       <td class="${cls(cfs[i], bestCf)}">${fmt(cfs[i] * 100, 0)}%</td>
       <td>${r.startCq != null ? fmt(r.startCq, 3) : '–'}</td>
+      <td class="${r.vStart != null ? cls(-r.vStart, -Math.min(...rows.map(x => x.vStart ?? Infinity))) : ''}">${r.vStart != null ? fmt(r.vStart, 1) : '–'}</td>
       <td class="${cls(-(r.noise ?? Infinity), -Math.min(...rows.map(x => x.noise ?? Infinity)))}">${r.noise != null ? fmt(r.noise, 0) : '–'}</td>
       <td class="${isFinite(lcoes[i]) ? cls(lcoes[i], bestL) : ''}">${isFinite(lcoes[i]) ? fmt(lcoes[i], 1) : '–'}</td>
       </tr>`;
