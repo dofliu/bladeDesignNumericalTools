@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-16 — ROADMAP 8C-6:比較表桌面欄位版面
+
+- 做了什麼:無開著的 `[autopilot]` PR。`shell.html` 的 `.cmpbox table` 加 `min-width:760px`,方案名稱欄 `position:sticky;left:0`(含目前設計列底色處理),窄面板改為橫向捲動而非欄位擠壓。
+- 驗證:check、npm test(93/93)、build、e2e 全過(追蹤率 93–97%);桌面 1440×900 與手機 390×844 截圖確認比較分頁無破版。
+- 已知限制:桌面窄面板一次只看得到前 4 欄,其餘需橫向捲動。
+- 下一步:第 6 項自由渦尾流剩餘(葉根渦、徑向 Γ、尾流旋轉)。
+
 ## 2026-10-16 — ROADMAP 8C-6:比較表起轉風速欄
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `startWindSpeed(cq, A, R)`(氣動轉矩 0.5ρAV²R·Cq 克服約 1% 額定轉矩靜摩擦的風速,概估);`curMetrics` 存 `vStart`,方案比較表新增「起轉風速」欄(最小者標最佳,舊方案顯示 –)。
