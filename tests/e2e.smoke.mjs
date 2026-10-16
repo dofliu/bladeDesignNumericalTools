@@ -164,10 +164,14 @@ const res = await page.evaluate(() => {
   const n0 = SNAPS.length; saveSnap(); const sn = SNAPS[SNAPS.length - 1], name = S.custom.name, np = S.custom.pts.length;
   S.custom.pts = null; S.custom.name = ''; loadSnap(sn);
   out.push({ snap: SNAPS.length === n0 + 1 && S.custom.name === name && S.custom.pts && S.custom.pts.length === np && !!G.perf });
+  setMode('HAWT'); rebuild(true); saveSnap(); // 不同家族方案 → 比較表依家族分組
+  drawCompare(); const grp = [...document.querySelectorAll('#cmpBox tr.grp')].map(e => e.textContent);
+  out.push({ cmpGroups: grp.length >= 2 && new Set(grp).size === grp.length });
   SNAPS.length = n0; storeSnaps();
   return out;
 });
 check(res.some(r => r.badgeDemo), 'custom rotor: 徽章標示示意曲線非實測');
+check(res.some(r => r.cmpGroups), 'compare: 不同家族方案依家族分組');
 check(res.some(r => r.snap), 'custom rotor: snapshot save/load restores S.custom');
 for (const r of res.filter(r => r.ctrl)) check(r.track >= 0.9, `${r.mode} ${r.ctrl} ${r.V} m/s tracking ${(r.track * 100).toFixed(0)}%`);
 await browser.close();

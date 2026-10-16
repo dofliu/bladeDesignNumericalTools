@@ -661,9 +661,15 @@ export function drawCompare() {
   const bw = r => r.band && r.band[0] != null ? r.band[1] - r.band[0] : 0, bestBw = Math.max(...rows.map(bw));
   const cls = (val, b) => Math.abs(val - b) < 1e-9 && rows.length > 1 ? 'best' : '';
   let h = `<table><colgroup><col style="width:21%"><col style="width:8%"><col style="width:7%"><col style="width:11%"><col style="width:10%"><col style="width:10%"><col style="width:8%"><col style="width:9%"><col style="width:8%"><col style="width:8%"></colgroup><thead><tr><th>方案</th><th>C<sub>p,max</sub></th><th>λ<sub>opt</sub></th><th title="Cp ≥ 90% Cp,max 的尖速比範圍,越寬越不怕風速變化">高效區λ</th><th title="理想 MPPT、輸出限額定,Weibull(年均 ${fmt(S.perf.Vavg, 1)} m/s,k=${fmt(S.perf.k, 1)})">AEP<br><small>kWh/年</small></th><th title="AEP ÷ 掃掠面積:跨家族比較的基準(同風況、同發電機額定)">AEP/A<br><small>kWh/m²</small></th><th title="AEP ÷(發電機額定 ${fmtP(S.load.Pmax)} × 8760 小時)">容量<br><small>因數</small></th><th title="低 λ(0.2–0.6)平均轉矩係數 Cq:越大越容易自行起轉(> 0.05 可自啟,< 0.02 通常需輔助起轉)">起轉<br><small>Cq</small></th><th title="噪音概估:葉尖速度法,距離 50 m,參考風速 8 m/s(水平軸用設計點),僅供相對比較">噪音<br><small>dB 50m</small></th><th title="概念性成本模型(葉片材料 + 發電機電控 + 塔架基礎,固定費率 8% + 維運 3%),僅供方案相對比較">LCOE<br><small>NT$/kWh</small></th></tr></thead><tbody>`;
-  rows.forEach((r, i) => {
+  const famOf = r => r.family || (r.mode === 'HAWT' ? familyName('HAWT') : r.cfg && r.cfg.vawt ? familyName('VAWT', r.cfg.vawt.type) : '');
+  const order = rows.map((r, i) => i).sort((a, b) => (rows[a].cur ? 0 : 1) - (rows[b].cur ? 0 : 1) || (famOf(rows[a]) > famOf(rows[b]) ? 1 : famOf(rows[a]) < famOf(rows[b]) ? -1 : 0) || a - b); // 目前設計置頂,其餘依家族分組(穩定排序)
+  const nFam = new Set(rows.filter(r => !r.cur).map(famOf)).size;
+  let lastFam = null;
+  order.forEach(i => {
+    const r = rows[i];
+    if (!r.cur && nFam > 1 && famOf(r) !== lastFam) { lastFam = famOf(r); h += `<tr class="grp"><td colspan="10"><b>${esc(lastFam || '其他')}</b></td></tr>`; }
     const sw = r.cur ? `<span class="sw" style="background:transparent;border:1.5px dashed ${col('--ink')}"></span>` : `<input type="checkbox" data-vis="${r.id}" ${r.vis ? 'checked' : ''} aria-label="顯示"><span class="sw" style="background:${col(SNAP_COL[r.ci])}"></span>`;
-    const fam = r.family || (r.mode === 'HAWT' ? familyName('HAWT') : r.cfg && r.cfg.vawt ? familyName('VAWT', r.cfg.vawt.type) : '');
+    const fam = famOf(r);
     const sub = `${fam ? `[${esc(fam)}] ` : ''}${r.sub} · 掃掠 ${fmt(r.A, 2)} m²${r.trust ? ` · 可信度 ${esc(r.trust.split(':')[0])}` : ''}${r.cpDes != null ? ` · Cp(λd) ${fmt(r.cpDes, 3)}` : ''} · ${fmt(r.mass, 2)} kg${r.mode === 'HAWT' ? '/葉' : ''}`;
     h += `<tr class="${r.cur ? 'cur' : ''}"><td class="nm"><div class="nmh">${sw}${r.cur ? `<b>目前設計</b>` : `<input data-name="${r.id}" value="${r.name.replace(/"/g, '&quot;')}" title="${r.name.replace(/"/g, '&quot;')}" aria-label="方案名稱">`}</div>${r.cur ? `<div class="sub">${designName()}</div>` : ''}<div class="sub">${sub}</div><div class="acts">${r.cur ? '<button class="btn" id="snapSave">儲存為方案</button>' : `<button class="btn ghost" data-load="${r.id}" title="載入此方案">載入</button><button class="btn ghost" data-del="${r.id}" aria-label="刪除" title="刪除">刪除</button>`}</div></td>
       <td class="${cls(r.cpMax, best('cpMax'))}">${fmt(r.cpMax, 3)}</td><td>${fmt(r.lopt, 2)}</td><td class="${cls(bw(r), bestBw)}">${r.band && r.band[0] != null ? fmt(r.band[0], 1) + '–' + fmt(r.band[1], 1) : '–'}</td>
