@@ -902,7 +902,7 @@ export function openExport() {
   const m = document.createElement('div'); m.className = 'modal';
   const stlOk = !(S.mode === 'VAWT' && noAirfoil(S.vawt));
   m.innerHTML = `<div role="dialog" aria-label="匯出"><h3 style="margin:0 0 6px">匯出設計</h3><p class="note">STL 單位為 mm(單一葉片,槳距 0°),可直接送 3D 列印或 CAD。CSV 可在試算表或 MATLAB 中使用。</p>
-    <div class="btns">${S.mode === 'VAWT' && S.vawt.type === 'arch' ? '<button class="btn" data-x="archstl">螺旋葉片 STL(mm,全部葉片)</button>' : ''}${stlOk ? '<button class="btn" data-x="zip">完整設計包 ZIP(STL + CSV + 翼型座標)</button>' : ''}<button class="btn ghost" data-x="geo">截面幾何 CSV</button><button class="btn ghost" data-x="pol">極曲線 CSV</button><button class="btn ghost" data-x="perf">性能曲線 CSV</button></div>
+    <div class="btns">${S.mode === 'VAWT' && S.vawt.type === 'arch' ? '<button class="btn" data-x="archstl">螺旋葉片 STL(mm,全部葉片)</button>' : ''}${stlOk ? '<button class="btn" data-x="zip">完整設計包 ZIP(STL + CSV + 翼型座標)</button>' : ''}${stlOk ? '<button class="btn ghost" data-x="foam">OpenFOAM 案例骨架 ZIP(未驗證)</button>' : ''}<button class="btn ghost" data-x="geo">截面幾何 CSV</button><button class="btn ghost" data-x="pol">極曲線 CSV</button><button class="btn ghost" data-x="perf">性能曲線 CSV</button></div>
     <textarea id="expTxt" class="hidden" style="min-height:220px"></textarea>
     <div class="btns"><button class="btn ghost" data-x="close">關閉</button></div></div>`;
   document.body.appendChild(m);
@@ -915,6 +915,13 @@ export function openExport() {
     if (e.target === m || x === 'close') { m.remove(); return; }
     const tag = S.mode === 'HAWT' ? 'hawt' : 'vawt_' + S.vawt.type;
     if (x === 'archstl') { const txt = GEO.stl(GEO.archimedeanBlade(S.arch), 'archimedean_mm'); done(await save('vawt_arch_blades.stl', txt), '(STL 太大,請在可下載的環境匯出)'); return; }
+    if (x === 'foam') {
+      const V = S.tun.V || G.Vref || 8;
+      const files = GEO.openfoamCase({ R: G.R, V, lam: S.mode === 'HAWT' ? S.hawt.tsr : 0, stlName: 'blade.stl' });
+      files.push({ name: 'constant/triSurface/blade.stl', text: stlText() });
+      done(await save(tag + '_openfoam_case.zip', GEO.zip(files)), files.map(f => '=== ' + f.name + ' ===\n' + (f.name.endsWith('.stl') ? '(STL 太大,請在可下載的環境匯出)' : f.text)).join('\n\n'));
+      return;
+    }
     if (x === 'zip') {
       const files = [{ name: tag + '_blade.stl', text: stlText() }, { name: tag + '_geometry.csv', text: csvGeometry() }, { name: tag + '_polar.csv', text: csvPolar() }, { name: tag + '_performance.csv', text: csvPerf() }];
       if (S.mode === 'HAWT') stSorted().forEach((s, j) => files.push({ name: `airfoil_station${j + 1}_rR${s.f.toFixed(2)}.dat`, text: afCoords(getAf(s.k)) }));

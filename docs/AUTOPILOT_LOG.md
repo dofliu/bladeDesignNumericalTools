@@ -2,6 +2,12 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-16 — ROADMAP 6:OpenFOAM 匯出
+
+- 做了什麼:無開著的 `[autopilot]` PR。`geo.mjs` 新增 `openfoamCase`,匯出視窗新增 OpenFOAM 案例骨架 ZIP(blockMesh、snappyHexMesh、simpleFoam + kOmegaSST、0/ 場、Allrun、README、葉片 STL)。
+- 已知限制:未在實際 OpenFOAM 驗證;靜止葉片無 MRF;不讀回 CFD 結果;邊界層網格關閉。
+- 下一步:渦尾流模型改善(葉根渦、徑向 Γ、尾流旋轉)。
+
 ## 2026-10-16 — ROADMAP 6:渦尾流圓盤誘導與 BEM 比對
 
 - 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `wakeDiskInduction`(自由渦尾流於轉子盤面的平均軸向誘導 → 理想 Cp/Ct)。
