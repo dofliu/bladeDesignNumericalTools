@@ -24,7 +24,7 @@ export const Research = (function () {
     try {
       const nb = b != null ? L.parseBladeV1(b) : blade, np = p != null ? L.parsePolarV1(p) : polar; // 空檔("")也要解析並報錯
       blade = nb; polar = np; if (b != null) bladeName = bn; if (p != null) polarName = pn; err = '';
-      if (b != null) { R.a = {}; R.mods = {}; cmp = []; } else recalcCmp(); // 換極曲線:比較組依新資料重算
+      if (b != null) { R.a = {}; R.mods = {}; cmp = []; restoreCmp(); } else recalcCmp(); // 換極曲線:比較組依新資料重算
     } catch (e) { err = e.message; }
     sweepCache.key = '';
   }
@@ -36,6 +36,8 @@ export const Research = (function () {
     for (const br of blade.branches) {
       const m = mods[br.id] || {}, t = [];
       if (m.dBeta) t.push(`β${m.dBeta > 0 ? '+' : ''}${m.dBeta}°`);
+      if (m.dBetaLin) t.push(`β線性${m.dBetaLin > 0 ? '+' : ''}${m.dBetaLin}°`);
+      if (m.dBetaQuad) t.push(`β二次${m.dBetaQuad > 0 ? '+' : ''}${m.dBetaQuad}°`);
       if (m.profile != null || m.mirror != null) t.push(`${m.profile ?? br.profile}${(m.mirror ?? br.mirror) ? '(鏡射)' : '(原向)'}`);
       if (R.a[br.id]) t.push(`a ${R.a[br.id]}`);
       if (t.length) parts.push(`${br.id}:${t.join('、')}`);
@@ -64,8 +66,8 @@ export const Research = (function () {
         <label>負載 <select id="rsLoad"><option value="total">力 + 四分之一弦 Cm</option><option value="force">只計力</option></select></label>
         <label>積分節點 <select id="rsN"><option>81</option><option>161</option><option>321</option><option>641</option></select></label>
         <label>λ 掃描 <input type="number" id="rsL0" step="0.5" style="width:60px">–<input type="number" id="rsL1" step="0.5" style="width:60px"></label></div>
-        <div class="cmpbox"><table class="auto" style="min-width:560px"><thead><tr><th>分支</th><th>軸向折減 a</th><th>安裝角偏移 Δβ(°)</th><th>翼型</th><th>方向</th></tr></thead><tbody id="rsMods"></tbody></table></div>
-        <p class="note">a 為指定的純軸向速度折減(W = (1−a)e<sub>z</sub> − λ e<sub>z</sub>×x),不是由誘導模型算出。Δβ 加在定義檔的安裝角上;翼型改動套用整支分支。</p>`, '', 'rsOp')}
+        <div class="cmpbox"><table class="auto" style="min-width:560px"><thead><tr><th>分支</th><th>軸向折減 a</th><th>安裝角偏移 Δβ(°)</th><th>線性扭角 s0→s1(°)</th><th>二次扭角 s1 處(°)</th><th>翼型</th><th>方向</th></tr></thead><tbody id="rsMods"></tbody></table></div>
+        <p class="note">a 為指定的純軸向速度折減(W = (1−a)e<sub>z</sub> − λ e<sub>z</sub>×x),不是由誘導模型算出。Δβ 加在定義檔的安裝角上;線性/二次扭角以分支弧長正規化(u=0 在起點,u=1 在終點),線性項加 u×值、二次項加 u²×值;翼型改動套用整支分支。</p>`, '', 'rsOp')}
       ${card('結果摘要', `<div id="rsSum"></div>`, '', 'rsRes')}
       ${card('沿弧長分佈(實線有資料;紅色底色為缺值區間,紅色虛線為缺值段的攻角/Re)', `<div class="bgrid"><canvas id="rsCa" style="height:240px"></canvas><canvas id="rsCr" style="height:240px"></canvas><canvas id="rsCq" style="height:240px"></canvas></div>`, '', 'rsDist')}
       ${card('扭角/翼型修改比較:部分 CQ–λ', `<div class="ctrlbar" style="padding:0 0 8px"><button class="btn" id="rsAdd">加入比較(目前設定)</button><button class="btn ghost" id="rsClr">清除比較</button><button class="btn ghost" id="rsCx">匯出 CQ–λ CSV</button><span class="note" style="margin:0">第一筆為基準;缺完整窗資料的 λ 不畫(不補 0)。</span></div>
@@ -94,13 +96,31 @@ export const Research = (function () {
       const m = R.mods[id] = R.mods[id] || {};
       if (t.dataset.k === 'a') { const v = t.value === '' ? 0 : +t.value; R.a[id] = Number.isFinite(v) ? v : 0; }
       if (t.dataset.k === 'db') { const v = +t.value; m.dBeta = Number.isFinite(v) ? v : 0; }
+      if (t.dataset.k === 'dl') { const v = +t.value; m.dBetaLin = Number.isFinite(v) ? v : 0; }
+      if (t.dataset.k === 'dq') { const v = +t.value; m.dBetaQuad = Number.isFinite(v) ? v : 0; }
       if (t.dataset.k === 'pf') { if (t.value) m.profile = t.value; else delete m.profile; }
       if (t.dataset.k === 'mi') { if (t.value === '') delete m.mirror; else m.mirror = t.value === '1'; }
       sweepCache.key = ''; render();
     });
-    on('rsAdd', 'click', () => { if (!blade || !polar) return; if (cmp.length >= 6) cmp.shift(); const mods = structuredClone(R.mods), a = { ...R.a }; cmp.push({ label: modLabel(mods), mods, a, rows: sweep(mods, a) }); render(); });
-    on('rsClr', 'click', () => { cmp = []; render(); });
+    on('rsAdd', 'click', () => { if (!blade || !polar) return; if (cmp.length >= 6) cmp.shift(); const mods = structuredClone(R.mods), a = { ...R.a }; cmp.push({ label: modLabel(mods), mods, a, rows: sweep(mods, a) }); saveCmp(); render(); });
+    on('rsClr', 'click', () => { cmp = []; saveCmp(); render(); });
     document.querySelectorAll('#researchInner details').forEach(d => d.addEventListener('toggle', () => { if (d.open) render(); }));
+  }
+  // 比較組存 localStorage(以葉片名稱為鍵,只存設定不存結果;載入同名葉片時還原並重算)
+  const CMP_KEY = 'wt-research-cmp-v1';
+  function saveCmp() {
+    try {
+      const all = JSON.parse(localStorage.getItem(CMP_KEY) || '{}');
+      all[blade.name] = cmp.map(c => ({ label: c.label, mods: c.mods, a: c.a }));
+      localStorage.setItem(CMP_KEY, JSON.stringify(all));
+    } catch (e) { /* 無法存取 localStorage 時略過 */ }
+  }
+  function restoreCmp() {
+    try {
+      const list = (JSON.parse(localStorage.getItem(CMP_KEY) || '{}') || {})[blade.name];
+      if (!Array.isArray(list)) return;
+      for (const c of list.slice(-6)) if (c && c.mods && typeof c.mods === 'object') { const a = c.a && typeof c.a === 'object' ? c.a : {}; cmp.push({ label: String(c.label || ''), mods: c.mods, a, rows: sweep(c.mods, a) }); }
+    } catch (e) { cmp = []; }
   }
   function recalcCmp() { cmp.forEach(c => { c.rows = sweep(c.mods, c.a); }); }
   function soon() { clearTimeout(timer); timer = setTimeout(render, 40); }
@@ -127,6 +147,8 @@ export const Research = (function () {
         const m = R.mods[b.id] || {}, id = esc(b.id);
         return `<tr><td>${id}</td><td><input type="number" data-br="${id}" data-k="a" step="0.05" min="0" max="0.9" value="${R.a[b.id] || 0}" style="width:80px"></td>
           <td><input type="number" data-br="${id}" data-k="db" step="0.5" value="${m.dBeta || 0}" style="width:80px"></td>
+          <td><input type="number" data-br="${id}" data-k="dl" step="0.5" value="${m.dBetaLin || 0}" style="width:80px"></td>
+          <td><input type="number" data-br="${id}" data-k="dq" step="0.5" value="${m.dBetaQuad || 0}" style="width:80px"></td>
           <td><select data-br="${id}" data-k="pf"><option value="">依定義檔(${esc(b.profile)})</option>${opts}</select></td>
           <td><select data-br="${id}" data-k="mi"><option value="">依定義檔(${b.mirror ? '鏡射' : '原向'})</option><option value="0">原向</option><option value="1">鏡射</option></select></td></tr>`;
       }).join('');

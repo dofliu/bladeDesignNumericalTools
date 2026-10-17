@@ -181,6 +181,12 @@ test('cubicSpline 重現線性函數與其斜率;安裝角偏移與分段翼型�
   const br = exBlade().branches[0];
   const d0 = L.branchDef(br), d1 = L.branchDef(br, { dBeta: 2 });
   assert.ok(Math.abs(d1.beta(0.5) - d0.beta(0.5) - 2) < 1e-12);
+  { // 線性/二次扭角:起點不變、終點加 dL+dQ、中點加 dL/2+dQ/4(u 以分支弧長正規化)
+    const [s0, s1] = d0.domain, dm = L.branchDef(br, { dBetaLin: 3, dBetaQuad: -2 }), sm = (s0 + s1) / 2;
+    assert.ok(Math.abs(dm.beta(s0) - d0.beta(s0)) < 1e-12);
+    assert.ok(Math.abs(dm.beta(s1) - d0.beta(s1) - 1) < 1e-12);
+    assert.ok(Math.abs(dm.beta(sm) - d0.beta(sm) - (1.5 - 0.5)) < 1e-12);
+  }
   const seg = structuredClone(br); seg.stations.find(p => p.s === 0.5).profile = 'baseline_mesh'; seg.stations.find(p => p.s === 0.5).mirror = false;
   const ds = L.branchDef(seg);
   assert.deepEqual(ds.profileAt(0.3), { profile: '2412', mirror: true });

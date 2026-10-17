@@ -130,6 +130,9 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     check(r1.cq === null && Math.abs(r1.cov - 0.7736) < 1e-3 && r1.txt.includes('缺值') && r1.txt.includes('攻角超出極曲線範圍'), `${vp.tag}: 研究模式缺值標示(覆蓋率 ${(r1.cov * 100).toFixed(1)}%)`);
     await page.click('#rsAdd'); await page.waitForTimeout(300);
     check(await page.evaluate(() => Research.compareCount() === 1 && document.querySelectorAll('#rsCmp tbody tr').length === 2), `${vp.tag}: 研究模式加入比較`);
+    check(await page.evaluate(() => { const o = JSON.parse(localStorage.getItem('wt-research-cmp-v1') || '{}'); return Object.values(o).some(l => l.length === 1 && l[0].a.Return === 0.25); }), `${vp.tag}: 研究模式比較組已存 localStorage`);
+    await page.fill('[data-br="Return"][data-k="dl"]', '2'); await page.dispatchEvent('[data-br="Return"][data-k="dl"]', 'change'); await page.waitForTimeout(400);
+    check(await page.evaluate(() => Research.state.mods.Return.dBetaLin === 2 && !!Research.last()), `${vp.tag}: 研究模式線性扭角修改可套用`);
     { // CSV 匯出:Blob 下載(檔名與內容);缺值留空
       const grab = async id => { const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }).catch(() => null), page.click(id)]); if (!dl) return null; const fs = await import('node:fs'); return { name: dl.suggestedFilename(), text: fs.readFileSync(await dl.path(), 'utf8') }; };
       const c1 = await grab('#rsSx'), c2 = await grab('#rsCx');

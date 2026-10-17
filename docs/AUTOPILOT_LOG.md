@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-17 — ROADMAP 9-7c-2:研究模式扭角線性/二次修改與比較組存 localStorage(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`branchDef` 新增 `dBetaLin`/`dBetaQuad`(u=(s−s0)/(s1−s0) 的線性/二次扭角修改);研究工作區各分支新增「線性扭角」「二次扭角」輸入,比較組標籤一併顯示;比較組以葉片名稱為鍵存入 localStorage(`wt-research-cmp-v1`,只存設定、載入同名葉片時重算,全程 try/catch)。
+- 驗證:check、npm test(111/111,line3d 測試新增線性/二次端點與中點斷言)、build、e2e 全過(新增比較組已存 localStorage、線性扭角可套用,桌面與手機;MPPT 追蹤率 93–97%);桌面 1440×900 與手機 390×844 截圖無破版。
+- 已知限制:仍只有線性/二次兩種分佈,沒有逐站自由編輯;還原的比較組只依葉片名稱比對,同名但內容不同的葉片會套用舊設定(分支 id 不存在時被忽略)。
+- 下一步:9-8 交叉檢查(三維線葉片 H 型 Darrieus 對 DMST)。
+
 ## 2026-10-17 — ROADMAP 9-7c-1:研究模式匯出分析結果 CSV(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`line3d.mjs` 新增 `stationsCSV`、`sweepCSV`(UTF-8 BOM、CRLF、缺值留空、含逗號欄位加引號);研究工作區新增「匯出逐截面 CSV」「匯出 CQ–λ CSV」;檔名只用 ASCII(含中文的檔名在 Chrome 下載時被改成 `download`,e2e 抓到後修正)。
