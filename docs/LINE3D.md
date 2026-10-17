@@ -22,6 +22,10 @@
 - `lookupPolar`:攻角相鄰格點線性 → Re 相鄰層 log(Re) 線性;鏡射翼型以 −α 查表,CL、CM 變號。需要的任一角點無效即回傳 `missing_corner`;越界回傳 `outside_alpha` / `outside_Re`;不夾值、不外插、不套 Viterna、不墊 Cd、不補 0。
 - 與一般模式(`aero.mjs` 的 `buildPolarSet`/`parsePolarText`,含 Viterna 外插與 Cd ≥ 0.003)完全分開,互不影響。
 
+## 截面狀態
+
+`sectionLoad3D`/`lineStation` 的 `status`:`supported`、極曲線狀態(`missing_corner`/`outside_alpha`/`outside_Re`/`nonfinite`/`unknown_profile`)、`zero_chord`(c = 0,力與力偶恰為 0)、`invalid_chord`(c < 0 或非有限)、`nonfinite_wind`(W 含 NaN,例如誘導計算失敗)、`zero_speed`、`degenerate_frame`(span 平行主軸)。未給 `dx` 時以差分求切線;給 `domain:[s0,s1]` 則端點改用單側差分,不在定義域外取值。
+
 ## 積分
 
-`integrateLine` 用梯形法;每個區間的兩端點與中點都有資料才算支撐。只要有一個區間缺資料,`I_full` 為 null 並列出 `unsupportedIntervals` 與原因;`I_supported` 只是支撐子區的值,不可當完整結果。端點/中點檢查不保證區間內不存在更窄的缺口。
+`integrateLine` 用梯形法;每個區間的兩端點與中點都有資料才算支撐。只要有一個區間缺資料,`I_full` 為 null 並列出 `unsupportedIntervals` 與原因;`I_supported` 只是支撐子區的值,不可當完整結果。網格少於兩點或非嚴格遞增時回傳 `status: 'invalid_grid'`、`I_full: null`。端點/中點檢查不保證區間內不存在更窄的缺口。

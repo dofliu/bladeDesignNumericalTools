@@ -110,3 +110,29 @@ test('框架與零速度防護:span 平行主軸、相對速度為 0 時回報�
   const fr = L.lineFrame([1, 0, 0]), ax = L.sectionAxes(fr, 0);
   assert.equal(L.sectionLoad3D({ x: [0, 0, 0], span: fr.span, chord: ax.chord, upper: ax.upper, c: 0.1, W: [1, 0, 0], polar, profile: '2412', ReR }).status, 'zero_speed');
 });
+
+test('輸入防護:零弦長恰為 0、負弦長與 NaN 誘導不當成數值、無效積分網格回 null', () => {
+  const base = L.returnWingBranch('Work', VARIANT['2412_mirrored']), op = { lam: 6, a: 0, polar, ReR };
+  const zero = L.lineStation({ ...base, chord: () => 0 }, 0.5, op);
+  assert.equal(zero.status, 'zero_chord'); assert.equal(zero.qTotal, 0);
+  assert.equal(L.lineStation({ ...base, chord: () => -0.1 }, 0.5, op).status, 'invalid_chord');
+  const nan = L.lineStation(base, 0.5, { ...op, a: NaN });
+  assert.equal(nan.status, 'nonfinite_wind'); assert.ok(Number.isNaN(nan.qTotal));
+  for (const s of [[0.5], [], [0.1, 0.1], [0.5, 0.2], [0.1, NaN]]) {
+    const r = L.integrateLine(base, op, { s });
+    assert.equal(r.I_full, null); assert.equal(r.status, 'invalid_grid');
+  }
+  assert.equal(L.partialCQ([L.integrateLine(base, op, { n: 1 }).I_full], 2), null);
+});
+
+test('差分切線:給 domain 時端點用單側差分、不會在定義域外取值', () => {
+  const ref = L.returnWingBranch('Work', VARIANT['2412_mirrored']);
+  const guarded = { ...ref, dx: undefined, domain: [0.1, 0.9], x: s => { if (s < 0.1 || s > 0.9) throw new Error('out of domain ' + s); return ref.x(s); } };
+  const op = { lam: 6, a: 0, polar, ReR };
+  for (const s of [0.1, 0.5, 0.9]) {
+    const a = L.lineStation(guarded, s, op), b = L.lineStation(ref, s, op);
+    assert.ok(Math.abs(a.J - b.J) < 1e-5, `J @${s}`); assert.ok(Math.abs(a.qTotal - b.qTotal) < 1e-5, `q @${s}`);
+  }
+  const r = L.integrateLine(guarded, op, { s0: 0.1, s1: 0.9, n: 161, load: 'total' }), r0 = L.integrateLine(ref, op, { s0: 0.1, s1: 0.9, n: 161, load: 'total' });
+  assert.ok(Math.abs(r.I_full - r0.I_full) < 1e-6);
+});

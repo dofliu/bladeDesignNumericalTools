@@ -117,7 +117,13 @@ export function sectionLoad3D(o) {
   const { x, span, chord, upper, c, W, polar, profile, mirror = false, ReR } = o;
   const wp = sub(W, scale(span, dot(W, span))), v = norm(wp);
   const out = { x, span, W, wperp: wp, speed: v, c, alpha: NaN, Re: NaN, cl: NaN, cd: NaN, cm: NaN, F: NAN3, M: NAN3, qForce: NaN, qCm: NaN, qTotal: NaN, status: 'zero_speed', usedCorners: [], sourceIds: [] };
+  if (!(c >= 0) || !Number.isFinite(c)) { out.status = 'invalid_chord'; return out; }
+  if (!W.every(Number.isFinite)) { out.status = 'nonfinite_wind'; return out; } // 例如上游誘導計算失敗給出 NaN
   if (!(v > 1e-12)) return out;
+  if (c === 0) { // 零弦長截面(錐形翼根/翼尖):力與力偶恰為 0,與極曲線無關
+    Object.assign(out, { F: [0, 0, 0], M: [0, 0, 0], qForce: 0, qCm: 0, qTotal: 0, status: 'zero_chord' });
+    return out;
+  }
   out.alpha = Math.atan2(dot(wp, upper), dot(wp, chord)) * 180 / Math.PI;
   out.Re = ReR * c * v;
   const lk = lookupPolar(polar, profile, out.alpha, out.Re, { mirror });
@@ -130,14 +136,19 @@ export function sectionLoad3D(o) {
 }
 
 /* ---------- 葉片定義與沿弧長積分 ---------- */
-// def:{ x(s)→[x,y,z](以 R 為單位), dx?(s)(未給則中央差分), chord(s)(c/R), beta(s)(度), profile, mirror }
+// def:{ x(s)→[x,y,z](以 R 為單位), dx?(s)(未給則差分), domain?[s0,s1](差分不越界), chord(s)(c/R), beta(s)(度), profile, mirror }
+function diffX(def, s) {
+  const h = 1e-6, [lo, hi] = def.domain || [-Infinity, Infinity];
+  const a = Math.max(lo, s - h), b = Math.min(hi, s + h); // 端點改用單側差分
+  return scale(sub(def.x(b), def.x(a)), 1 / (b - a));
+}
 export function lineStation(def, s, op) {
   const x = def.x(s);
-  const dx = def.dx ? def.dx(s) : (() => { const h = 1e-6; return scale(sub(def.x(s + h), def.x(s - h)), 1 / (2 * h)); })();
+  const dx = def.dx ? def.dx(s) : diffX(def, s);
   const fr = lineFrame(dx);
   if (!fr.ok) return { s, J: fr.J, status: 'degenerate_frame', qForce: NaN, qCm: NaN, qTotal: NaN };
   const ax = sectionAxes(fr, def.beta(s));
-  const r = sectionLoad3D({ x, span: fr.span, chord: ax.chord, upper: ax.upper, c: def.chord(s), W: relativeWind(x, op.lam, op.a || 0), polar: op.polar, profile: def.profile, mirror: !!def.mirror, ReR: op.ReR });
+  const r = sectionLoad3D({ x, span: fr.span, chord: ax.chord, upper: ax.upper, c: def.chord(s), W: relativeWind(x, op.lam, op.a ?? 0), polar: op.polar, profile: def.profile, mirror: !!def.mirror, ReR: op.ReR });
   return Object.assign(r, { s, J: fr.J, chordDir: ax.chord, upperDir: ax.upper });
 }
 export function linspace(a, b, n) { const st = (b - a) / (n - 1), o = []; for (let i = 0; i < n; i++) o.push(i === n - 1 ? b : a + i * st); return o; }
@@ -145,6 +156,8 @@ export function linspace(a, b, n) { const st = (b - a) / (n - 1), o = []; for (l
 // load:'force'(只計力)或 'total'(力 + 四分之一弦力偶)
 export function integrateLine(def, op, opt = {}) {
   const s = opt.s || linspace(opt.s0 ?? 0, opt.s1 ?? 1, opt.n || 161), key = opt.load === 'force' ? 'qForce' : 'qTotal';
+  if (s.length < 2 || !s.every(Number.isFinite) || s.some((v, i) => i > 0 && !(v > s[i - 1])))
+    return { I_full: null, I_supported: NaN, coverage: 0, unsupportedIntervals: [], stations: [], status: 'invalid_grid' };
   const st = s.map(v => lineStation(def, v, op));
   let full = 0, sup = 0, Ltot = 0, Lsup = 0, allOk = true;
   const gaps = [];
@@ -159,7 +172,7 @@ export function integrateLine(def, op, opt = {}) {
     if (g && g.s1 === s[i]) { g.s1 = s[i + 1]; why.forEach(w => g.reasons.add(w)); }
     else gaps.push({ s0: s[i], s1: s[i + 1], reasons: new Set(why) });
   }
-  return { I_full: allOk ? full : null, I_supported: sup, coverage: Ltot > 0 ? Lsup / Ltot : 0, unsupportedIntervals: gaps.map(g => ({ s0: g.s0, s1: g.s1, reasons: [...g.reasons] })), stations: st };
+  return { status: allOk ? 'supported' : 'partial', I_full: allOk ? full : null, I_supported: sup, coverage: Ltot > 0 ? Lsup / Ltot : 0, unsupportedIntervals: gaps.map(g => ({ s0: g.s0, s1: g.s1, reasons: [...g.reasons] })), stations: st };
 }
 // 部分扭矩係數(分母 q∞πR³):copies 為旋轉複製份數,只在這裡乘一次;任一分支缺完整窗即為 null
 export function partialCQ(branchIntegrals, copies = 1) {
