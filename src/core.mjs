@@ -200,11 +200,13 @@ const freeSteepFraction = (limitDeg = 60) => {
   const nz = 200, sl = A.vawtSlices({ ...G.vcfg, nz });
   return sl.filter(x => Math.abs(x.delta) * A.R2D > limitDeg).length / nz;
 };
-// Coarse live Cp for the shape editor (drag preview): nz 6 slices, lambda 1.5-5 step 0.5 on the current design; the committed design uses the full curve.
+// Coarse live Cp for the shape editor (drag preview): nz 6 slices, lambda swept +-1.5 around the committed optimum (step 0.5, within 0.5-7 like the full curve),
+// so low-solidity rotors whose optimum sits above lambda 5 are not clipped; the committed design still uses the full curve.
 const freeShapeLiveCp = pts => {
   const v = S.vawt, V = G.Vref || 8, cfg = { ...vawtCfg(), ...freeShapeCfg({ ...v, shapePts: pts }), nz: 6 };
+  const l0 = Math.min(5.5, Math.max(2, Math.round(2 * (G.lopt || 3.5)) / 2));
   let best = { cp: -Infinity, lam: 0 };
-  for (let l = 1.5; l <= 5 + 1e-9; l += 0.5) { const r = A.dmstPoint(cfg, V, l); if (r.Cp > best.cp) best = { cp: r.Cp, lam: l }; }
+  for (let l = l0 - 1.5; l <= l0 + 1.5 + 1e-9; l += 0.5) { const r = A.dmstPoint(cfg, V, l); if (r.Cp > best.cp) best = { cp: r.Cp, lam: l }; }
   return best;
 };
 const noAirfoil = v => !!VAWT_FAMILIES[v.type]?.noAirfoil;

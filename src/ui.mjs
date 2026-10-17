@@ -79,12 +79,13 @@ function shapeEditor(p) {
     const px = (ev.clientX - r.left) * sx, py = (ev.clientY - r.top) * sy;
     return { zf: (Hh - pad - py) / (Hh - 2 * pad), rf: Math.abs(px - W / 2) / (W / 2 - pad) * rm }; };
   const commit = pts => { S.vawt.shapePts = pts; renderPane(); scheduleRebuild(true); };
-  let drag = null, tmp = null, raf = 0;
-  // Coarse live Cp while dragging (throttled to one estimate per frame); the full design runs on release.
-  const liveCp = pts => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+  let drag = null, tmp = null, liveT = 0, liveAt = 0;
+  // Coarse live Cp while dragging (~20 ms per estimate, so at most one per 100 ms keeps the drag smooth); the full design runs on release.
+  const liveCp = pts => { clearTimeout(liveT); liveT = setTimeout(() => {
+    if (drag == null) return; liveAt = performance.now();
     const el = p.querySelector('#shapeLive'); if (!el) return;
     try { const r = freeShapeLiveCp(pts); el.textContent = `拖曳中粗估 Cp ≈ ${fmt(r.cp, 3)}(λ ${fmt(r.lam, 1)};放開後以完整曲線重算)`; } catch (e) { el.textContent = ''; }
-  }); };
+  }, Math.max(0, 100 - (performance.now() - liveAt))); };
   box.addEventListener('pointerdown', ev => {
     const g = ev.target.closest('.shpt'); if (!g) return;
     drag = +g.dataset.i; tmp = null; g.setPointerCapture?.(ev.pointerId); ev.preventDefault();
@@ -97,7 +98,7 @@ function shapeEditor(p) {
     const ta = p.querySelector('#shapeText'); if (ta) ta.value = shapePtsText(tmp);
     liveCp(tmp);
   });
-  const end = () => { if (drag == null) return; const pts = tmp; drag = null; tmp = null; if (pts) commit(pts); };
+  const end = () => { if (drag == null) return; clearTimeout(liveT); const pts = tmp; drag = null; tmp = null; if (pts) commit(pts); };
   box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
   // Keyboard: arrows nudge the focused point (Shift = 5x step; up/down = zf, left/right = rf), Delete removes it.
   box.addEventListener('keydown', ev => {

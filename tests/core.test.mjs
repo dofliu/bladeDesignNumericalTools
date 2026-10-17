@@ -617,7 +617,12 @@ test('freeShapeLiveCp:粗估 Cp 合理且與完整曲線 Cp,max 相差 < 0.1', (
     Object.assign(S.vawt, { type: 'free', shapePts: undefined }); designVAWT(); computePerf();
     const r = core.freeShapeLiveCp(core.FREE_SHAPE_DEFAULT);
     assert.ok(r.cp > 0 && r.cp < 0.6 && r.lam >= 1.5 && r.lam <= 5, JSON.stringify(r));
-    assert.ok(Math.abs(r.cp - core.G.cpMax) < 0.1, `live ${r.cp} full ${core.G.cpMax}`);
+    assert.ok(Math.abs(r.cp - core.G.cpMax) < 0.03, `live ${r.cp} full ${core.G.cpMax}`);
+    // low solidity: optimum above lambda 5 must not be clipped
+    Object.assign(S.vawt, { B: 1, c: 0.04 }); designVAWT(); computePerf();
+    const lo = core.freeShapeLiveCp(core.FREE_SHAPE_DEFAULT);
+    assert.ok(core.G.lopt > 5.5 && lo.lam > 5, `lopt ${core.G.lopt} live λ ${lo.lam}`);
+    assert.ok(Math.abs(lo.cp - core.G.cpMax) < 0.03, `low-solidity live ${lo.cp} full ${core.G.cpMax}`);
   } finally { Object.assign(S.vawt, sv); designVAWT(); computePerf(); }
 });
 
