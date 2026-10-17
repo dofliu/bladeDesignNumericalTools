@@ -274,7 +274,7 @@ export function parseBladeV1(obj) {
 // 把一個分支(可加修改:dBeta 安裝角偏移〔度〕、profile/mirror 換翼型)轉成 lineStation 用的 def
 export function branchDef(br, mod = {}) {
   const S = br.stations, s = S.map(p => p.s), sp = k => cubicSpline(s, S.map(p => p[k]));
-  const X = sp('x'), Y = sp('y'), Z = sp('z'), C = pchip(s, S.map(p => p.chord)), B = sp('beta'), dB = mod.dBeta || 0;
+  const X = sp('x'), Y = sp('y'), Z = sp('z'), C = pchip(s, S.map(p => p.chord)), B = sp('beta'), dB = mod.dBeta || 0, dL = mod.dBetaLin || 0, dQ = mod.dBetaQuad || 0, sA = s[0], sW = s[s.length - 1] - s[0];
   const seg = S.map(p => ({ s: p.s, profile: p.profile, mirror: p.mirror }));
   const base = { profile: mod.profile ?? br.profile, mirror: mod.mirror ?? br.mirror };
   const profileAt = v => {
@@ -288,7 +288,7 @@ export function branchDef(br, mod = {}) {
   return {
     branch: br.id, domain: [s[0], s[s.length - 1]], profile: base.profile, mirror: base.mirror, profileAt,
     x: v => [X.f(v), Y.f(v), Z.f(v)], dx: v => [X.d(v), Y.d(v), Z.d(v)],
-    chord: v => C.f(v), beta: v => B.f(v) + dB,
+    chord: v => C.f(v), beta: v => { const u = (v - sA) / sW; return B.f(v) + dB + dL * u + dQ * u * u; }, // 線性/二次修改以分支弧長正規化 u∈[0,1]
   };
 }
 
