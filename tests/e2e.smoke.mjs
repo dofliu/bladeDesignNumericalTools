@@ -119,6 +119,30 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     check(await page.evaluate(() => getComputedStyle(document.querySelector('.wsnav')).display !== 'none' && localStorage.getItem('wt-layout') === 'classic'), 'desktop: 可切回經典版面並記住選擇');
     await page.click('#layoutBtn');
   }
+  { // 研究模式(三維線葉片):內建範例 λ6 部分 CQ 與 fixture 一致;指定 a 後缺值不補 0;比較組可加入
+    await page.click(mobile ? '[data-mnav="research"]' : '.flownav [data-flow="research"]'); await page.waitForTimeout(1500);
+    const r0 = await page.evaluate(() => { const r = Research.last(); return { cq: r.partialCQ, cov: r.coverage, txt: document.querySelector('#rsSum').innerText }; });
+    check(Math.abs(r0.cq - 0.039662) < 1e-5 && r0.cov === 1 && r0.txt.includes('0.039662'), `${vp.tag}: 研究模式內建範例部分 CQ ${r0.cq}`);
+    check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1 && document.querySelector('#researchInner').scrollWidth <= document.querySelector('#researchInner').clientWidth + 1), `${vp.tag}: 研究模式無水平溢出`);
+    await page.screenshot({ path: join(out, `${vp.tag}-research.png`) });
+    await page.fill('[data-br="Return"][data-k="a"]', '0.25'); await page.dispatchEvent('[data-br="Return"][data-k="a"]', 'change'); await page.waitForTimeout(500);
+    const r1 = await page.evaluate(() => { const r = Research.last(); return { cq: r.partialCQ, cov: r.coverage, txt: document.querySelector('#rsSum').innerText }; });
+    check(r1.cq === null && Math.abs(r1.cov - 0.7736) < 1e-3 && r1.txt.includes('缺值') && r1.txt.includes('攻角超出極曲線範圍'), `${vp.tag}: 研究模式缺值標示(覆蓋率 ${(r1.cov * 100).toFixed(1)}%)`);
+    await page.click('#rsAdd'); await page.waitForTimeout(300);
+    check(await page.evaluate(() => Research.compareCount() === 1 && document.querySelectorAll('#rsCmp tbody tr').length === 2), `${vp.tag}: 研究模式加入比較`);
+    await page.fill('[data-br="Return"][data-k="a"]', '0'); await page.dispatchEvent('[data-br="Return"][data-k="a"]', 'change');
+    if (!mobile) { // 匯入防呆:空檔要報錯而非沿用舊資料;檔內文字不得被當成 HTML 執行;λ 掃描下限不可超過上限
+      await page.setInputFiles('#rsBf', { name: 'empty.json', mimeType: 'application/json', buffer: Buffer.from('') }); await page.waitForTimeout(400);
+      check(await page.evaluate(() => document.querySelector('#rsErr').textContent.includes('匯入失敗')), 'desktop: 研究模式匯入空檔顯示錯誤');
+      const evil = JSON.parse(readFileSync(join(root, 'examples/return-wing/polar_v1.json'), 'utf8')); evil.conditions.Ncrit = '<img src=x onerror="window.__xss=1">';
+      await page.setInputFiles('#rsPf', { name: 'evil.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(evil)) }); await page.waitForTimeout(500);
+      check(await page.evaluate(() => !window.__xss && !document.querySelector('#rsPinfo img') && document.querySelector('#rsPinfo').textContent.includes('<img')), 'desktop: 研究模式匯入資料以純文字顯示');
+      await page.fill('#rsL0', '9'); await page.dispatchEvent('#rsL0', 'change'); await page.waitForTimeout(300);
+      check(await page.evaluate(() => Research.state.lam1 > Research.state.lam0), 'desktop: λ 掃描下限超過上限時自動調整');
+      await page.click('#rsEx'); await page.waitForTimeout(500);
+    }
+    await page.click(mobile ? '[data-mnav="tunnel"]' : '.flownav [data-flow="tunnel"]'); await page.waitForTimeout(300);
+  }
   check(errors.length === 0, `${vp.tag}: no page errors ${errors.slice(0, 3).join(' | ')}`);
   await page.close();
 }

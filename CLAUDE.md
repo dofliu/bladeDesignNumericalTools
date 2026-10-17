@@ -46,7 +46,8 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 7 | `bench.mjs` | 單葉片工作區;共用繪圖工具 `fitCv` `arrow` `interp1` `card` | `Bench` |
 | 8 | `flow.js` | 流場工作區 | `Flow` |
 | 9 | `report.js` | 虛擬風洞自動測試 + 報告產生/下載 | `Report` |
-| — | `line3d.mjs` | 通用三維線葉片(研究模式):嚴格極曲線查表、逐截面向量負載、沿弧長積分部分 CQ;目前只有 Node 測試使用,尚未加入建置(見 `docs/LINE3D.md`)| — |
+| 10 | `line3d.mjs` | 通用三維線葉片(研究模式核心,純函式):嚴格極曲線查表、逐截面向量負載、葉片定義檔 `blade-line3d-v1`、沿弧長積分部分 CQ(見 `docs/LINE3D.md`)| (由 research 匯入) |
+| 11 | `research.mjs` | 研究模式工作區「研究」:匯入葉片/極曲線 JSON、各段攻角/Re/覆蓋率/缺值、扭角與翼型修改比較;內建 `examples/return-wing/` 範例 | `Research` |
 
 `src/package.json` 只是讓 Node 把 `core.js` 當 CommonJS 載入(測試用),與瀏覽器無關;`.mjs` 模組(`aero.mjs`/`charts.mjs`/`geo.mjs`)測試改用 ESM `import * as A from '../src/aero.mjs'`(見 `tests/geo.test.mjs`/`tests/core.test.mjs`)。專案第一個 npm 相依套件是 `vite`(devDependency,只在 `npm run build` 時用到,`npm test`/`npm run check` 不需要它)。
 

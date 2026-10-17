@@ -397,6 +397,6 @@ export const Bench = (function () {
     const lam = lamNow();
     if (S.mode === 'HAWT') renderHAWT(lam); else renderVAWT(lam);
   }
-  function tick() { if (S.mode === 'VAWT' && noAirfoil(S.vawt)) renderSav(); }
+  function tick() { if (S.mode === 'VAWT' && noAirfoil(S.vawt) && G.perf) { layout(); renderSav(); } } // 換家族後主迴圈可能先於 render 觸發:先確保版面已重建
   return { render, tick, state: B, sectionAt, secWorld, hawtAt, vawtAt, drawPlan, drawSec, drawStack, drawSpan, reset() { built = ''; } };
 })();
