@@ -180,6 +180,20 @@ const ROTOR_CARDS = {
   arch: { cp: '依匯入資料', lam: '依匯入資料', start: '依匯入資料', trust: '匯入資料:本工具不計算', note: '外形由參數產生(可匯出 STL 列印),性能須匯入實測或 CFD 的 Cp–λ。' },
   custom: { cp: '依匯入資料', lam: '依匯入資料', start: '依匯入資料', trust: '匯入資料:本工具不計算', note: '貼上論文、CFD 或實驗的 Cp–λ 曲線。' },
 };
+// 8C-3: schematic icons for the concept cards (48x48 line drawings, colour from currentColor)
+const _ic = body => `<svg class="ficon" viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const ROTOR_ICONS = {
+  HAWT: _ic('<path d="M24 22V44M19 44h10"/><circle cx="24" cy="22" r="2"/><path d="M24 20C21 14 22 8 24 4C26 8 27 14 24 20M25.7 23C31 22 36 25 39 28C34 29 29 27 25.7 23M22.3 23C21 29 17 33 12 35C12 30 15 25 22.3 23"/>'),
+  H: _ic('<path d="M24 6V42M20 42h8"/><path d="M12 10V38M36 10V38M12 14H24M36 14H24M12 34H24M36 34H24"/>'),
+  helical: _ic('<path d="M24 6V42M20 42h8"/><path d="M12 8C12 18 18 26 18 40M36 8C36 18 30 26 30 40"/><path d="M12 8H24M36 8H24M18 40H24M30 40H24"/>'),
+  phi: _ic('<path d="M24 6V42M20 42h8"/><path d="M24 6C6 12 6 36 24 42M24 6C42 12 42 36 24 42"/>'),
+  V: _ic('<path d="M24 6V42M20 42h8"/><path d="M8 8L24 40M40 8L24 40"/>'),
+  free: _ic('<path d="M24 6V42M20 42h8"/><path d="M24 6C14 10 14 18 22 24C30 30 28 36 24 42" stroke-dasharray="3 2"/><circle cx="16" cy="12" r="1.6"/><circle cx="22" cy="24" r="1.6"/><circle cx="27" cy="35" r="1.6"/>'),
+  sav: _ic('<path d="M24 6V42M20 42h8"/><path d="M24 12C12 12 10 22 22 24M24 36C36 36 38 26 26 24M24 12C34 12 36 18 30 22M24 36C14 36 12 30 18 26"/>'),
+  stl: _ic('<path d="M24 6L40 15V33L24 42L8 33V15Z"/><path d="M8 15L24 24L40 15M24 24V42"/>'),
+  arch: _ic('<path d="M24 24C24 22 27 22 27 25C27 29 21 30 20 24C19 17 29 15 32 23C35 33 22 38 16 28C10 17 24 8 34 14"/>'),
+  custom: _ic('<path d="M8 40H42M8 40V8"/><path d="M10 36C16 34 18 14 26 14C34 14 34 30 40 32" stroke-dasharray="3 2"/><circle cx="26" cy="14" r="1.6"/>'),
+};
 // 8C-3: "which path for my shape" guide (3 routes from ROADMAP 8C-3); fam = family selected by the button
 const ROTOR_GUIDE = [
   { id: 'lift', title: '升力型垂直軸、外形可用 r(z) 與扭轉描述', fam: 'free', action: '使用自訂垂直軸外形', note: '以 DMST 計算性能;陡斜段僅計阻力,可信度中低。' },
@@ -1050,4 +1064,4 @@ function startWindSpeed(cq, A, R, T0 = null) {
 }
 function conceptNoiseLp(lamRef, R, Vref = 8) { return noiseEstimate(lamRef * Vref, 2 * R, 50).Lp; }
 
-export { STL_DATA, STL_LIMITS, loadStl, clearStl, stlPrepare, isDemoCurve, familyName, startCq, startWindSpeed, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, freeShapeLiveCp, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { STL_DATA, STL_LIMITS, loadStl, clearStl, stlPrepare, isDemoCurve, familyName, startCq, startWindSpeed, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, ROTOR_ICONS, rotorCardList, freeSteepFraction, freeShapeLiveCp, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

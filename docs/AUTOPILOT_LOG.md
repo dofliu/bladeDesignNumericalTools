@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-17 — ROADMAP 8C-3:概念卡片示意圖
+
+- 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `ROTOR_ICONS`(10 個家族的 48×48 SVG 線稿,顏色走 currentColor/`--accent`),概念頁卡片頂端顯示;補 `rotorCardList` 對應測試。8C-3「示意圖」待辦完成。
+- 驗證:check、npm test(95/95,新增 1 個)、build、e2e 全過(追蹤率 93–97%);桌面 1440×900 截圖確認卡片排版正常,手機版為只檢視、不顯示設定面板。
+- 已知限制:示意圖為簡化線稿,非依實際設計參數繪製。
+- 下一步:8C-2 流程外殼剩餘(預設改流程版面、e2e 改用新導覽),或第 6 項葉根渦/徑向 Γ。
+
 ## 2026-10-17 — ROADMAP 8C-5:外形編輯器拖曳中即時 Cp
 
 - 做了什麼:無開著的 `[autopilot]` PR。`core.mjs` 新增 `freeShapeLiveCp(pts)`(6 切片、λ 1.5–5 步長 0.5 的 DMST 粗掃);`ui.mjs` 拖曳控制點時以 rAF 節流顯示「拖曳中粗估 Cp」,放開後照舊完整重算。8C-5 勾完成。
