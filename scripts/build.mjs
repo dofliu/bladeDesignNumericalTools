@@ -9,7 +9,7 @@ import { build } from 'vite';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Kept for scripts/check.mjs: every source module, in dependency order.
-export const ORDER = ['aero', 'charts', 'geo', 'scene', 'core', 'ui', 'bench', 'flow', 'report'];
+export const ORDER = ['aero', 'charts', 'geo', 'scene', 'core', 'ui', 'bench', 'flow', 'report', 'line3d', 'research'];
 
 // All modules are real ES modules; src/main.mjs imports them and re-exposes the bare globals.
 async function bundle() {

@@ -2,6 +2,35 @@
 
 `src/line3d.mjs`。任何能以「三維中心線 x(s) + 弦長 c(s) + 截面安裝角 β(s) + 翼型」描述的葉片都用同一套程式分析;新設計只是新的葉片定義資料,不需另寫模組。第一組驗收資料是回翼閉合葉片交接(`tests/fixtures/line3d/`)。
 
+## 怎麼用
+
+- 網頁:頂部導覽「研究」(流程版面與經典版面都有;手機版底部導覽也有)。預設載入回翼閉合葉片範例;可匯入自己的葉片定義與極曲線 JSON,調整 λ、Re_R、負載種類、積分節點、各分支軸向折減 a、安裝角偏移 Δβ 與翼型,並把設定加入比較看部分 CQ–λ。
+- 程式:`parseBladeV1` → `analyzeBlade` / `sweepLambda`(見 `tests/line3d.test.mjs`)。
+- 範例檔:`examples/return-wing/`(`blade_v02_candidate146.json` 由 `node scripts/make-return-wing-example.mjs` 產生;`polar_v1.json` 為交接 fixture 原檔)。
+
+## 葉片定義檔(`blade-line3d-v1`)
+
+```jsonc
+{
+  "schema": "blade-line3d-v1",
+  "name": "顯示名稱", "note": "說明(選填)", "units": "R",
+  "copies": 2,                 // 旋轉複製份數(繞 +Z 等分),部分 CQ 只在這裡乘一次
+  "window": [0.1, 0.9],        // 分析區間 s(選填,預設為各分支取樣範圍的交集)
+  "branches": [
+    { "id": "Work", "profile": "2412", "mirror": true,   // profile 對應極曲線檔 profileId(字串)
+      "stations": [
+        {"s": 0.1, "x": 0.2625, "y": -0.0165, "z": -0.0180, "chord": 0.1253, "beta": 38},
+        {"s": 0.1125, "...": "..."}
+      ] }
+  ]
+}
+```
+
+- 每個分支至少 4 站,s 嚴格遞增;x、y、z、chord(c/R)以 R 為單位,beta 為截面安裝角(度,定義見下方慣例)。
+- 站上可加 `"profile"` / `"mirror"`,從該站起沿展向改用另一個翼型(分段固定,**不在翼型之間混合係數**)。
+- 中心線、弦長與安裝角以自然三次樣條內插,dx/ds 取樣條解析導數。範例以 65 站取樣時,部分 CQ 與函式定義版差 < 1e-7(測試門檻 1e-6;fixture 的 1e-10 門檻仍以函式版驗證)。
+- 會拒絕:schema 不符、站數不足、s 非遞增、非有限數值、負弦長、window 超出取樣範圍、缺 profile、copies 非正整數。
+
 ## 能算與不能算
 
 - 能算:逐截面攻角、局部 Re、力向量、四分之一弦力偶、對主軸扭矩貢獻;沿實體弧長積分的**部分**扭矩係數(分母 q∞πR³)與資料支撐率。

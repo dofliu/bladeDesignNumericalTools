@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-17 — ROADMAP 9-6、9-7:葉片定義 JSON 與研究模式介面(互動工作階段)
+
+- 做了什麼:使用者要求把中心線/弦長/扭角/翼型整理成可匯入的 JSON、接上研究介面、比較扭角與翼型修改。`line3d.mjs` 新增 `blade-line3d-v1` 格式(`parseBladeV1`、自然三次樣條 `branchDef`、`analyzeBlade`、`sweepLambda`、`bladeToJSON`);`examples/return-wing/` 放範例葉片定義(65 站)與極曲線;新工作區「研究」(`src/research.mjs`)。
+- 驗證:check、npm test(108/108;新增範例檔與函式版一致、32 組部分 CQ 差 < 1e-6、格式防呆、樣條與修改)、build、e2e 全過(新增研究模式:λ6 部分 CQ 0.039662、Return a 0.25 時缺值與覆蓋率 77.4%、比較組、無水平溢出);桌面 1440×900 與手機 390×844 截圖確認。
+- 已知限制:結果仍是無誘導(或指定 a)的部分 CQ,不含翼根/翼尖/橋接/誘導,不是整機效率;dist 內建範例資料後由 251 KB 增至約 311 KB。
+- 下一步:9-7c(扭角分佈編輯、結果 CSV 匯出)或 9-8 交叉檢查。
+
 ## 2026-10-17 — ROADMAP 9-1~9-5:通用三維線葉片核心(互動工作階段)
 
 - 做了什麼:使用者提供回翼閉合葉片交接文件與 fixture,決定做成通用三維線葉片模組並列為目前優先。新增 `src/line3d.mjs`(嚴格極曲線查表、逐截面三維向量負載、沿弧長積分、部分 CQ)、`tests/line3d.test.mjs`、`tests/fixtures/line3d/`(原樣複製,雜湊相符)、`docs/LINE3D.md`;ROADMAP 新增第 9 項。未接入建置與 UI,dist 無功能變化。

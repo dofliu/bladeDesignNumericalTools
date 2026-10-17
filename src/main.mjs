@@ -9,7 +9,8 @@ import * as CORE from './core.mjs';
 import * as BenchMod from './bench.mjs';
 import * as FlowMod from './flow.mjs';
 import * as ReportMod from './report.mjs';
+import * as ResearchMod from './research.mjs';
 import * as UIMod from './ui.mjs';
 
 Object.assign(globalThis, { AERO, Plot, GEO, Scene3D, CORE });
-for (const m of [CORE, ReportMod, FlowMod, BenchMod, UIMod]) Object.assign(globalThis, m);
+for (const m of [CORE, ReportMod, FlowMod, BenchMod, ResearchMod, UIMod]) Object.assign(globalThis, m);

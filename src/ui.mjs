@@ -906,7 +906,7 @@ export function blobSave(filename, data) {
   } catch (e) { return false; }
 }
 // returns 'api' (claude.ai downloads), 'blob' (browser download started, may be blocked silently), or false
-async function save(filename, data) {
+export async function save(filename, data) {
   if (downloads) {
     try { await downloads.save({ filename, data }); toast('已儲存 ' + filename); } catch (e) { if (e && e.code !== 'declined') toast('無法儲存:' + (e.message || e.code)); }
     return 'api';
@@ -959,8 +959,9 @@ export function setWS(ws) {
   const app = $('#app');
   if (ws === 'set') { app.classList.add('m-set'); renderPane(); markNav(); return; }
   app.classList.remove('m-set');
-  if (ws === 'report' && S.ws !== 'report') { prevSide = sideHidden; sideHidden = true; }
-  else if (ws !== 'report' && S.ws === 'report') sideHidden = prevSide;
+  const wide = w => w === 'report' || w === 'research'; // 報告與研究模式用全寬,不需要設計面板
+  if (wide(ws) && !wide(S.ws)) { prevSide = sideHidden; sideHidden = true; }
+  else if (!wide(ws) && wide(S.ws)) sideHidden = prevSide;
   app.classList.toggle('noside', sideHidden);
   S.ws = ws;
   document.querySelectorAll('.ws').forEach(s => s.classList.toggle('on', s.id === 'ws-' + ws));
@@ -975,6 +976,7 @@ export const FLOW_STEPS = {
   tunnel: { ws: 'tunnel', step: 'tunnel' },
   report: { ws: 'report', step: null },
   field: { ws: 'flow', step: null }, // 流場分析:不在五步驟順序內,以附加按鈕進入
+  research: { ws: 'research', step: null }, // 研究模式(三維線葉片):與主設計狀態獨立
 };
 export const FLOW_ORDER = ['concept', 'geometry', 'airfoil', 'tunnel', 'report'];
 export const FLOW_HINTS = {
@@ -984,6 +986,7 @@ export const FLOW_HINTS = {
   tunnel: '設定風速、紊流與負載,觀察轉子與發電機動態。',
   report: '執行自動測試、產生報告與比較方案。',
   field: '流場分析:翼型位勢流與轉子致動盤/DMST 流管(近似,非 CFD)。',
+  research: '研究模式:匯入三維線葉片與極曲線,看各段攻角、Re、資料覆蓋與部分扭矩係數(非整機效率)。',
 };
 export function flowNeighbor(id, d) {
   const i = FLOW_ORDER.indexOf(id), j = i + d;
@@ -992,6 +995,7 @@ export function flowNeighbor(id, d) {
 export function flowStepOf(ws, step) {
   if (ws === 'report') return 'report';
   if (ws === 'flow') return 'field';
+  if (ws === 'research') return 'research';
   if (ws === 'tunnel') return step === 'rotor' ? 'concept' : 'tunnel';
   if (ws === 'blade') return step === 'af' ? 'airfoil' : 'geometry';
   return step === 'af' ? 'airfoil' : step === 'rotor' ? 'geometry' : 'tunnel';
@@ -1028,6 +1032,7 @@ export function renderWS() {
   else if (S.ws === 'blade') Bench.render();
   else if (S.ws === 'flow') Flow.render();
   else if (S.ws === 'report') Report.render();
+  else if (S.ws === 'research') Research.render();
 }
 export function placeOpts() {
   const o = $('#copts'), host = isMobile() ? $('#mopts') : $('#ctabs');
