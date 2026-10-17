@@ -79,7 +79,12 @@ function shapeEditor(p) {
     const px = (ev.clientX - r.left) * sx, py = (ev.clientY - r.top) * sy;
     return { zf: (Hh - pad - py) / (Hh - 2 * pad), rf: Math.abs(px - W / 2) / (W / 2 - pad) * rm }; };
   const commit = pts => { S.vawt.shapePts = pts; renderPane(); scheduleRebuild(true); };
-  let drag = null, tmp = null;
+  let drag = null, tmp = null, raf = 0;
+  // Coarse live Cp while dragging (throttled to one estimate per frame); the full design runs on release.
+  const liveCp = pts => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+    const el = p.querySelector('#shapeLive'); if (!el) return;
+    try { const r = freeShapeLiveCp(pts); el.textContent = `拖曳中粗估 Cp ≈ ${fmt(r.cp, 3)}(λ ${fmt(r.lam, 1)};放開後以完整曲線重算)`; } catch (e) { el.textContent = ''; }
+  }); };
   box.addEventListener('pointerdown', ev => {
     const g = ev.target.closest('.shpt'); if (!g) return;
     drag = +g.dataset.i; tmp = null; g.setPointerCapture?.(ev.pointerId); ev.preventDefault();
@@ -90,6 +95,7 @@ function shapeEditor(p) {
     tmp = moveShapePoint(cur, drag, q.zf, q.rf);
     box.innerHTML = shapePreviewSvg(tmp);
     const ta = p.querySelector('#shapeText'); if (ta) ta.value = shapePtsText(tmp);
+    liveCp(tmp);
   });
   const end = () => { if (drag == null) return; const pts = tmp; drag = null; tmp = null; if (pts) commit(pts); };
   box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
@@ -183,7 +189,8 @@ export function paneRotor() {
         <div class="row wide"><label for="shapeTpl">內建樣板</label><div style="display:flex;gap:6px"><select class="txt" id="shapeTpl">${Object.entries(FREE_SHAPE_TEMPLATES).map(([k, t]) => `<option value="${k}">${t.name}</option>`).join('')}</select><button class="btn" id="shapeTplLoad">載入</button></div></div>
         <textarea id="shapeText" class="txt" style="min-height:120px" aria-label="外形控制點" spellcheck="false">${esc(shapePtsText(v.shapePts || FREE_SHAPE_DEFAULT))}</textarea>
         <div class="btns"><button class="btn" id="shapeApply">套用控制點</button></div>
-        <div id="shapePrev">${shapePreviewSvg(v.shapePts || FREE_SHAPE_DEFAULT)}</div>`);
+        <div id="shapePrev">${shapePreviewSvg(v.shapePts || FREE_SHAPE_DEFAULT)}</div>
+        <p class="note" id="shapeLive" aria-live="polite"></p>`);
       h += grp('幾何', rng('vawt.B', '葉片數 B', 1, 6, 1, '片') + rng('vawt.R', VAWT_FAMILIES[v.type].rLabel, 0.2, 20, 0.05, 'm') +
         rng('vawt.H', '高度 H', 0.2, 40, 0.05, 'm') + rng('vawt.c', '弦長 c', 0.02, 2, 0.005, 'm') +
         rng('vawt.pitch', '安裝角(外傾+)', -10, 10, 0.5, '°') +

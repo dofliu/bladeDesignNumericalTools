@@ -200,6 +200,13 @@ const freeSteepFraction = (limitDeg = 60) => {
   const nz = 200, sl = A.vawtSlices({ ...G.vcfg, nz });
   return sl.filter(x => Math.abs(x.delta) * A.R2D > limitDeg).length / nz;
 };
+// Coarse live Cp for the shape editor (drag preview): nz 6 slices, lambda 1.5-5 step 0.5 on the current design; the committed design uses the full curve.
+const freeShapeLiveCp = pts => {
+  const v = S.vawt, V = G.Vref || 8, cfg = { ...vawtCfg(), ...freeShapeCfg({ ...v, shapePts: pts }), nz: 6 };
+  let best = { cp: -Infinity, lam: 0 };
+  for (let l = 1.5; l <= 5 + 1e-9; l += 0.5) { const r = A.dmstPoint(cfg, V, l); if (r.Cp > best.cp) best = { cp: r.Cp, lam: l }; }
+  return best;
+};
 const noAirfoil = v => !!VAWT_FAMILIES[v.type]?.noAirfoil;
 // Airfoil-polar data source actually used by the current design (what getPS really resolves, so a failed parse counts as built-in).
 // kind: 'none' (no airfoil polar) | 'builtin' | 'mixed' | 'imported'; ranges: alpha span (deg) of each imported table, outside it the model extrapolates (Viterna).
@@ -1043,4 +1050,4 @@ function startWindSpeed(cq, A, R, T0 = null) {
 }
 function conceptNoiseLp(lamRef, R, Vref = 8) { return noiseEstimate(lamRef * Vref, 2 * R, 50).Lp; }
 
-export { STL_DATA, STL_LIMITS, loadStl, clearStl, stlPrepare, isDemoCurve, familyName, startCq, startWindSpeed, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { STL_DATA, STL_LIMITS, loadStl, clearStl, stlPrepare, isDemoCurve, familyName, startCq, startWindSpeed, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, rotorCardList, freeSteepFraction, freeShapeLiveCp, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
