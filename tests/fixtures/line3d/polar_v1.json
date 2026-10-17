@@ -1,0 +1,2482 @@
+{
+  "schema": "blade-handoff-polar-v1",
+  "purpose": "proposed interchange fixture, not already implemented repo API",
+  "source_csv_sha256": "f7c61d2429648c6082aa9ce07d9a81bc694389bd64e4cea51783305bcee2d460",
+  "conditions": {
+    "Mach": 0,
+    "Ncrit": 9,
+    "panels": 160,
+    "forcedTransition": false,
+    "CmReferenceChordFraction": 0.25,
+    "CmConvention": "XFOIL nose-up scalar; -span under handoff frame"
+  },
+  "supportWindow": {
+    "alpha_deg": [
+      -8,
+      8
+    ],
+    "Re": [
+      90000,
+      550000
+    ]
+  },
+  "interpolation": {
+    "alpha": "linear adjacent integer endpoints",
+    "Re": "linear log(Re)",
+    "missing": "propagate; never bridge required invalid corner",
+    "outside": "reject",
+    "CdClamp": false
+  },
+  "profiles": [
+    {
+      "profileId": "2412",
+      "layers": [
+        {
+          "Re": 90000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.6634,
+              "cd": 0.04858,
+              "cm": -0.0443,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.6287,
+              "cd": 0.03719,
+              "cm": -0.037,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.5669,
+              "cd": 0.0291,
+              "cm": -0.0308,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.4844,
+              "cd": 0.02421,
+              "cm": -0.0267,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.3946,
+              "cd": 0.02118,
+              "cm": -0.0241,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": -0.3062,
+              "cd": 0.01929,
+              "cm": -0.0221,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": -0.1798,
+              "cd": 0.01779,
+              "cm": -0.0263,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": 0.04,
+              "cd": 0.01837,
+              "cm": -0.0455,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": 0.2326,
+              "cd": 0.01825,
+              "cm": -0.0624,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign-1",
+                "2412_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.3856,
+              "cd": 0.01757,
+              "cm": -0.069,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.5062,
+              "cd": 0.01699,
+              "cm": -0.0679,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.6065,
+              "cd": 0.01719,
+              "cm": -0.0634,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.7052,
+              "cd": 0.01778,
+              "cm": -0.0589,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.801,
+              "cd": 0.01863,
+              "cm": -0.0541,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.8934,
+              "cd": 0.0195,
+              "cm": -0.0487,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.9755,
+              "cd": 0.02055,
+              "cm": -0.0421,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 1.0341,
+              "cd": 0.02317,
+              "cm": -0.0328,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            }
+          ]
+        },
+        {
+          "Re": 100000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.6541,
+              "cd": 0.04779,
+              "cm": -0.0448,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.637,
+              "cd": 0.03428,
+              "cm": -0.0358,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.5685,
+              "cd": 0.02729,
+              "cm": -0.03,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.4843,
+              "cd": 0.02312,
+              "cm": -0.0262,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.3946,
+              "cd": 0.02034,
+              "cm": -0.0238,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": -0.3063,
+              "cd": 0.01868,
+              "cm": -0.022,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": -0.1435,
+              "cd": 0.01701,
+              "cm": -0.0327,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": 0.0878,
+              "cd": 0.01731,
+              "cm": -0.0531,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": 0.2705,
+              "cd": 0.01665,
+              "cm": -0.0677,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign-1",
+                "2412_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.4092,
+              "cd": 0.01574,
+              "cm": -0.071,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.5112,
+              "cd": 0.01551,
+              "cm": -0.067,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.6091,
+              "cd": 0.01583,
+              "cm": -0.0624,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.7067,
+              "cd": 0.01651,
+              "cm": -0.058,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.8028,
+              "cd": 0.01737,
+              "cm": -0.0535,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.894,
+              "cd": 0.01831,
+              "cm": -0.0483,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.9753,
+              "cd": 0.01944,
+              "cm": -0.0419,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 1.0347,
+              "cd": 0.02218,
+              "cm": -0.0331,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            }
+          ]
+        },
+        {
+          "Re": 200000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.7182,
+              "cd": 0.0188,
+              "cm": -0.0356,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.6521,
+              "cd": 0.01411,
+              "cm": -0.0296,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.5761,
+              "cd": 0.01933,
+              "cm": -0.0269,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.4433,
+              "cd": 0.01697,
+              "cm": -0.0327,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.2848,
+              "cd": 0.01487,
+              "cm": -0.0433,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": -0.1352,
+              "cd": 0.01311,
+              "cm": -0.0518,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": 0.0033,
+              "cd": 0.01112,
+              "cm": -0.0566,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": 0.1154,
+              "cd": 0.01011,
+              "cm": -0.0526,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": 0.281,
+              "cd": 0.00999,
+              "cm": -0.0605,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign-1",
+                "2412_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.4216,
+              "cd": 0.0098,
+              "cm": -0.0662,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.516,
+              "cd": 0.0101,
+              "cm": -0.0624,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.6109,
+              "cd": 0.01069,
+              "cm": -0.0587,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.7057,
+              "cd": 0.01144,
+              "cm": -0.0549,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.7997,
+              "cd": 0.01228,
+              "cm": -0.0511,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.8917,
+              "cd": 0.01328,
+              "cm": -0.0471,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.9769,
+              "cd": 0.01478,
+              "cm": -0.0424,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 1.0468,
+              "cd": 0.01777,
+              "cm": -0.0362,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            }
+          ]
+        },
+        {
+          "Re": 500000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.7221,
+              "cd": 0.0163,
+              "cm": -0.0391,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.5837,
+              "cd": 0.01424,
+              "cm": -0.0457,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.4423,
+              "cd": 0.01232,
+              "cm": -0.0526,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.3058,
+              "cd": 0.01072,
+              "cm": -0.058,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.1883,
+              "cd": 0.00948,
+              "cm": -0.059,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": -0.0807,
+              "cd": 0.00845,
+              "cm": -0.0576,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": 0.0258,
+              "cd": 0.00756,
+              "cm": -0.0561,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": 0.1288,
+              "cd": 0.00668,
+              "cm": -0.0537,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": 0.229,
+              "cd": 0.0063,
+              "cm": -0.0499,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign-1",
+                "2412_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.3444,
+              "cd": 0.00665,
+              "cm": -0.0491,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.504,
+              "cd": 0.0072,
+              "cm": -0.0592,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.6108,
+              "cd": 0.00769,
+              "cm": -0.0585,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.7063,
+              "cd": 0.00829,
+              "cm": -0.0552,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.8022,
+              "cd": 0.00902,
+              "cm": -0.052,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.8967,
+              "cd": 0.01016,
+              "cm": -0.0488,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.9859,
+              "cd": 0.01201,
+              "cm": -0.0453,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 1.071,
+              "cd": 0.01427,
+              "cm": -0.0413,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            }
+          ]
+        },
+        {
+          "Re": 550000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.7098,
+              "cd": 0.01546,
+              "cm": -0.0417,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.5721,
+              "cd": 0.01353,
+              "cm": -0.0481,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.4309,
+              "cd": 0.01175,
+              "cm": -0.0549,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.3003,
+              "cd": 0.01028,
+              "cm": -0.059,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.1889,
+              "cd": 0.00915,
+              "cm": -0.0585,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": null,
+              "cd": null,
+              "cm": null,
+              "valid": false,
+              "status": "missing_corner",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": 0.0254,
+              "cd": 0.00739,
+              "cm": -0.0557,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": 0.1293,
+              "cd": 0.00654,
+              "cm": -0.0537,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": 0.2305,
+              "cd": 0.00614,
+              "cm": -0.0504,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign-1",
+                "2412_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.3404,
+              "cd": 0.00641,
+              "cm": -0.0484,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.4923,
+              "cd": 0.00699,
+              "cm": -0.0568,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.6115,
+              "cd": 0.00748,
+              "cm": -0.0587,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.7074,
+              "cd": 0.00805,
+              "cm": -0.0555,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.8032,
+              "cd": 0.0088,
+              "cm": -0.0522,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.8973,
+              "cd": 0.00998,
+              "cm": -0.0491,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.9872,
+              "cd": 0.0118,
+              "cm": -0.0456,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 1.0734,
+              "cd": 0.01398,
+              "cm": -0.0418,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "2412_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "profileId": "baseline_mesh",
+      "layers": [
+        {
+          "Re": 90000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.8487,
+              "cd": 0.03018,
+              "cm": -0.0096,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.7637,
+              "cd": 0.02471,
+              "cm": -0.0054,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.6859,
+              "cd": 0.02052,
+              "cm": 0.0005,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.614,
+              "cd": 0.01755,
+              "cm": 0.0076,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.5372,
+              "cd": 0.01596,
+              "cm": 0.0148,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": -0.4563,
+              "cd": 0.01519,
+              "cm": 0.0225,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": -0.3758,
+              "cd": 0.01539,
+              "cm": 0.0315,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": -0.2273,
+              "cd": 0.01687,
+              "cm": 0.027,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": -0.0,
+              "cd": 0.01738,
+              "cm": 0.0,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign-1",
+                "baseline_mesh_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.2273,
+              "cd": 0.01687,
+              "cm": -0.027,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.3757,
+              "cd": 0.01539,
+              "cm": -0.0314,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.4562,
+              "cd": 0.01519,
+              "cm": -0.0224,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.5371,
+              "cd": 0.01596,
+              "cm": -0.0148,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.6139,
+              "cd": 0.01754,
+              "cm": -0.0076,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.6858,
+              "cd": 0.02052,
+              "cm": -0.0005,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.7637,
+              "cd": 0.0247,
+              "cm": 0.0054,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 0.8487,
+              "cd": 0.03018,
+              "cm": 0.0096,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re90000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            }
+          ]
+        },
+        {
+          "Re": 100000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.8467,
+              "cd": 0.02861,
+              "cm": -0.0098,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.7631,
+              "cd": 0.02352,
+              "cm": -0.0051,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.686,
+              "cd": 0.01959,
+              "cm": 0.0008,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.6139,
+              "cd": 0.01674,
+              "cm": 0.0077,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.5363,
+              "cd": 0.01519,
+              "cm": 0.0145,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": -0.4541,
+              "cd": 0.0144,
+              "cm": 0.0213,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": -0.3731,
+              "cd": 0.01445,
+              "cm": 0.0294,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": -0.2581,
+              "cd": 0.01573,
+              "cm": 0.031,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": -0.0,
+              "cd": 0.01692,
+              "cm": 0.0,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign-1",
+                "baseline_mesh_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.258,
+              "cd": 0.01572,
+              "cm": -0.031,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.373,
+              "cd": 0.01444,
+              "cm": -0.0294,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.454,
+              "cd": 0.0144,
+              "cm": -0.0213,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.5362,
+              "cd": 0.01519,
+              "cm": -0.0144,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.6138,
+              "cd": 0.01674,
+              "cm": -0.0077,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.686,
+              "cd": 0.01959,
+              "cm": -0.0008,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.7631,
+              "cd": 0.02352,
+              "cm": 0.0051,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 0.8467,
+              "cd": 0.02861,
+              "cm": 0.0098,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re100000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            }
+          ]
+        },
+        {
+          "Re": 200000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.8488,
+              "cd": 0.02095,
+              "cm": -0.0077,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.772,
+              "cd": 0.01783,
+              "cm": -0.0019,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.6971,
+              "cd": 0.01516,
+              "cm": 0.0043,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.6193,
+              "cd": 0.01306,
+              "cm": 0.0099,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.5354,
+              "cd": 0.01176,
+              "cm": 0.0144,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": -0.4457,
+              "cd": 0.01104,
+              "cm": 0.0179,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": -0.3091,
+              "cd": 0.01065,
+              "cm": 0.0124,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": -0.1418,
+              "cd": 0.01033,
+              "cm": 0.0026,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": 0.0,
+              "cd": 0.01018,
+              "cm": 0.0,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign-1",
+                "baseline_mesh_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.1418,
+              "cd": 0.01033,
+              "cm": -0.0026,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.3091,
+              "cd": 0.01065,
+              "cm": -0.0124,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.4456,
+              "cd": 0.01104,
+              "cm": -0.0179,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.5352,
+              "cd": 0.01176,
+              "cm": -0.0144,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.6192,
+              "cd": 0.01306,
+              "cm": -0.0098,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.697,
+              "cd": 0.01516,
+              "cm": -0.0043,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.772,
+              "cd": 0.01783,
+              "cm": 0.0019,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 0.8488,
+              "cd": 0.02095,
+              "cm": 0.0077,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re200000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            }
+          ]
+        },
+        {
+          "Re": 500000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.8838,
+              "cd": 0.01492,
+              "cm": -0.0009,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.8034,
+              "cd": 0.01318,
+              "cm": 0.0046,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.7214,
+              "cd": 0.01169,
+              "cm": 0.0099,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.6275,
+              "cd": 0.01037,
+              "cm": 0.0125,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.4804,
+              "cd": 0.009,
+              "cm": 0.004,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": -0.3322,
+              "cd": 0.00786,
+              "cm": -0.0041,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": -0.208,
+              "cd": 0.00695,
+              "cm": -0.0061,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": -0.1034,
+              "cd": 0.00637,
+              "cm": -0.0032,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": -0.0,
+              "cd": 0.00616,
+              "cm": 0.0,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign-1",
+                "baseline_mesh_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.1034,
+              "cd": 0.00637,
+              "cm": 0.0032,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.208,
+              "cd": 0.00695,
+              "cm": 0.0061,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.3322,
+              "cd": 0.00785,
+              "cm": 0.0041,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.4804,
+              "cd": 0.009,
+              "cm": -0.004,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.6276,
+              "cd": 0.01037,
+              "cm": -0.0125,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.7213,
+              "cd": 0.01169,
+              "cm": -0.0099,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.8033,
+              "cd": 0.01317,
+              "cm": -0.0046,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 0.8837,
+              "cd": 0.01491,
+              "cm": 0.001,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re500000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "archived_support"
+              ]
+            }
+          ]
+        },
+        {
+          "Re": 550000.0,
+          "points": [
+            {
+              "alpha_deg": -8.0,
+              "cl": -0.888,
+              "cd": 0.01442,
+              "cm": -0.0002,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -7.0,
+              "cl": -0.8071,
+              "cd": 0.01276,
+              "cm": 0.0053,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -6.0,
+              "cl": -0.7242,
+              "cd": 0.0114,
+              "cm": 0.0105,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -5.0,
+              "cl": -0.615,
+              "cd": 0.01008,
+              "cm": 0.01,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -4.0,
+              "cl": -0.4693,
+              "cd": 0.00871,
+              "cm": 0.0018,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -3.0,
+              "cl": -0.3239,
+              "cd": 0.00758,
+              "cm": -0.0056,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -2.0,
+              "cl": -0.2087,
+              "cd": 0.00672,
+              "cm": -0.0056,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": -1.0,
+              "cl": -0.1039,
+              "cd": 0.00618,
+              "cm": -0.0029,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign-1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 0.0,
+              "cl": -0.0,
+              "cd": 0.00599,
+              "cm": 0.0,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign-1",
+                "baseline_mesh_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 1.0,
+              "cl": 0.1039,
+              "cd": 0.00618,
+              "cm": 0.0029,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 2.0,
+              "cl": 0.2087,
+              "cd": 0.00672,
+              "cm": 0.0056,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 3.0,
+              "cl": 0.3239,
+              "cd": 0.00758,
+              "cm": 0.0056,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 4.0,
+              "cl": 0.4693,
+              "cd": 0.00871,
+              "cm": -0.0018,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 5.0,
+              "cl": 0.6151,
+              "cd": 0.01008,
+              "cm": -0.01,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 6.0,
+              "cl": 0.7241,
+              "cd": 0.0114,
+              "cm": -0.0105,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 7.0,
+              "cl": 0.807,
+              "cd": 0.01276,
+              "cm": -0.0053,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            },
+            {
+              "alpha_deg": 8.0,
+              "cl": 0.8879,
+              "cd": 0.01442,
+              "cm": 0.0002,
+              "valid": true,
+              "status": "supported",
+              "sources": [
+                "baseline_mesh_Re550000_N160_trip0_sign1"
+              ],
+              "roles": [
+                "support"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
