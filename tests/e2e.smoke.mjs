@@ -33,7 +33,8 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
   await page.goto(url); await page.waitForTimeout(2500);
   const mobile = vp.width < 860;
   for (const ws of ['tunnel', 'blade', 'flow', 'report']) {
-    await page.click(mobile ? `[data-mnav="${ws}"]` : `.wsnav [data-ws="${ws}"]`);
+    const fid = { tunnel: 'tunnel', blade: 'geometry', flow: 'field', report: 'report' }[ws]; // 桌面預設為流程版面
+    await page.click(mobile ? `[data-mnav="${ws}"]` : `.flownav [data-flow="${fid}"]`);
     await page.waitForTimeout(1200);
     await page.screenshot({ path: join(out, `${vp.tag}-${ws}.png`) });
   }
@@ -47,8 +48,8 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     check(await page.evaluate(() => getComputedStyle(document.querySelector('#modeSeg')).display === 'none'), 'mobile: 風機型式切換已隱藏');
     await page.click('[data-mnav="tunnel"]'); await page.waitForTimeout(500);
   }
-  if (!mobile) { // 流程式外殼:五步驟各自切到對應工作區並標示目前步驟
-    await page.click('#layoutBtn');
+  if (!mobile) { // 流程式外殼(預設版面):五步驟各自切到對應工作區並標示目前步驟
+    check(await page.evaluate(() => document.querySelector('#app').classList.contains('flow')), 'desktop: 預設為流程版面');
     const want = { concept: 'tunnel', geometry: 'blade', airfoil: 'blade', tunnel: 'tunnel', report: 'report' };
     let ok = true;
     for (const [id, ws] of Object.entries(want)) {
@@ -115,7 +116,8 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.click('#pane .fcard[data-fam="HAWT"]'); await page.waitForTimeout(800);
     await page.screenshot({ path: join(out, 'desktop-flow.png') });
     await page.click('#layoutBtn');
-    check(await page.evaluate(() => getComputedStyle(document.querySelector('.wsnav')).display !== 'none'), 'desktop: 可切回經典版面');
+    check(await page.evaluate(() => getComputedStyle(document.querySelector('.wsnav')).display !== 'none' && localStorage.getItem('wt-layout') === 'classic'), 'desktop: 可切回經典版面並記住選擇');
+    await page.click('#layoutBtn');
   }
   check(errors.length === 0, `${vp.tag}: no page errors ${errors.slice(0, 3).join(' | ')}`);
   await page.close();
