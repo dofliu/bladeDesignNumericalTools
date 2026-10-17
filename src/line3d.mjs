@@ -136,7 +136,7 @@ export function sectionLoad3D(o) {
 }
 
 /* ---------- 葉片定義與沿弧長積分 ---------- */
-// def:{ x(s)→[x,y,z](以 R 為單位), dx?(s)(未給則差分), domain?[s0,s1](差分不越界), chord(s)(c/R), beta(s)(度), profile, mirror }
+// def:{ x(s)→[x,y,z](以 R 為單位), dx?(s)(未給則差分), domain?[s0,s1](差分不越界), chord(s)(c/R), beta(s)(度), profile, mirror, profileAt?(s)→{profile, mirror} }
 function diffX(def, s) {
   const h = 1e-6, [lo, hi] = def.domain || [-Infinity, Infinity];
   const a = Math.max(lo, s - h), b = Math.min(hi, s + h); // 端點改用單側差分
@@ -148,7 +148,8 @@ export function lineStation(def, s, op) {
   const fr = lineFrame(dx);
   if (!fr.ok) return { s, J: fr.J, status: 'degenerate_frame', qForce: NaN, qCm: NaN, qTotal: NaN };
   const ax = sectionAxes(fr, def.beta(s));
-  const r = sectionLoad3D({ x, span: fr.span, chord: ax.chord, upper: ax.upper, c: def.chord(s), W: relativeWind(x, op.lam, op.a ?? 0), polar: op.polar, profile: def.profile, mirror: !!def.mirror, ReR: op.ReR });
+  const pf = def.profileAt ? def.profileAt(s) : { profile: def.profile, mirror: def.mirror }; // 沿展向分段換翼型時用 profileAt
+  const r = sectionLoad3D({ x, span: fr.span, chord: ax.chord, upper: ax.upper, c: def.chord(s), W: relativeWind(x, op.lam, op.a ?? 0), polar: op.polar, profile: pf.profile, mirror: !!pf.mirror, ReR: op.ReR });
   return Object.assign(r, { s, J: fr.J, chordDir: ax.chord, upperDir: ax.upper });
 }
 export function linspace(a, b, n) { const st = (b - a) / (n - 1), o = []; for (let i = 0; i < n; i++) o.push(i === n - 1 ? b : a + i * st); return o; }
@@ -195,4 +196,121 @@ export function returnWingBranch(branch, opt = {}) {
     chord: () => p.cw * k * (branch === 'Work' ? 1 : p.crcw),
     beta: opt.beta || candidate146,
   };
+}
+
+/* ---------- 葉片定義檔(blade-line3d-v1)---------- */
+// 每個分支是一串沿 s 遞增的取樣站:中心線 x,y,z(以 R 為單位)、弦長 chord(c/R)、安裝角 beta(度)、可選翼型。
+// 中心線、弦長與安裝角以自然三次樣條內插(dx/ds 取樣條解析導數);翼型沿展向分段固定,不在翼型之間混合係數。
+export const BLADE_SCHEMA = 'blade-line3d-v1';
+
+export function cubicSpline(xs, ys) {
+  const n = xs.length, h = [], al = [0], l = [1], mu = [0], z = [0], c = new Array(n).fill(0), b = [], d = [];
+  for (let i = 0; i < n - 1; i++) h.push(xs[i + 1] - xs[i]);
+  for (let i = 1; i < n - 1; i++) {
+    al.push(3 / h[i] * (ys[i + 1] - ys[i]) - 3 / h[i - 1] * (ys[i] - ys[i - 1]));
+    l.push(2 * (xs[i + 1] - xs[i - 1]) - h[i - 1] * mu[i - 1]);
+    mu.push(h[i] / l[i]); z.push((al[i] - h[i - 1] * z[i - 1]) / l[i]);
+  }
+  for (let j = n - 2; j >= 0; j--) {
+    c[j] = j === 0 ? 0 : z[j] - mu[j] * c[j + 1];
+    b[j] = (ys[j + 1] - ys[j]) / h[j] - h[j] * (c[j + 1] + 2 * c[j]) / 3;
+    d[j] = (c[j + 1] - c[j]) / (3 * h[j]);
+  }
+  const seg = x => { let i = 0, hi = n - 2; while (i < hi) { const m = (i + hi + 1) >> 1; if (xs[m] <= x) i = m; else hi = m - 1; } return i; };
+  return {
+    f: x => { const i = seg(x), t = x - xs[i]; return ys[i] + t * (b[i] + t * (c[i] + t * d[i])); },
+    d: x => { const i = seg(x), t = x - xs[i]; return b[i] + t * (2 * c[i] + 3 * t * d[i]); },
+  };
+}
+
+const num = (v, what) => { const x = Number(v); if (typeof v === 'boolean' || v === null || v === '' || !Number.isFinite(x)) throw new Error(`${what} 不是有限數值`); return x; };
+// 解析並驗證葉片定義;回傳正規化後的物件(可再序列化)
+export function parseBladeV1(obj) {
+  if (typeof obj === 'string') obj = JSON.parse(obj);
+  if (!obj || obj.schema !== BLADE_SCHEMA) throw new Error(`葉片定義格式不符:需要 schema "${BLADE_SCHEMA}"`);
+  const copies = obj.copies == null ? 1 : num(obj.copies, 'copies');
+  if (!(copies >= 1) || copies % 1) throw new Error('copies 必須為正整數(旋轉複製份數)');
+  const branches = (obj.branches || []).map((b, k) => {
+    const id = String(b.id ?? `分支${k + 1}`);
+    if (b.profile == null) throw new Error(`${id}:缺少 profile(對應極曲線檔的 profileId)`);
+    const st = (b.stations || []).map((p, i) => {
+      const w = `${id} 第 ${i + 1} 站`;
+      const o = { s: num(p.s, w + ' s'), x: num(p.x, w + ' x'), y: num(p.y, w + ' y'), z: num(p.z, w + ' z'), chord: num(p.chord, w + ' chord'), beta: num(p.beta, w + ' beta') };
+      if (o.chord < 0) throw new Error(`${w}:chord 不可為負`);
+      if (p.profile != null) o.profile = String(p.profile);
+      if (p.mirror != null) o.mirror = !!p.mirror;
+      return o;
+    });
+    if (st.length < 4) throw new Error(`${id}:至少需要 4 個取樣站`);
+    for (let i = 1; i < st.length; i++) if (!(st[i].s > st[i - 1].s)) throw new Error(`${id}:s 必須嚴格遞增`);
+    return { id, profile: String(b.profile), mirror: !!b.mirror, stations: st };
+  });
+  if (!branches.length) throw new Error('葉片定義沒有任何分支');
+  const lo = Math.max(...branches.map(b => b.stations[0].s)), hi = Math.min(...branches.map(b => b.stations[b.stations.length - 1].s));
+  const win = obj.window ? [num(obj.window[0], 'window[0]'), num(obj.window[1], 'window[1]')] : [lo, hi];
+  if (!(win[0] < win[1]) || win[0] < lo - 1e-12 || win[1] > hi + 1e-12) throw new Error(`分析區間 window 必須落在各分支取樣範圍內(${lo}–${hi})`);
+  return { schema: BLADE_SCHEMA, name: String(obj.name || '未命名葉片'), note: obj.note ? String(obj.note) : '', copies, window: win, units: obj.units || 'R', branches };
+}
+
+// 把一個分支(可加修改:dBeta 安裝角偏移〔度〕、profile/mirror 換翼型)轉成 lineStation 用的 def
+export function branchDef(br, mod = {}) {
+  const S = br.stations, s = S.map(p => p.s), sp = k => cubicSpline(s, S.map(p => p[k]));
+  const X = sp('x'), Y = sp('y'), Z = sp('z'), C = sp('chord'), B = sp('beta'), dB = mod.dBeta || 0;
+  const seg = S.map(p => ({ s: p.s, profile: p.profile, mirror: p.mirror }));
+  const base = { profile: mod.profile ?? br.profile, mirror: mod.mirror ?? br.mirror };
+  const profileAt = v => {
+    if (mod.profile != null) return base; // 整支換翼型
+    let k = 0; while (k + 1 < seg.length && seg[k + 1].s <= v) k++;
+    let p = base.profile, m = base.mirror;
+    for (let i = 0; i <= k; i++) { if (seg[i].profile != null) p = seg[i].profile; if (seg[i].mirror != null) m = seg[i].mirror; }
+    return { profile: p, mirror: m };
+  };
+  return {
+    branch: br.id, domain: [s[0], s[s.length - 1]], profile: base.profile, mirror: base.mirror, profileAt,
+    x: v => [X.f(v), Y.f(v), Z.f(v)], dx: v => [X.d(v), Y.d(v), Z.d(v)],
+    chord: v => Math.max(0, C.f(v)), beta: v => B.f(v) + dB,
+  };
+}
+
+// 整支葉片在單一工況的分析:各分支沿弧長積分 + 部分 CQ(copies 只乘一次)
+// op:{ lam, ReR, polar, a?:{[branchId]: a} 或數值, load:'force'|'total', n }
+export function analyzeBlade(blade, op, mods = {}) {
+  const n = op.n || 161, s = linspace(blade.window[0], blade.window[1], n);
+  const aOf = id => typeof op.a === 'number' ? op.a : (op.a && op.a[id] != null ? op.a[id] : 0);
+  const branches = blade.branches.map(br => {
+    const r = integrateLine(branchDef(br, mods[br.id]), { lam: op.lam, a: aOf(br.id), polar: op.polar, ReR: op.ReR }, { s, load: op.load });
+    return Object.assign(r, { id: br.id, a: aOf(br.id) });
+  });
+  const cq = partialCQ(branches.map(b => b.I_full), blade.copies);
+  return { lam: op.lam, partialCQ: cq, coverage: Math.min(...branches.map(b => b.coverage)), branches };
+}
+// λ 掃描:回傳每個 λ 的部分 CQ(缺完整窗為 null)與最低支撐率
+export function sweepLambda(blade, op, lams, mods = {}) {
+  return lams.map(lam => { const r = analyzeBlade(blade, Object.assign({}, op, { lam }), mods); return { lam, partialCQ: r.partialCQ, coverage: r.coverage }; });
+}
+// 由函式定義取樣出葉片定義檔(例如回翼 v0.2 + candidate146)
+export function sampleBladeV1(defs, opt) {
+  const s = linspace(opt.s0, opt.s1, opt.n);
+  const r6 = v => +v.toPrecision(12);
+  return {
+    schema: BLADE_SCHEMA, name: opt.name, note: opt.note || '', units: 'R', copies: opt.copies || 1, window: opt.window || [opt.s0, opt.s1],
+    branches: defs.map(d => ({
+      id: d.branch, profile: String(d.profile), mirror: !!d.mirror,
+      stations: s.map(v => { const x = d.x(v); return { s: r6(v), x: r6(x[0]), y: r6(x[1]), z: r6(x[2]), chord: r6(d.chord(v)), beta: r6(d.beta(v)) }; }),
+    })),
+  };
+}
+// 序列化葉片定義:每個取樣站一行,方便人工檢視與差異比對
+export function bladeToJSON(b) {
+  const head = { schema: b.schema, name: b.name, note: b.note, units: b.units || 'R', copies: b.copies, window: b.window };
+  const lines = ['{'];
+  for (const [k, v] of Object.entries(head)) if (v !== '' && v != null) lines.push(`  ${JSON.stringify(k)}: ${JSON.stringify(v)},`);
+  lines.push('  "branches": [');
+  b.branches.forEach((br, i) => {
+    lines.push(`    { "id": ${JSON.stringify(br.id)}, "profile": ${JSON.stringify(br.profile)}, "mirror": ${!!br.mirror}, "stations": [`);
+    br.stations.forEach((p, j) => lines.push('      ' + JSON.stringify(p) + (j < br.stations.length - 1 ? ',' : '')));
+    lines.push('    ] }' + (i < b.branches.length - 1 ? ',' : ''));
+  });
+  lines.push('  ]', '}');
+  return lines.join('\n') + '\n';
 }

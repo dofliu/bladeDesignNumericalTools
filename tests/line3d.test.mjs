@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import * as L from '../src/line3d.mjs';
 
 const fx = join(dirname(fileURLToPath(import.meta.url)), 'fixtures/line3d');
-const polar = L.parsePolarV1(readFileSync(join(fx, 'polar_v1.json'), 'utf8'));
+const polar = L.parsePolarV1(readFileSync(join(fx, '../../../examples/return-wing/polar_v1.json'), 'utf8'));
 function csv(name, strCols = []) {
   const [head, ...rows] = readFileSync(join(fx, name), 'utf8').trim().split(/\r?\n/);
   const cols = head.split(',');
@@ -135,4 +135,55 @@ test('差分切線:給 domain 時端點用單側差分、不會在定義域外�
   }
   const r = L.integrateLine(guarded, op, { s0: 0.1, s1: 0.9, n: 161, load: 'total' }), r0 = L.integrateLine(ref, op, { s0: 0.1, s1: 0.9, n: 161, load: 'total' });
   assert.ok(Math.abs(r.I_full - r0.I_full) < 1e-6);
+});
+
+/* ---------- 葉片定義檔(blade-line3d-v1) ---------- */
+const exDir = join(fx, '../../../examples/return-wing');
+const exBlade = () => L.parseBladeV1(readFileSync(join(exDir, 'blade_v02_candidate146.json'), 'utf8'));
+
+test('葉片定義範例檔:與函式版重新取樣的結果一致(檔案未過期)', () => {
+  const defs = ['Work', 'Return'].map(b => L.returnWingBranch(b, { profile: '2412', mirror: true }));
+  const re = L.parseBladeV1(L.sampleBladeV1(defs, { name: 'x', s0: 0.1, s1: 0.9, n: 65, copies: 2 }));
+  const ex = exBlade();
+  assert.equal(ex.copies, 2); assert.deepEqual(ex.window, [0.1, 0.9]);
+  assert.deepEqual(ex.branches.map(b => b.stations), re.branches.map(b => b.stations));
+  assert.deepEqual(L.parseBladeV1(L.bladeToJSON(ex)), ex, 'bladeToJSON 往返不變');
+});
+
+test('葉片定義範例檔:32 組 321 節點部分 CQ 與 fixture 差 < 1e-6(樣條內插誤差),缺值位置一致', () => {
+  const blade = exBlade(), Q = csv('partial_coefficients.csv', ['variant', 'load']).filter(r => r.nodes === 321);
+  let worst = 0;
+  for (const r of Q) {
+    const mods = r.variant === 'mesh0012' ? { Work: { profile: 'baseline_mesh', mirror: false }, Return: { profile: 'baseline_mesh', mirror: false } } : {};
+    const res = L.analyzeBlade(blade, { lam: r.tsr, ReR, polar, a: { Work: r.a_work, Return: r.a_return }, load: r.load === 'force' ? 'force' : 'total', n: 321 }, mods);
+    if (Number.isNaN(r.partial_CQ)) { assert.equal(res.partialCQ, null); continue; }
+    worst = Math.max(worst, Math.abs(res.partialCQ - r.partial_CQ));
+  }
+  assert.ok(worst < 1e-6, `最大差 ${worst}`);
+});
+
+test('parseBladeV1:拒絕格式錯誤、站數不足、s 非遞增、負弦長、window 超出取樣範圍', () => {
+  const ok = JSON.parse(readFileSync(join(exDir, 'blade_v02_candidate146.json'), 'utf8'));
+  const bad = f => { const o = structuredClone(ok); f(o); assert.throws(() => L.parseBladeV1(o)); };
+  bad(o => { o.schema = 'x'; });
+  bad(o => { o.branches[0].stations.length = 3; });
+  bad(o => { o.branches[0].stations[2].s = 0.1; });
+  bad(o => { o.branches[0].stations[2].chord = -0.01; });
+  bad(o => { o.branches[0].stations[2].x = 'abc'; });
+  bad(o => { o.window = [0.05, 0.9]; });
+  bad(o => { delete o.branches[0].profile; });
+  bad(o => { o.copies = 1.5; });
+});
+
+test('cubicSpline 重現線性函數與其斜率;安裝角偏移與分段翼型生效', () => {
+  const sp = L.cubicSpline([0, 0.3, 0.5, 1], [1, 1.6, 2, 3]);
+  assert.ok(Math.abs(sp.f(0.77) - 2.54) < 1e-12 && Math.abs(sp.d(0.77) - 2) < 1e-12);
+  const br = exBlade().branches[0];
+  const d0 = L.branchDef(br), d1 = L.branchDef(br, { dBeta: 2 });
+  assert.ok(Math.abs(d1.beta(0.5) - d0.beta(0.5) - 2) < 1e-12);
+  const seg = structuredClone(br); seg.stations.find(p => p.s === 0.5).profile = 'baseline_mesh'; seg.stations.find(p => p.s === 0.5).mirror = false;
+  const ds = L.branchDef(seg);
+  assert.deepEqual(ds.profileAt(0.3), { profile: '2412', mirror: true });
+  assert.deepEqual(ds.profileAt(0.6), { profile: 'baseline_mesh', mirror: false });
+  assert.deepEqual(L.branchDef(seg, { profile: '2412', mirror: false }).profileAt(0.6), { profile: '2412', mirror: false });
 });
