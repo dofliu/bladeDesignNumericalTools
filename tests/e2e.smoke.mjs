@@ -131,6 +131,16 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.click('#rsAdd'); await page.waitForTimeout(300);
     check(await page.evaluate(() => Research.compareCount() === 1 && document.querySelectorAll('#rsCmp tbody tr').length === 2), `${vp.tag}: 研究模式加入比較`);
     await page.fill('[data-br="Return"][data-k="a"]', '0'); await page.dispatchEvent('[data-br="Return"][data-k="a"]', 'change');
+    if (!mobile) { // 匯入防呆:空檔要報錯而非沿用舊資料;檔內文字不得被當成 HTML 執行;λ 掃描下限不可超過上限
+      await page.setInputFiles('#rsBf', { name: 'empty.json', mimeType: 'application/json', buffer: Buffer.from('') }); await page.waitForTimeout(400);
+      check(await page.evaluate(() => document.querySelector('#rsErr').textContent.includes('匯入失敗')), 'desktop: 研究模式匯入空檔顯示錯誤');
+      const evil = JSON.parse(readFileSync(join(root, 'examples/return-wing/polar_v1.json'), 'utf8')); evil.conditions.Ncrit = '<img src=x onerror="window.__xss=1">';
+      await page.setInputFiles('#rsPf', { name: 'evil.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(evil)) }); await page.waitForTimeout(500);
+      check(await page.evaluate(() => !window.__xss && !document.querySelector('#rsPinfo img') && document.querySelector('#rsPinfo').textContent.includes('<img')), 'desktop: 研究模式匯入資料以純文字顯示');
+      await page.fill('#rsL0', '9'); await page.dispatchEvent('#rsL0', 'change'); await page.waitForTimeout(300);
+      check(await page.evaluate(() => Research.state.lam1 > Research.state.lam0), 'desktop: λ 掃描下限超過上限時自動調整');
+      await page.click('#rsEx'); await page.waitForTimeout(500);
+    }
     await page.click(mobile ? '[data-mnav="tunnel"]' : '.flownav [data-flow="tunnel"]'); await page.waitForTimeout(300);
   }
   check(errors.length === 0, `${vp.tag}: no page errors ${errors.slice(0, 3).join(' | ')}`);

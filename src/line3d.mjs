@@ -223,6 +223,22 @@ export function cubicSpline(xs, ys) {
   };
 }
 
+// 保形(Fritsch–Carlson 單調三次 Hermite)內插:不會超出相鄰取樣值,用於弦長以免樣條過衝成負值
+export function pchip(xs, ys) {
+  const n = xs.length, h = [], dl = [], m = new Array(n).fill(0);
+  for (let i = 0; i < n - 1; i++) { h.push(xs[i + 1] - xs[i]); dl.push((ys[i + 1] - ys[i]) / h[i]); }
+  m[0] = dl[0]; m[n - 1] = dl[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    if (dl[i - 1] * dl[i] <= 0) m[i] = 0;
+    else { const w1 = 2 * h[i] + h[i - 1], w2 = h[i] + 2 * h[i - 1]; m[i] = (w1 + w2) / (w1 / dl[i - 1] + w2 / dl[i]); }
+  }
+  for (const k of [0, n - 1]) { const d = dl[k === 0 ? 0 : n - 2]; if (m[k] * d <= 0) m[k] = 0; else if (Math.abs(m[k]) > 3 * Math.abs(d)) m[k] = 3 * d; }
+  const seg = x => { let i = 0, hi = n - 2; while (i < hi) { const q = (i + hi + 1) >> 1; if (xs[q] <= x) i = q; else hi = q - 1; } return i; };
+  return {
+    f: x => { const i = seg(x), t = (x - xs[i]) / h[i], t2 = t * t, t3 = t2 * t; return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h[i] * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h[i] * m[i + 1]; },
+  };
+}
+const RESERVED = new Set(Object.getOwnPropertyNames(Object.prototype));
 const num = (v, what) => { const x = Number(v); if (typeof v === 'boolean' || v === null || v === '' || !Number.isFinite(x)) throw new Error(`${what} 不是有限數值`); return x; };
 // 解析並驗證葉片定義;回傳正規化後的物件(可再序列化)
 export function parseBladeV1(obj) {
@@ -232,6 +248,7 @@ export function parseBladeV1(obj) {
   if (!(copies >= 1) || copies % 1) throw new Error('copies 必須為正整數(旋轉複製份數)');
   const branches = (obj.branches || []).map((b, k) => {
     const id = String(b.id ?? `分支${k + 1}`);
+    if (RESERVED.has(id)) throw new Error(`分支 id「${id}」為保留字,請改名`);
     if (b.profile == null) throw new Error(`${id}:缺少 profile(對應極曲線檔的 profileId)`);
     const st = (b.stations || []).map((p, i) => {
       const w = `${id} 第 ${i + 1} 站`;
@@ -246,16 +263,18 @@ export function parseBladeV1(obj) {
     return { id, profile: String(b.profile), mirror: !!b.mirror, stations: st };
   });
   if (!branches.length) throw new Error('葉片定義沒有任何分支');
+  if (new Set(branches.map(b => b.id)).size !== branches.length) throw new Error('分支 id 不可重複');
+  if (obj.units != null && obj.units !== 'R') throw new Error(`units 只支援 "R"(長度以轉子半徑正規化);收到 "${obj.units}"`);
   const lo = Math.max(...branches.map(b => b.stations[0].s)), hi = Math.min(...branches.map(b => b.stations[b.stations.length - 1].s));
   const win = obj.window ? [num(obj.window[0], 'window[0]'), num(obj.window[1], 'window[1]')] : [lo, hi];
   if (!(win[0] < win[1]) || win[0] < lo - 1e-12 || win[1] > hi + 1e-12) throw new Error(`分析區間 window 必須落在各分支取樣範圍內(${lo}–${hi})`);
-  return { schema: BLADE_SCHEMA, name: String(obj.name || '未命名葉片'), note: obj.note ? String(obj.note) : '', copies, window: win, units: obj.units || 'R', branches };
+  return { schema: BLADE_SCHEMA, name: String(obj.name || '未命名葉片'), note: obj.note ? String(obj.note) : '', copies, window: win, units: 'R', branches };
 }
 
 // 把一個分支(可加修改:dBeta 安裝角偏移〔度〕、profile/mirror 換翼型)轉成 lineStation 用的 def
 export function branchDef(br, mod = {}) {
   const S = br.stations, s = S.map(p => p.s), sp = k => cubicSpline(s, S.map(p => p[k]));
-  const X = sp('x'), Y = sp('y'), Z = sp('z'), C = sp('chord'), B = sp('beta'), dB = mod.dBeta || 0;
+  const X = sp('x'), Y = sp('y'), Z = sp('z'), C = pchip(s, S.map(p => p.chord)), B = sp('beta'), dB = mod.dBeta || 0;
   const seg = S.map(p => ({ s: p.s, profile: p.profile, mirror: p.mirror }));
   const base = { profile: mod.profile ?? br.profile, mirror: mod.mirror ?? br.mirror };
   const profileAt = v => {
@@ -263,12 +282,13 @@ export function branchDef(br, mod = {}) {
     let k = 0; while (k + 1 < seg.length && seg[k + 1].s <= v) k++;
     let p = base.profile, m = base.mirror;
     for (let i = 0; i <= k; i++) { if (seg[i].profile != null) p = seg[i].profile; if (seg[i].mirror != null) m = seg[i].mirror; }
+    if (mod.mirror != null) m = mod.mirror; // 介面指定整支方向時優先於站上設定
     return { profile: p, mirror: m };
   };
   return {
     branch: br.id, domain: [s[0], s[s.length - 1]], profile: base.profile, mirror: base.mirror, profileAt,
     x: v => [X.f(v), Y.f(v), Z.f(v)], dx: v => [X.d(v), Y.d(v), Z.d(v)],
-    chord: v => Math.max(0, C.f(v)), beta: v => B.f(v) + dB,
+    chord: v => C.f(v), beta: v => B.f(v) + dB,
   };
 }
 
@@ -276,9 +296,10 @@ export function branchDef(br, mod = {}) {
 // op:{ lam, ReR, polar, a?:{[branchId]: a} 或數值, load:'force'|'total', n }
 export function analyzeBlade(blade, op, mods = {}) {
   const n = op.n || 161, s = linspace(blade.window[0], blade.window[1], n);
-  const aOf = id => typeof op.a === 'number' ? op.a : (op.a && op.a[id] != null ? op.a[id] : 0);
+  const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
+  const aOf = id => typeof op.a === 'number' ? op.a : (own(op.a, id) && op.a[id] != null ? op.a[id] : 0);
   const branches = blade.branches.map(br => {
-    const r = integrateLine(branchDef(br, mods[br.id]), { lam: op.lam, a: aOf(br.id), polar: op.polar, ReR: op.ReR }, { s, load: op.load });
+    const r = integrateLine(branchDef(br, own(mods, br.id) ? mods[br.id] : undefined), { lam: op.lam, a: aOf(br.id), polar: op.polar, ReR: op.ReR }, { s, load: op.load });
     return Object.assign(r, { id: br.id, a: aOf(br.id) });
   });
   const cq = partialCQ(branches.map(b => b.I_full), blade.copies);

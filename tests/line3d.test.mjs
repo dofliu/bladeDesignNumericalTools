@@ -187,3 +187,27 @@ test('cubicSpline 重現線性函數與其斜率;安裝角偏移與分段翼型�
   assert.deepEqual(ds.profileAt(0.6), { profile: 'baseline_mesh', mirror: false });
   assert.deepEqual(L.branchDef(seg, { profile: '2412', mirror: false }).profileAt(0.6), { profile: '2412', mirror: false });
 });
+
+test('葉片定義防呆:units 非 R、保留字或重複的分支 id 一律拒絕;繼承屬性不會被當成 a', () => {
+  const ok = JSON.parse(readFileSync(join(exDir, 'blade_v02_candidate146.json'), 'utf8'));
+  const bad = f => { const o = structuredClone(ok); f(o); assert.throws(() => L.parseBladeV1(o)); };
+  bad(o => { o.units = 'm'; });
+  bad(o => { o.branches[0].id = '__proto__'; });
+  bad(o => { o.branches[0].id = 'constructor'; });
+  bad(o => { o.branches[1].id = o.branches[0].id; });
+  const blade = L.parseBladeV1(ok), op = { lam: 6, ReR, polar, load: 'total', n: 81 };
+  const r = L.analyzeBlade(blade, { ...op, a: Object.create({ Work: 0.5 }) }, Object.create({ Work: { dBeta: 10 } }));
+  assert.equal(r.partialCQ, L.analyzeBlade(blade, { ...op, a: {} }).partialCQ, '只讀自有屬性');
+});
+
+test('弦長以保形內插:非負取樣不會內插成負值;整支方向覆寫優先於站上 mirror', () => {
+  const c = L.pchip([0, 1, 2, 3], [1, 0.1, 0.1, 1]);
+  for (let x = 0; x <= 3; x += 0.01) assert.ok(c.f(x) >= 0.1 - 1e-12, `pchip(${x}) = ${c.f(x)}`);
+  const nat = L.cubicSpline([0, 1, 2, 3], [1, 0.1, 0.1, 1]);
+  assert.ok(Math.min(...Array.from({ length: 301 }, (_, i) => nat.f(i / 100))) < 0.1, '對照:自然樣條會過衝');
+  const br = structuredClone(exBlade().branches[0]);
+  br.stations.find(p => p.s === 0.5).mirror = false;
+  const d = L.branchDef(br, { mirror: true });
+  assert.equal(d.profileAt(0.3).mirror, true); assert.equal(d.profileAt(0.7).mirror, true);
+  assert.equal(L.branchDef(br).profileAt(0.7).mirror, false);
+});

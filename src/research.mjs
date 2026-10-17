@@ -22,9 +22,9 @@ export const Research = (function () {
 
   function load(b, p, bn, pn) {
     try {
-      const nb = b ? L.parseBladeV1(b) : blade, np = p ? L.parsePolarV1(p) : polar;
-      blade = nb; polar = np; if (b) bladeName = bn; if (p) polarName = pn; err = '';
-      if (b) { R.a = {}; R.mods = {}; cmp = []; } else recalcCmp(); // 換極曲線:比較組依新資料重算
+      const nb = b != null ? L.parseBladeV1(b) : blade, np = p != null ? L.parsePolarV1(p) : polar; // 空檔("")也要解析並報錯
+      blade = nb; polar = np; if (b != null) bladeName = bn; if (p != null) polarName = pn; err = '';
+      if (b != null) { R.a = {}; R.mods = {}; cmp = []; } else recalcCmp(); // 換極曲線:比較組依新資料重算
     } catch (e) { err = e.message; }
     sweepCache.key = '';
   }
@@ -67,7 +67,7 @@ export const Research = (function () {
         <div class="cmpbox"><table class="auto" style="min-width:560px"><thead><tr><th>分支</th><th>軸向折減 a</th><th>安裝角偏移 Δβ(°)</th><th>翼型</th><th>方向</th></tr></thead><tbody id="rsMods"></tbody></table></div>
         <p class="note">a 為指定的純軸向速度折減(W = (1−a)e<sub>z</sub> − λ e<sub>z</sub>×x),不是由誘導模型算出。Δβ 加在定義檔的安裝角上;翼型改動套用整支分支。</p>`, '', 'rsOp')}
       ${card('結果摘要', `<div id="rsSum"></div>`, '', 'rsRes')}
-      ${card('沿弧長分佈(實線有資料、紅色虛線為缺值段)', `<div class="bgrid"><canvas id="rsCa" style="height:240px"></canvas><canvas id="rsCr" style="height:240px"></canvas><canvas id="rsCq" style="height:240px"></canvas></div>`, '', 'rsDist')}
+      ${card('沿弧長分佈(實線有資料;紅色底色為缺值區間,紅色虛線為缺值段的攻角/Re)', `<div class="bgrid"><canvas id="rsCa" style="height:240px"></canvas><canvas id="rsCr" style="height:240px"></canvas><canvas id="rsCq" style="height:240px"></canvas></div>`, '', 'rsDist')}
       ${card('扭角/翼型修改比較:部分 CQ–λ', `<div class="ctrlbar" style="padding:0 0 8px"><button class="btn" id="rsAdd">加入比較(目前設定)</button><button class="btn ghost" id="rsClr">清除比較</button><span class="note" style="margin:0">第一筆為基準;缺完整窗資料的 λ 不畫(不補 0)。</span></div>
         <div class="bgrid c2w"><canvas id="rsCl" style="height:280px"></canvas><div class="cmpbox" id="rsCmp"></div></div>`, '', 'rsCmpCard')}`;
     const on = (id, ev, fn) => { const e = $r(id); if (e) e.addEventListener(ev, fn); };
@@ -80,7 +80,7 @@ export const Research = (function () {
     on('rsRe', 'change', e => { const v = +e.target.value; if (v > 0) R.ReR = v; sweepCache.key = ''; recalcCmp(); render(); });
     on('rsLoad', 'change', e => { R.load = e.target.value; sweepCache.key = ''; recalcCmp(); render(); });
     on('rsN', 'change', e => { R.n = +e.target.value; sweepCache.key = ''; recalcCmp(); render(); });
-    on('rsL0', 'change', e => { R.lam0 = Math.max(0.5, +e.target.value || 3); sweepCache.key = ''; recalcCmp(); render(); });
+    on('rsL0', 'change', e => { R.lam0 = Math.max(0.5, +e.target.value || 3); if (R.lam1 < R.lam0 + 0.5) R.lam1 = R.lam0 + 0.5; sweepCache.key = ''; recalcCmp(); render(); });
     on('rsL1', 'change', e => { R.lam1 = Math.max(R.lam0 + 0.5, +e.target.value || 8); sweepCache.key = ''; recalcCmp(); render(); });
     on('rsMods', 'change', e => {
       const t = e.target, id = t.dataset.br; if (!id) return;
@@ -112,7 +112,7 @@ export const Research = (function () {
       const c = polar.conditions || {};
       $r('rsPinfo').innerHTML = `<span>檔案</span><span>${esc(polarName)}</span><span>翼型</span><span>${[...polar.profiles.keys()].map(esc).join('、')}</span>
         <span>攻角範圍</span><span>${polar.window.alpha[0]}° – ${polar.window.alpha[1]}°</span><span>Re 範圍</span><span>${polar.window.Re[0].toLocaleString()} – ${polar.window.Re[1].toLocaleString()}</span>
-        <span>資料點</span><span>${v} 有效 / ${n}(無效點保留為缺值)</span>${c.Ncrit != null ? `<span>條件</span><span>Mach ${c.Mach} · Ncrit ${c.Ncrit} · ${c.panels} 面板</span>` : ''}`;
+        <span>資料點</span><span>${v} 有效 / ${n}(無效點保留為缺值)</span>${c.Ncrit != null ? `<span>條件</span><span>Mach ${esc(c.Mach)} · Ncrit ${esc(c.Ncrit)} · ${esc(c.panels)} 面板</span>` : ''}`;
     } else $r('rsPinfo').innerHTML = '<span>尚未載入</span><span></span>';
     if (blade && polar) {
       const opts = [...polar.profiles.keys()].map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('');
@@ -142,15 +142,16 @@ export const Research = (function () {
       const d = split(b.stations, key), m = v => v * scale;
       return [{ x: d.x, y: d.good.map(m), color: col[k % 5], label: b.id }, { x: d.x, y: d.bad.map(m), color: warn, dash: [5, 3], width: 1.4 }];
     });
+    const bands = res.branches.flatMap((b, k) => b.unsupportedIntervals.map(g => ({ x0: g.s0, x1: g.s1, color: warn, alpha: 0.13 }))); // 缺值區間(含只在中點偵測到的)
     const xs = [blade.window[0], blade.window[1]], lim = (v, c) => ({ x: xs, y: [v, v], color: c || Plot.css('--muted'), dash: [2, 3], width: 1 });
-    Plot.draw($r('rsCa'), { title: '攻角 α(°);虛線為極曲線攻角範圍', xlabel: 's', ylabel: 'α (°)', series: [...S('alpha'), lim(aw[0]), lim(aw[1])] });
-    Plot.draw($r('rsCr'), { title: '局部 Re(×10³);虛線為極曲線 Re 範圍', xlabel: 's', ylabel: 'Re (×10³)', series: [...S('Re', 1e-3), lim(rw[0] / 1e3), lim(rw[1] / 1e3)] });
+    Plot.draw($r('rsCa'), { title: '攻角 α(°);虛線為極曲線攻角範圍', xlabel: 's', ylabel: 'α (°)', series: [...S('alpha'), lim(aw[0]), lim(aw[1])], bands });
+    Plot.draw($r('rsCr'), { title: '局部 Re(×10³);虛線為極曲線 Re 範圍', xlabel: 's', ylabel: 'Re (×10³)', series: [...S('Re', 1e-3), lim(rw[0] / 1e3), lim(rw[1] / 1e3)], bands });
     const key = R.load === 'force' ? 'qForce' : 'qTotal';
     const tq = res.branches.flatMap((b, k) => {
       const st = b.stations.map(p => Object.assign({}, p, { qj: p[key] * p.J })), d = split(st, 'qj');
       return [{ x: d.x, y: d.good, color: col[k % 5], label: b.id }, { x: d.x, y: d.bad, color: warn, dash: [5, 3], width: 1.4 }];
     });
-    Plot.draw($r('rsCq'), { title: `扭矩密度 q·J(${R.load === 'force' ? '只計力' : '力 + Cm'};單位 q∞R³,每份)`, xlabel: 's', ylabel: 'q·J', series: tq });
+    Plot.draw($r('rsCq'), { title: `扭矩密度 q·J(${R.load === 'force' ? '只計力' : '力 + Cm'};單位 q∞R³,每份)`, xlabel: 's', ylabel: 'q·J', series: tq, bands });
   }
   function missRanges(rows) { // 連續缺值的 λ 合併成區段,例如「3–3.75、6.5–8」
     const out = []; let st = null, prev = null;
