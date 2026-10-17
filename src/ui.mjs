@@ -974,6 +974,7 @@ export const FLOW_STEPS = {
   airfoil: { ws: 'blade', step: 'af' },
   tunnel: { ws: 'tunnel', step: 'tunnel' },
   report: { ws: 'report', step: null },
+  field: { ws: 'flow', step: null }, // 流場分析:不在五步驟順序內,以附加按鈕進入
 };
 export const FLOW_ORDER = ['concept', 'geometry', 'airfoil', 'tunnel', 'report'];
 export const FLOW_HINTS = {
@@ -982,6 +983,7 @@ export const FLOW_HINTS = {
   airfoil: '選翼型、設定沿展長翼型站與極曲線。',
   tunnel: '設定風速、紊流與負載,觀察轉子與發電機動態。',
   report: '執行自動測試、產生報告與比較方案。',
+  field: '流場分析:翼型位勢流與轉子致動盤/DMST 流管(近似,非 CFD)。',
 };
 export function flowNeighbor(id, d) {
   const i = FLOW_ORDER.indexOf(id), j = i + d;
@@ -989,6 +991,7 @@ export function flowNeighbor(id, d) {
 }
 export function flowStepOf(ws, step) {
   if (ws === 'report') return 'report';
+  if (ws === 'flow') return 'field';
   if (ws === 'tunnel') return step === 'rotor' ? 'concept' : 'tunnel';
   if (ws === 'blade') return step === 'af' ? 'airfoil' : 'geometry';
   return step === 'af' ? 'airfoil' : step === 'rotor' ? 'geometry' : 'tunnel';
@@ -1057,7 +1060,7 @@ export function init() {
   $('#flowNext').addEventListener('click', () => { const n = flowNeighbor(flowStepOf(S.ws, S.step), 1); if (n) setFlow(n); });
   $('#layoutBtn').addEventListener('click', () => { setLayout(!$('#app').classList.contains('flow')); renderPane(); });
   let lay = ''; try { lay = localStorage.getItem('wt-layout') || ''; } catch (e) {}
-  setLayout(lay === 'flow');
+  setLayout(lay !== 'classic'); // 預設流程版面;使用者明確選過經典才維持經典
   document.querySelectorAll('#ctabs [data-c]').forEach(b => b.addEventListener('click', () => {
     S.ctab = b.dataset.c; document.querySelectorAll('#ctabs [data-c]').forEach(x => x.setAttribute('aria-selected', x === b)); setCmpLayout(S.ctab === 'cmp'); chartOpts(); redrawStatic();
   }));
