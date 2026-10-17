@@ -630,6 +630,10 @@ test('rotorCardList:涵蓋 HAWT 與全部垂直軸家族,每張卡片欄位齊�
   }
 });
 
+test('ROTOR_ICONS:每張概念卡片都有示意圖(SVG)', () => {
+  for (const [k] of core.rotorCardList()) assert.match(core.ROTOR_ICONS[k] || '', /^<svg[\s\S]*<\/svg>$/, k);
+});
+
 test('ROTOR_GUIDE:三條路徑各有標題、說明,且指向存在的家族', () => {
   assert.equal(core.ROTOR_GUIDE.length, 3);
   const fams = new Set(core.rotorCardList().map(([k]) => k));
