@@ -335,3 +335,27 @@ export function bladeToJSON(b) {
   lines.push('  ]', '}');
   return lines.join('\n') + '\n';
 }
+
+/* ---------- 分析結果 CSV(缺值一律留空,不補 0) ---------- */
+const csvCell = v => {
+  if (v == null || (typeof v === 'number' && !Number.isFinite(v))) return '';
+  const s = typeof v === 'number' ? String(+v.toPrecision(10)) : String(v);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+};
+const csvRows = (head, rows) => '﻿' + [head, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+// 單一工況的逐截面結果(analyzeBlade 的輸出);qJ = q·J 為單位 s 的扭矩密度(單位 q∞R³,每份)
+export function stationsCSV(res, load = 'total') {
+  const key = load === 'force' ? 'qForce' : 'qTotal';
+  const rows = [];
+  for (const b of res.branches) for (const p of b.stations)
+    rows.push([b.id, p.s, p.J, p.alpha, p.Re, p.cl, p.cd, p.cm, p[key], p[key] * p.J, p.status]);
+  return csvRows(['branch', 's', 'J', 'alpha_deg', 'localRe', 'CL', 'CD', 'CM', key, 'q_times_J', 'status'], rows);
+}
+// 比較組的部分 CQ–λ;series:[{ label, rows:[{lam, partialCQ, coverage}] }],各組 λ 格點須相同
+export function sweepCSV(series) {
+  if (!series.length) return csvRows(['lambda'], []);
+  const head = ['lambda'];
+  series.forEach(s => head.push(`${s.label} partialCQ`, `${s.label} coverage`));
+  const rows = series[0].rows.map((r, i) => [r.lam, ...series.flatMap(s => { const q = s.rows[i]; return q ? [q.partialCQ, q.coverage] : ['', '']; })]);
+  return csvRows(head, rows);
+}

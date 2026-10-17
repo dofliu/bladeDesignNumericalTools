@@ -130,6 +130,12 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     check(r1.cq === null && Math.abs(r1.cov - 0.7736) < 1e-3 && r1.txt.includes('缺值') && r1.txt.includes('攻角超出極曲線範圍'), `${vp.tag}: 研究模式缺值標示(覆蓋率 ${(r1.cov * 100).toFixed(1)}%)`);
     await page.click('#rsAdd'); await page.waitForTimeout(300);
     check(await page.evaluate(() => Research.compareCount() === 1 && document.querySelectorAll('#rsCmp tbody tr').length === 2), `${vp.tag}: 研究模式加入比較`);
+    { // CSV 匯出:Blob 下載(檔名與內容);缺值留空
+      const grab = async id => { const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }).catch(() => null), page.click(id)]); if (!dl) return null; const fs = await import('node:fs'); return { name: dl.suggestedFilename(), text: fs.readFileSync(await dl.path(), 'utf8') }; };
+      const c1 = await grab('#rsSx'), c2 = await grab('#rsCx');
+      check(c1 && c1.name.endsWith('.csv') && c1.text.includes('alpha_deg') && c1.text.split('\r\n').length > 100, `${vp.tag}: 研究模式逐截面 CSV ${c1 ? c1.name + " " + c1.text.length : "none"}`);
+      check(c2 && c2.name.endsWith('_CQ_lambda.csv') && c2.text.includes('基準 partialCQ') && c2.text.includes('目前設定 partialCQ'), `${vp.tag}: 研究模式 CQ–λ CSV ${c2 ? c2.name : 'none'}`);
+    }
     await page.fill('[data-br="Return"][data-k="a"]', '0'); await page.dispatchEvent('[data-br="Return"][data-k="a"]', 'change');
     if (!mobile) { // 匯入防呆:空檔要報錯而非沿用舊資料;檔內文字不得被當成 HTML 執行;λ 掃描下限不可超過上限
       await page.setInputFiles('#rsBf', { name: 'empty.json', mimeType: 'application/json', buffer: Buffer.from('') }); await page.waitForTimeout(400);
