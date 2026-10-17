@@ -55,7 +55,7 @@ export const Research = (function () {
       <div class="card"><div class="cbx" style="padding-top:12px"><p class="note" style="margin:0"><b>研究模式(通用三維線葉片)</b>:逐截面攻角、局部 Re、力與四分之一弦力偶,沿實體弧長積分成<b>部分扭矩係數</b>(分母 q∞πR³)。
       不含誘導/尾流(a 只是指定的軸向折減情境)、翼根/翼尖/橋接/輪轂、分支間干涉與三維修正;<b>不是整機 Cp 或效率,不可與 Betz 極限比較</b>。極曲線為匯入資料(範例為 XFOIL 二維計算,不是量測);超出資料範圍一律標為缺值,不外插、不補 0。說明見 docs/LINE3D.md。</p></div></div>
       ${card('資料', `<div class="bgrid c2">
-        <div><div class="ctrlbar" style="padding:0 0 8px"><button class="btn" id="rsEx">載入內建範例</button><label class="btn ghost" style="cursor:pointer">匯入葉片 JSON<input type="file" id="rsBf" accept=".json,application/json" hidden></label><button class="btn ghost" id="rsBx">匯出目前葉片 JSON</button></div><div id="rsBinfo" class="kv lv"></div></div>
+        <div><div class="ctrlbar" style="padding:0 0 8px"><button class="btn" id="rsEx">載入內建範例</button><label class="btn ghost" style="cursor:pointer">匯入葉片 JSON<input type="file" id="rsBf" accept=".json,application/json" hidden></label><button class="btn ghost" id="rsBx">匯出目前葉片 JSON</button><button class="btn ghost" id="rsSx">匯出逐截面 CSV</button></div><div id="rsBinfo" class="kv lv"></div></div>
         <div><div class="ctrlbar" style="padding:0 0 8px"><label class="btn ghost" style="cursor:pointer">匯入極曲線 JSON<input type="file" id="rsPf" accept=".json,application/json" hidden></label></div><div id="rsPinfo" class="kv lv"></div></div>
       </div><p class="note" id="rsErr" style="color:var(--warn)"></p>`, '', 'rsData')}
       ${card('工況與修改', `<div class="ctrlbar" style="padding:0 0 8px">
@@ -68,7 +68,7 @@ export const Research = (function () {
         <p class="note">a 為指定的純軸向速度折減(W = (1−a)e<sub>z</sub> − λ e<sub>z</sub>×x),不是由誘導模型算出。Δβ 加在定義檔的安裝角上;翼型改動套用整支分支。</p>`, '', 'rsOp')}
       ${card('結果摘要', `<div id="rsSum"></div>`, '', 'rsRes')}
       ${card('沿弧長分佈(實線有資料;紅色底色為缺值區間,紅色虛線為缺值段的攻角/Re)', `<div class="bgrid"><canvas id="rsCa" style="height:240px"></canvas><canvas id="rsCr" style="height:240px"></canvas><canvas id="rsCq" style="height:240px"></canvas></div>`, '', 'rsDist')}
-      ${card('扭角/翼型修改比較:部分 CQ–λ', `<div class="ctrlbar" style="padding:0 0 8px"><button class="btn" id="rsAdd">加入比較(目前設定)</button><button class="btn ghost" id="rsClr">清除比較</button><span class="note" style="margin:0">第一筆為基準;缺完整窗資料的 λ 不畫(不補 0)。</span></div>
+      ${card('扭角/翼型修改比較:部分 CQ–λ', `<div class="ctrlbar" style="padding:0 0 8px"><button class="btn" id="rsAdd">加入比較(目前設定)</button><button class="btn ghost" id="rsClr">清除比較</button><button class="btn ghost" id="rsCx">匯出 CQ–λ CSV</button><span class="note" style="margin:0">第一筆為基準;缺完整窗資料的 λ 不畫(不補 0)。</span></div>
         <div class="bgrid c2w"><canvas id="rsCl" style="height:280px"></canvas><div class="cmpbox" id="rsCmp"></div></div>`, '', 'rsCmpCard')}`;
     const on = (id, ev, fn) => { const e = $r(id); if (e) e.addEventListener(ev, fn); };
     on('rsEx', 'click', () => { loadExample(); fill(); render(); });
@@ -76,6 +76,13 @@ export const Research = (function () {
     on('rsBf', 'change', e => readFile(e.target, (t, n) => load(t, null, n, null)));
     on('rsPf', 'change', e => readFile(e.target, (t, n) => load(null, t, null, n)));
     on('rsBx', 'click', () => { if (blade && typeof save === 'function') save(`${(blade.name || 'blade').replace(/[^\w一-鿿-]+/g, '_').slice(0, 40)}.json`, L.bladeToJSON(blade)); });
+    const safeName = () => (blade.name || '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'blade'; // CSV 檔名只用 ASCII,避免瀏覽器改成 download
+    on('rsSx', 'click', () => { if (blade && polar && typeof save === 'function') save(`${safeName()}_stations_lam${R.lam.toFixed(2)}.csv`, L.stationsCSV(L.analyzeBlade(blade, opNow(), R.mods), R.load)); });
+    on('rsCx', 'click', () => {
+      if (!blade || !polar || typeof save !== 'function') return;
+      const series = cmp.map((c, k) => ({ label: k === 0 ? '基準' : '比較' + k, rows: c.rows })).concat([{ label: '目前設定', rows: sweepCache.rows || sweep(R.mods, R.a) }]);
+      save(`${safeName()}_CQ_lambda.csv`, L.sweepCSV(series));
+    });
     on('rsLam', 'input', e => { R.lam = +e.target.value; soon(); });
     on('rsRe', 'change', e => { const v = +e.target.value; if (v > 0) R.ReR = v; sweepCache.key = ''; recalcCmp(); render(); });
     on('rsLoad', 'change', e => { R.load = e.target.value; sweepCache.key = ''; recalcCmp(); render(); });

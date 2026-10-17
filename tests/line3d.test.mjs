@@ -211,3 +211,17 @@ test('弦長以保形內插:非負取樣不會內插成負值;整支方向覆寫
   assert.equal(d.profileAt(0.3).mirror, true); assert.equal(d.profileAt(0.7).mirror, true);
   assert.equal(L.branchDef(br).profileAt(0.7).mirror, false);
 });
+
+test('分析結果 CSV:缺值留空不補 0、欄位數一致、含逗號的標籤被引號包住', () => {
+  const blade = L.parseBladeV1(JSON.parse(readFileSync(join(exDir, 'blade_v02_candidate146.json'), 'utf8')));
+  const res = L.analyzeBlade(blade, { lam: 6, ReR, polar, load: 'total', n: 41, a: { Return: 0.25 } });
+  const lines = L.stationsCSV(res).replace(/^﻿/, '').trim().split('\r\n');
+  assert.equal(lines.length, 1 + 41 * blade.branches.length);
+  const hdr = lines[0].split(','), miss = lines.slice(1).filter(l => !l.endsWith(',supported') && !l.endsWith(',zero_chord'));
+  assert.ok(miss.length > 0, '指定 a 後應有缺值截面');
+  for (const l of lines) assert.equal(l.split(',').length, hdr.length);
+  for (const l of miss) { const c = l.split(','); assert.equal(c[hdr.indexOf('CL')], ''); assert.equal(c[hdr.indexOf('q_times_J')], ''); }
+  const sw = L.sweepCSV([{ label: 'a,b', rows: [{ lam: 3, partialCQ: null, coverage: 0.5 }, { lam: 3.25, partialCQ: 0.01, coverage: 1 }] }]).replace(/^﻿/, '').trim().split('\r\n');
+  assert.equal(sw[0], 'lambda,"a,b partialCQ","a,b coverage"');
+  assert.equal(sw[1], '3,,0.5'); assert.equal(sw[2], '3.25,0.01,1');
+});

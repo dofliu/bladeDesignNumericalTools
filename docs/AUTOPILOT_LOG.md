@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-17 — ROADMAP 9-7c-1:研究模式匯出分析結果 CSV(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`line3d.mjs` 新增 `stationsCSV`、`sweepCSV`(UTF-8 BOM、CRLF、缺值留空、含逗號欄位加引號);研究工作區新增「匯出逐截面 CSV」「匯出 CQ–λ CSV」;檔名只用 ASCII(含中文的檔名在 Chrome 下載時被改成 `download`,e2e 抓到後修正)。
+- 驗證:check、npm test(111/111,新增 CSV 測試)、build、e2e 全過(新增兩個 CSV 下載檢查,桌面與手機;MPPT 追蹤率 93–97%);桌面 1440×900 與手機 390×844 截圖確認無破版。
+- 已知限制:CSV 內容與畫面同為無誘導部分 CQ,非整機性能;既有「匯出葉片 JSON」檔名仍含中文,瀏覽器可能改名(未動)。
+- 下一步:9-7c-2(扭角分佈編輯、比較組存 localStorage)或 9-8 交叉檢查。
+
 ## 2026-10-17 — ROADMAP 9-6、9-7:葉片定義 JSON 與研究模式介面(互動工作階段)
 
 - 做了什麼:使用者要求把中心線/弦長/扭角/翼型整理成可匯入的 JSON、接上研究介面、比較扭角與翼型修改。`line3d.mjs` 新增 `blade-line3d-v1` 格式(`parseBladeV1`、自然三次樣條 `branchDef`、`analyzeBlade`、`sweepLambda`、`bladeToJSON`);`examples/return-wing/` 放範例葉片定義(65 站)與極曲線;新工作區「研究」(`src/research.mjs`)。
