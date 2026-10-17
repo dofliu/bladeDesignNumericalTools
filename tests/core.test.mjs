@@ -611,6 +611,16 @@ test('freeSteepFraction:預設蛋形端部較陡、H 型風格直線外形為 0'
   } finally { Object.assign(S.vawt, sv); designVAWT(); }
 });
 
+test('freeShapeLiveCp:粗估 Cp 合理且與完整曲線 Cp,max 相差 < 0.1', () => {
+  const sv = JSON.parse(JSON.stringify(S.vawt));
+  try {
+    Object.assign(S.vawt, { type: 'free', shapePts: undefined }); designVAWT(); computePerf();
+    const r = core.freeShapeLiveCp(core.FREE_SHAPE_DEFAULT);
+    assert.ok(r.cp > 0 && r.cp < 0.6 && r.lam >= 1.5 && r.lam <= 5, JSON.stringify(r));
+    assert.ok(Math.abs(r.cp - core.G.cpMax) < 0.1, `live ${r.cp} full ${core.G.cpMax}`);
+  } finally { Object.assign(S.vawt, sv); designVAWT(); computePerf(); }
+});
+
 test('rotorCardList:涵蓋 HAWT 與全部垂直軸家族,每張卡片欄位齊全', () => {
   const list = core.rotorCardList();
   assert.equal(list.length, 1 + Object.keys(core.VAWT_FAMILIES).length);

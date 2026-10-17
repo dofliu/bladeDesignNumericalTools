@@ -91,7 +91,9 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
       const n0 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT).length), rf0 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT)[3].rf);
       const box = async () => await page.evaluate(() => { document.querySelector('#shapeSvg').scrollIntoView({ block: 'center' }); const c = document.querySelector('#shapeSvg .shpt[data-i="3"] circle:last-child').getBoundingClientRect(); const s = document.querySelector('#shapeSvg').getBoundingClientRect(); return { x: c.x + c.width / 2, y: c.y + c.height / 2, sx: s.width / 200 }; });
       const b = await box();
-      await page.mouse.move(b.x, b.y); await page.mouse.down(); await page.mouse.move(b.x - 12 * b.sx, b.y, { steps: 4 }); await page.mouse.up(); await page.waitForTimeout(600);
+      await page.mouse.move(b.x, b.y); await page.mouse.down(); await page.mouse.move(b.x - 12 * b.sx, b.y, { steps: 4 }); await page.waitForTimeout(150);
+      check(/粗估 Cp ≈ 0\.\d+/.test(await page.evaluate(() => document.querySelector('#shapeLive')?.textContent || '')), 'desktop: 拖曳中即時顯示粗估 Cp');
+      await page.mouse.up(); await page.waitForTimeout(600);
       const rf1 = await page.evaluate(() => (S.vawt.shapePts || FREE_SHAPE_DEFAULT)[3].rf);
       check(rf1 < rf0 - 0.05, `desktop: 拖曳外形控制點改變半徑 ${rf0} → ${rf1.toFixed(2)}`);
       await page.screenshot({ path: join(out, 'desktop-shape-editor.png') });
