@@ -46,6 +46,7 @@ npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D pl
 | 7 | `bench.mjs` | 單葉片工作區;共用繪圖工具 `fitCv` `arrow` `interp1` `card` | `Bench` |
 | 8 | `flow.js` | 流場工作區 | `Flow` |
 | 9 | `report.js` | 虛擬風洞自動測試 + 報告產生/下載 | `Report` |
+| — | `line3d.mjs` | 通用三維線葉片(研究模式):嚴格極曲線查表、逐截面向量負載、沿弧長積分部分 CQ;目前只有 Node 測試使用,尚未加入建置(見 `docs/LINE3D.md`)| — |
 
 `src/package.json` 只是讓 Node 把 `core.js` 當 CommonJS 載入(測試用),與瀏覽器無關;`.mjs` 模組(`aero.mjs`/`charts.mjs`/`geo.mjs`)測試改用 ESM `import * as A from '../src/aero.mjs'`(見 `tests/geo.test.mjs`/`tests/core.test.mjs`)。專案第一個 npm 相依套件是 `vite`(devDependency,只在 `npm run build` 時用到,`npm test`/`npm run check` 不需要它)。
 
@@ -99,6 +100,7 @@ rebuild(geo): designHAWT()/designVAWT() → computePerf() → autoMatchGen() →
 | H 型 Darrieus(R1 H2 B3 c0.15 NACA0018)| Cp 0.333 @ λ 3.5(失速校正前 0.368 @ λ 3)|
 | Φ 型 | Cp 0.357 @ λ 3.75(校正前 0.385 @ λ 3.5)|
 | 扭角方式比較(三站翼型,λd 7)| BEM 0.478 > Schmitz 0.476 > 線性 20→0° 0.450 |
+| 回翼閉合葉片 λ6、Re_R 8×10⁵、localRe、力+Cm 部分 CQ(`tests/line3d.test.mjs`)| mirror2412 +0.039662;0012 −0.003740 |
 
 ## 模型限制(對使用者說明時要誠實)
 
