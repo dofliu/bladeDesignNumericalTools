@@ -256,6 +256,29 @@ test('wakeDiskInduction:與 BEM 平均誘導比對(記錄偏差帶)、a=0 為 0'
   assert.equal(A.wakeDiskInduction(3, 7, 0).a, 0);
 });
 
+test('wakeDiskInduction:葉根渦(反向 Γ、半徑 0.1R)對圓盤誘導影響 < 2%,差距來自尾流膨脹', () => {
+  const a = 0.25, B = 3, lam = 7, opts = { turns: 40, perTurn: 24, iters: 2 };
+  const f = A.freeWake(B, lam, a, opts), root = A.tipVortexWake(B, lam, a, { ...opts, rTip: 0.1 });
+  const disk = sgn => {
+    let s = 0, w = 0;
+    for (let i = 0; i < 4; i++) {
+      const r = 0.1 + 0.9 * (i + 0.5) / 4;
+      for (let k = 0; k < 4; k++) {
+        const th = 2 * Math.PI * (k + 0.5) / 4, p = { x: 0, y: r * Math.cos(th), z: r * Math.sin(th) };
+        let u = A.biotSavart(f.wake, p, f.gamma, 0.05).u;
+        if (sgn) u += sgn * A.biotSavart(root, p, f.gamma, 0.05).u;
+        s += -u * r; w += r;
+      }
+    }
+    return s / w / a;
+  };
+  const base = disk(0), withRoot = disk(-1);
+  assert.ok(Math.abs(withRoot - base) / base < 0.02, `葉根渦影響 ${base} → ${withRoot}`);
+  // 未鬆弛(僅預設螺旋,尾流已膨脹)就已只有約 0.85,可見不足主因是尾流膨脹而非葉根渦
+  const pre = A.wakeDiskInduction(B, lam, a, { nr: 4, na: 4, iters: 0 }).a / a;
+  assert.ok(pre > 0.75 && pre < 0.95, '預設螺旋 a_w/a ' + pre);
+});
+
 test('parseCpCurve:標題/分隔符號、缺 Cq 推得、λ 遞增、Betz 警告與錯誤', () => {
   const r = A.parseCpCurve('lambda,Cp\n# 註解\n0.5, 0.10\n1.0;0.20\n1.5\t0.25 0.2\n');
   assert.equal(r.pts.length, 3);
