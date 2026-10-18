@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-18 — ROADMAP 9-8:三維線葉片對 DMST 交叉檢查(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR。新增 `tests/line3d-vawt.test.mjs`:H 型 Darrieus 以三維線截面負載對 `dmstPoint` 的 u=1 極限,λ 2.5/3.5/5 差 0.15/0.40/1.26%(殘餘誘導,隨實度降低);確認直葉片對主軸平行時 `lineFrame` 退化;量化螺旋 60° 時 `vawtSlices` 漏算 r·θ′:DMST 扭矩比三維線高約 23%。只動測試與文件,未改 `aero.mjs`。
+- 驗證:見 PR 內文(check、npm test、build、e2e)。
+- 已知限制:未修正 `vawtSlices`(會改變既有螺旋/自訂外形數值,需使用者決定);比對用低實度與以 DMST 極曲線取樣的嚴格極曲線,不含動態失速/流線彎曲。
+- 下一步:9-9 一般模式修正(`blendPS`/`getPS` 快取鍵、`REs:[1]` 標示);9-10 需使用者決定。
+
 ## 2026-10-17 — ROADMAP 9-7c-2:研究模式扭角線性/二次修改與比較組存 localStorage(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`branchDef` 新增 `dBetaLin`/`dBetaQuad`(u=(s−s0)/(s1−s0) 的線性/二次扭角修改);研究工作區各分支新增「線性扭角」「二次扭角」輸入,比較組標籤一併顯示;比較組以葉片名稱為鍵存入 localStorage(`wt-research-cmp-v1`,只存設定、載入同名葉片時重算,全程 try/catch)。
