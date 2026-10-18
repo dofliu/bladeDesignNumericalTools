@@ -181,11 +181,13 @@ test('cubicSpline 重現線性函數與其斜率;安裝角偏移與分段翼型�
   const br = exBlade().branches[0];
   const d0 = L.branchDef(br), d1 = L.branchDef(br, { dBeta: 2 });
   assert.ok(Math.abs(d1.beta(0.5) - d0.beta(0.5) - 2) < 1e-12);
-  { // 線性/二次扭角:起點不變、終點加 dL+dQ、中點加 dL/2+dQ/4(u 以分支弧長正規化)
-    const [s0, s1] = d0.domain, dm = L.branchDef(br, { dBetaLin: 3, dBetaQuad: -2 }), sm = (s0 + s1) / 2;
+  { // 線性/二次扭角:起點不變、終點加 dL+dQ、弧長中點加 dL/2+dQ/4(u 以中心線累積實際弧長正規化)
+    const [s0, s1] = d0.domain, dm = L.branchDef(br, { dBetaLin: 3, dBetaQuad: -2 });
     assert.ok(Math.abs(dm.beta(s0) - d0.beta(s0)) < 1e-12);
     assert.ok(Math.abs(dm.beta(s1) - d0.beta(s1) - 1) < 1e-12);
-    assert.ok(Math.abs(dm.beta(sm) - d0.beta(sm) - (1.5 - 0.5)) < 1e-12);
+    let lo = s0, hi = s1; for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (dm.u(m) < 0.5) lo = m; else hi = m; }
+    assert.ok(Math.abs(dm.beta(lo) - d0.beta(lo) - (1.5 - 0.5)) < 1e-9);
+    for (const v of [0.13, 0.37, 0.71]) { const u = dm.u(v); assert.ok(Math.abs(dm.beta(v) - d0.beta(v) - (3 * u - 2 * u * u)) < 1e-12); }
   }
   const seg = structuredClone(br); seg.stations.find(p => p.s === 0.5).profile = 'baseline_mesh'; seg.stations.find(p => p.s === 0.5).mirror = false;
   const ds = L.branchDef(seg);
@@ -230,4 +232,38 @@ test('分析結果 CSV:缺值留空不補 0、欄位數一致、含逗號的標�
   const sw = L.sweepCSV([{ label: 'a,b', rows: [{ lam: 3, partialCQ: null, coverage: 0.5 }, { lam: 3.25, partialCQ: 0.01, coverage: 1 }] }]).replace(/^﻿/, '').trim().split('\r\n');
   assert.equal(sw[0], 'lambda,"a,b partialCQ","a,b coverage"');
   assert.equal(sw[1], '3,,0.5'); assert.equal(sw[2], '3.25,0.01,1');
+});
+
+// 非等弧長 s 的回歸:扭角修改位置必須跟著實際弧長走,不是跟著取樣參數 s
+const brOf = (sv, f) => ({ id: 'T', profile: '2412', mirror: false, stations: sv.map(v => { const [x, y, z] = f(v); return { s: v, x, y, z, chord: 0.1, beta: 10 }; }) });
+test('扭角修改 u:直線中心線、s 非等弧長(x ∝ s²)時 u 等於實際長度比例', () => {
+  const sv = L.linspace(0, 1, 9).map(t => 0.2 + 0.8 * t * t * t); // 取樣點也不等距
+  const br = brOf(sv, v => [0.2 + 0.7 * v * v, 0.3 * v * v, 0.1 * v * v]); // 沿同一直線,速度 ∝ v
+  const d = L.branchDef(br, { dBetaLin: 4 });
+  const X = v => d.x(v)[0], s0 = sv[0], s1 = sv[sv.length - 1];
+  for (const v of [0.25, 0.4, 0.55, 0.8, 0.95]) {
+    const uTrue = (X(v) - X(s0)) / (X(s1) - X(s0)); // 直線上的弧長與 x 的位移成正比(三個分量同比例樣條)
+    assert.ok(Math.abs(d.u(v) - uTrue) < 1e-10, `v ${v}: u ${d.u(v)} vs ${uTrue}`);
+    assert.ok(Math.abs(d.beta(v) - 10 - 4 * uTrue) < 1e-9);
+    const uS = (v - s0) / (s1 - s0);
+    if (v > 0.3) assert.ok(Math.abs(d.u(v) - uS) > 0.02, 'v 為參數正規化時應明顯不同,確認測試真的有分辨力');
+  }
+});
+test('扭角修改 u:圓弧中心線、θ ∝ s² 時 u = θ(s)/θ(s1)', () => {
+  const sv = L.linspace(0.1, 1, 41), th = v => 1.2 * v * v;
+  const br = brOf(sv, v => [0.8 * Math.cos(th(v)), 0.8 * Math.sin(th(v)), 0.05]);
+  const d = L.branchDef(br, { dBetaQuad: 6 });
+  for (const v of [0.2, 0.45, 0.6, 0.85]) {
+    const uTrue = (th(v) - th(0.1)) / (th(1) - th(0.1));
+    assert.ok(Math.abs(d.u(v) - uTrue) < 2e-4, `v ${v}: u ${d.u(v)} vs ${uTrue}`); // 誤差來自樣條近似圓弧
+    assert.ok(Math.abs(d.beta(v) - d.u(v) ** 2 * 6 - L.branchDef(br).beta(v)) < 1e-12);
+  }
+});
+test('回翼範例:s 接近但不等於弧長(u 與 s 正規化最大差 0.5–1%),無修改時 beta 與舊定義逐點相同', () => {
+  for (const br of exBlade().branches) {
+    const d = L.branchDef(br), [s0, s1] = d.domain;
+    let mx = 0; for (const v of L.linspace(s0, s1, 81)) mx = Math.max(mx, Math.abs(d.u(v) - (v - s0) / (s1 - s0)));
+    assert.ok(mx > 0.005 && mx < 0.01, `${br.id}: max |u − u_s| = ${mx}`);
+    assert.ok(Math.abs(L.branchDef(br, { dBeta: 1.5 }).beta(0.42) - d.beta(0.42) - 1.5) < 1e-12);
+  }
 });

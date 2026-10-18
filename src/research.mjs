@@ -66,8 +66,8 @@ export const Research = (function () {
         <label>負載 <select id="rsLoad"><option value="total">力 + 四分之一弦 Cm</option><option value="force">只計力</option></select></label>
         <label>積分節點 <select id="rsN"><option>81</option><option>161</option><option>321</option><option>641</option></select></label>
         <label>λ 掃描 <input type="number" id="rsL0" step="0.5" style="width:60px">–<input type="number" id="rsL1" step="0.5" style="width:60px"></label></div>
-        <div class="cmpbox"><table class="auto" style="min-width:560px"><thead><tr><th>分支</th><th>軸向折減 a</th><th>安裝角偏移 Δβ(°)</th><th>線性扭角 s0→s1(°)</th><th>二次扭角 s1 處(°)</th><th>翼型</th><th>方向</th></tr></thead><tbody id="rsMods"></tbody></table></div>
-        <p class="note">a 為指定的純軸向速度折減(W = (1−a)e<sub>z</sub> − λ e<sub>z</sub>×x),不是由誘導模型算出。Δβ 加在定義檔的安裝角上;線性/二次扭角以分支弧長正規化(u=0 在起點,u=1 在終點),線性項加 u×值、二次項加 u²×值;翼型改動套用整支分支。</p>`, '', 'rsOp')}
+        <div class="cmpbox"><table class="auto" style="min-width:560px"><thead><tr><th>分支</th><th>軸向折減 a</th><th>安裝角偏移 Δβ(°)</th><th>線性扭角 起點→終點(°)</th><th>二次扭角 終點處(°)</th><th>翼型</th><th>方向</th></tr></thead><tbody id="rsMods"></tbody></table></div>
+        <p class="note">a 為指定的純軸向速度折減(W = (1−a)e<sub>z</sub> − λ e<sub>z</sub>×x),不是由誘導模型算出。Δβ 加在定義檔的安裝角上;線性/二次扭角的位置 u 為中心線累積實際弧長 ÷ 分支總弧長(u=0 在起點,u=1 在終點;不是取樣參數 s),線性項加 u×值、二次項加 u²×值;翼型改動套用整支分支。</p>`, '', 'rsOp')}
       ${card('結果摘要', `<div id="rsSum"></div>`, '', 'rsRes')}
       ${card('沿弧長分佈(實線有資料;紅色底色為缺值區間,紅色虛線為缺值段的攻角/Re)', `<div class="bgrid"><canvas id="rsCa" style="height:240px"></canvas><canvas id="rsCr" style="height:240px"></canvas><canvas id="rsCq" style="height:240px"></canvas></div>`, '', 'rsDist')}
       ${card('扭角/翼型修改比較:部分 CQ–λ', `<div class="ctrlbar" style="padding:0 0 8px"><button class="btn" id="rsAdd">加入比較(目前設定)</button><button class="btn ghost" id="rsClr">清除比較</button><button class="btn ghost" id="rsCx">匯出 CQ–λ CSV</button><span class="note" style="margin:0">第一筆為基準;缺完整窗資料的 λ 不畫(不補 0)。</span></div>

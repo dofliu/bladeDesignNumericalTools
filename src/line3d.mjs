@@ -271,10 +271,28 @@ export function parseBladeV1(obj) {
   return { schema: BLADE_SCHEMA, name: String(obj.name || '未命名葉片'), note: obj.note ? String(obj.note) : '', copies, window: win, units: 'R', branches };
 }
 
-// 把一個分支(可加修改:dBeta 安裝角偏移〔度〕、profile/mirror 換翼型)轉成 lineStation 用的 def
+// 中心線累積實際弧長 L(v) = ∫_{s0}^{v} |dx/ds| ds:每個取樣區間細分 sub 段、每段 5 點 Gauss–Legendre。
+// s 只是取樣參數,不一定與弧長成比例;需要「沿葉片實際長度」的位置(例如扭角修改)時用這裡的 L / L_total。
+const GL5X = [-0.906179845938664, -0.5384693101056831, 0, 0.5384693101056831, 0.906179845938664];
+const GL5W = [0.23692688505618908, 0.47862867049936647, 0.5688888888888889, 0.47862867049936647, 0.23692688505618908];
+const gl5 = (f, a, b) => { const m = (a + b) / 2, h = (b - a) / 2; let q = 0; for (let k = 0; k < 5; k++) q += GL5W[k] * f(m + h * GL5X[k]); return q * h; };
+export function arcLength(dx, s, sub = 8) {
+  const J = v => norm(dx(v)), kn = [s[0]], cum = [0];
+  for (let i = 0; i + 1 < s.length; i++) for (let j = 1; j <= sub; j++) {
+    const a = kn[kn.length - 1], b = j === sub ? s[i + 1] : s[i] + (s[i + 1] - s[i]) * j / sub;
+    cum.push(cum[cum.length - 1] + gl5(J, a, b)); kn.push(b);
+  }
+  const seg = v => { let i = 0, hi = kn.length - 2; while (i < hi) { const m = (i + hi + 1) >> 1; if (kn[m] <= v) i = m; else hi = m - 1; } return i; };
+  return { total: cum[cum.length - 1], at: v => { const i = seg(v); return cum[i] + gl5(J, kn[i], v); } };
+}
+
+// 把一個分支(可加修改:dBeta 安裝角偏移〔度〕、dBetaLin/dBetaQuad 以實際弧長 u 的線性/二次扭角〔度〕、profile/mirror 換翼型)轉成 lineStation 用的 def
 export function branchDef(br, mod = {}) {
   const S = br.stations, s = S.map(p => p.s), sp = k => cubicSpline(s, S.map(p => p[k]));
-  const X = sp('x'), Y = sp('y'), Z = sp('z'), C = pchip(s, S.map(p => p.chord)), B = sp('beta'), dB = mod.dBeta || 0, dL = mod.dBetaLin || 0, dQ = mod.dBetaQuad || 0, sA = s[0], sW = s[s.length - 1] - s[0];
+  const X = sp('x'), Y = sp('y'), Z = sp('z'), C = pchip(s, S.map(p => p.chord)), B = sp('beta'), dB = mod.dBeta || 0, dL = mod.dBetaLin || 0, dQ = mod.dBetaQuad || 0;
+  const dx = v => [X.d(v), Y.d(v), Z.d(v)];
+  let arc = null; // 只在需要時建表
+  const u = v => { arc = arc || arcLength(dx, s); return arc.at(v) / arc.total; };
   const seg = S.map(p => ({ s: p.s, profile: p.profile, mirror: p.mirror }));
   const base = { profile: mod.profile ?? br.profile, mirror: mod.mirror ?? br.mirror };
   const profileAt = v => {
@@ -287,8 +305,8 @@ export function branchDef(br, mod = {}) {
   };
   return {
     branch: br.id, domain: [s[0], s[s.length - 1]], profile: base.profile, mirror: base.mirror, profileAt,
-    x: v => [X.f(v), Y.f(v), Z.f(v)], dx: v => [X.d(v), Y.d(v), Z.d(v)],
-    chord: v => C.f(v), beta: v => { const u = (v - sA) / sW; return B.f(v) + dB + dL * u + dQ * u * u; }, // 線性/二次修改以分支弧長正規化 u∈[0,1]
+    x: v => [X.f(v), Y.f(v), Z.f(v)], dx, u,
+    chord: v => C.f(v), beta: v => { if (!dL && !dQ) return B.f(v) + dB; const w = u(v); return B.f(v) + dB + dL * w + dQ * w * w; }, // 線性/二次修改以中心線累積實際弧長正規化 u∈[0,1](不是 s)
   };
 }
 
