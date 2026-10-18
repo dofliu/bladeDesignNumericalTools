@@ -232,7 +232,7 @@ const polarSourceInfo = () => {
   const kind = !imp.length ? 'builtin' : imp.length < keys.length ? 'mixed' : 'imported';
   const short = { builtin: '內建半經驗極曲線', mixed: '匯入與內建混合極曲線', imported: '匯入極曲線' }[kind];
   const rg = ranges.map(r => `${r.label} ${r.amin.toFixed(0)}°~${r.amax.toFixed(0)}°`).join('、');
-  const note = kind === 'builtin' ? '' : `匯入資料只在其攻角範圍內內插(${rg}),範圍外由模型 Viterna 外推${kind === 'mixed' ? ';未匯入的翼型站仍用內建模型' : ''};匯入檔可能來自實驗或 XFOIL,本工具不驗證其品質`;
+  const note = kind === 'builtin' ? '' : `匯入資料只在其攻角範圍內內插(${rg}),範圍外由模型 Viterna 外推${kind === 'mixed' ? ';未匯入的翼型站仍用內建模型' : ''};匯入極曲線是單一表,不隨雷諾數變化,且 Cd 下限取 0.003;匯入檔可能來自實驗或 XFOIL,本工具不驗證其品質`;
   return { kind, short, ranges, note, nImp: imp.length, nAll: keys.length };
 };
 const rotorSource = () => {
@@ -472,9 +472,11 @@ function getModel(key) {
   if (!modelCache.has(mk)) modelCache.set(mk, A.buildAeroModel(getAf(key), { cdMax: S.af.cdMax }));
   return modelCache.get(mk);
 }
+// FNV-1a over the whole string: cache key must change when any character of an imported polar changes, not only the first 40.
+function hashStr(t) { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); }
 function getPS(key) {
   const imp = S.af.polarImp[key];
-  const pk = key + '|' + S.af.cdMax + '|' + (imp ? imp.length + imp.slice(0, 40) : '');
+  const pk = key + '|' + S.af.cdMax + '|' + (imp ? imp.length + ':' + hashStr(imp) : '');
   if (psCache.has(pk)) return psCache.get(pk);
   let ps;
   if (imp) { try { ps = A.parsePolarText(imp, S.af.cdMax); } catch (e) { ps = A.buildPolarSet(getModel(key)); } }
@@ -482,12 +484,25 @@ function getPS(key) {
   psCache.set(pk, ps);
   return ps;
 }
+// Table of a polar set at a given Re (log-Re interpolation between neighbouring tables); a single-table set (imported) has no Re dependence.
+function tableAtRe(ps, Re) {
+  const R = ps.REs, T = ps.tables;
+  if (T.length === 1 || Re <= R[0]) return T[0];
+  if (Re >= R[R.length - 1]) return T[T.length - 1];
+  let i = 1; while (R[i] < Re) i++;
+  const w = Math.log(Re / R[i - 1]) / Math.log(R[i] / R[i - 1]), t0 = T[i - 1], t1 = T[i];
+  if (w < 1e-9) return t0;
+  const CL = new Float64Array(721), CD = new Float64Array(721);
+  for (let k = 0; k < 721; k++) { CL[k] = t0.CL[k] * (1 - w) + t1.CL[k] * w; CD[k] = t0.CD[k] * (1 - w) + t1.CD[k] * w; }
+  return { Re, al: t0.al, CL, CD };
+}
 function blendPS(p1, p2, w) {
   if (w <= 0.001 || p1 === p2) return p1;
   if (w >= 0.999) return p2;
+  // Blend at matching Re (not matching array index): the two sets may have different Re grids.
   const REs = p1.REs.length > 1 ? p1.REs : p2.REs;
-  const tables = REs.map((Re, j) => {
-    const t1 = p1.tables.length === 1 ? p1.tables[0] : p1.tables[j], t2 = p2.tables.length === 1 ? p2.tables[0] : p2.tables[j];
+  const tables = REs.map(Re => {
+    const t1 = tableAtRe(p1, Re), t2 = tableAtRe(p2, Re);
     const CL = new Float64Array(721), CD = new Float64Array(721);
     for (let i = 0; i < 721; i++) { CL[i] = t1.CL[i] * (1 - w) + t2.CL[i] * w; CD[i] = t1.CD[i] * (1 - w) + t2.CD[i] * w; }
     return { Re, al: t1.al, CL, CD };
@@ -1064,4 +1079,4 @@ function startWindSpeed(cq, A, R, T0 = null) {
 }
 function conceptNoiseLp(lamRef, R, Vref = 8) { return noiseEstimate(lamRef * Vref, 2 * R, 50).Lp; }
 
-export { STL_DATA, STL_LIMITS, loadStl, clearStl, stlPrepare, isDemoCurve, familyName, startCq, startWindSpeed, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, ROTOR_ICONS, rotorCardList, freeSteepFraction, freeShapeLiveCp, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };
+export { STL_DATA, STL_LIMITS, loadStl, clearStl, stlPrepare, isDemoCurve, familyName, startCq, startWindSpeed, conceptNoiseLp, polarSourceInfo, rotorTrust, ROTOR_GUIDE, ROTOR_CARDS, ROTOR_ICONS, rotorCardList, freeSteepFraction, freeShapeLiveCp, FREE_SHAPE_DEFAULT, FREE_SHAPE_TEMPLATES, parseShapePts, shapePtsText, moveShapePoint, addShapePoint, removeShapePoint, VAWT_FAMILIES, rotorSource, noAirfoil, CUSTOM_EXAMPLES, COST_DEFAULT, parseWindSeries, windSeriesPdf, windDensity, A, MATERIALS, VAWT_TYPES, S, G, SIM, air, AF_LIB, afCache, afLabel, getAf, getModel, getPS, blendPS, tableAtRe, hashStr, stSorted, afBlendAt, viewKey, designHAWT, designVAWT, hawtCfg, computePerf, interpCurve, autoMatchGen, simStep, recordHist, steadyPower, gammaFn, weibullPdf, capacityFactor, snapRated, idealAEP, noiseEstimate, blDstarFn, tbleNoise, tbleSpectrum, tipVortexNoise, costEstimate, rootStress, fatigueEstimate, pitchRegulation, pitchDcq, startupRun };

@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-18 — ROADMAP 9-9:一般模式極曲線快取鍵與混合修正(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR。`getPS` 快取鍵改用全文雜湊;`blendPS` 依雷諾數對齊(新增 `tableAtRe`);匯入極曲線不隨 Re 變、Cd 下限 0.003 的說明併入 `polarSourceInfo` 的 note。未動 `aero.mjs`。
+- 驗證:見 PR 內文(check、npm test 116/116、build、e2e)。
+- 已知限制:既有內建極曲線(同為 8 個 Re 網格)的混合結果不變;只有匯入多 Re 極曲線與內建混合時才會不同。
+- 下一步:9-10 需使用者決定;之後做第 8 項中可由排程進行的子步驟。
+
 ## 2026-10-18 — ROADMAP 9-8:三維線葉片對 DMST 交叉檢查(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR。新增 `tests/line3d-vawt.test.mjs`:H 型 Darrieus 以三維線截面負載對 `dmstPoint` 的 u=1 極限,λ 2.5/3.5/5 差 0.15/0.40/1.26%(殘餘誘導,隨實度降低);確認直葉片對主軸平行時 `lineFrame` 退化;量化螺旋 60° 時 `vawtSlices` 漏算 r·θ′:DMST 扭矩比三維線高約 23%。只動測試與文件,未改 `aero.mjs`。

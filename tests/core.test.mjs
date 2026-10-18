@@ -658,13 +658,37 @@ test('polarSourceInfo / rotorTrust:未匯入、部分匯入、全部匯入、範
   const base = core.rotorTrust().split(':')[0];
   S.af.polarImp[keys[0]] = text; r = core.polarSourceInfo();
   assert.equal(r.kind, 'mixed'); assert.equal(r.ranges[0].amin, -10); assert.equal(r.ranges[0].amax, 10);
-  assert.match(r.note, /-10°~10°.*外推/); assert.match(core.rotorSource(), /混合/);
+  assert.match(r.note, /-10°~10°.*外推.*不隨雷諾數變化/); assert.match(core.rotorSource(), /混合/);
   for (const k of keys) S.af.polarImp[k] = text;
   r = core.polarSourceInfo(); assert.equal(r.kind, 'imported'); assert.match(core.rotorTrust(), /匯入極曲線.*品質未驗證.*外推/);
   assert.equal(core.rotorTrust().split(':')[0], base);
   S.af.polarImp[keys[0]] = 'bad data'; // parse failure falls back to the built-in model
   assert.notEqual(core.polarSourceInfo().kind, 'imported');
   S.mode = saved.mode; S.af.polarImp = saved.imp; S.af.st = saved.st;
+});
+
+test('getPS 快取鍵看全文:前 40 字相同、之後不同的匯入極曲線不會共用快取', () => {
+  const mk = k => { const r = []; for (let a = -10; a <= 10; a += 1) r.push(`${a} ${(a < -2 ? 0.1 * a : k * 0.1 * a).toFixed(3)} ${(0.01 + 0.0002 * a * a).toFixed(4)}`); return r.join('\n'); };
+  const t1 = mk(1), t2 = mk(1.2); assert.equal(t1.slice(0, 40), t2.slice(0, 40)); assert.equal(t1.length, t2.length);
+  const saved = S.af.polarImp, key = core.stSorted()[0].k;
+  S.af.polarImp = { [key]: t1 }; const c1 = core.getPS(key).tables[0].CL[370];
+  S.af.polarImp = { [key]: t2 }; const c2 = core.getPS(key).tables[0].CL[370];
+  S.af.polarImp = saved;
+  assert.ok(Math.abs(c2 / c1 - 1.2) < 1e-6, `${c1} ${c2}`); // alpha=+5° 附近(索引 370 = 5°)
+
+});
+
+test('blendPS 依雷諾數對齊而非依陣列索引;匯入單表混合不隨 Re 變', () => {
+  const mkT = (Re, cl) => ({ Re, al: new Float64Array(721), CL: new Float64Array(721).fill(cl), CD: new Float64Array(721).fill(0.01) });
+  const p1 = { REs: [1e5, 1e6], tables: [mkT(1e5, 0.2), mkT(1e6, 0.4)] };
+  const p2 = { REs: [5e4, 1e5, 1e6, 1e7], tables: [mkT(5e4, 0.0), mkT(1e5, 0.6), mkT(1e6, 0.8), mkT(1e7, 1.0)] };
+  const b = core.blendPS(p1, p2, 0.5);
+  assert.deepEqual(b.REs, p1.REs);
+  assert.ok(Math.abs(b.tables[0].CL[0] - 0.4) < 1e-12); // Re 1e5: (0.2+0.6)/2,索引對齊會得到 (0.2+0.0)/2
+  assert.ok(Math.abs(b.tables[1].CL[0] - 0.6) < 1e-12); // Re 1e6: (0.4+0.8)/2
+  const one = { REs: [1], tables: [mkT(0, 1.0)], imported: true };
+  const c = core.blendPS(one, p1, 0.5);
+  assert.ok(Math.abs(c.tables[0].CL[0] - 0.6) < 1e-12 && Math.abs(c.tables[1].CL[0] - 0.7) < 1e-12);
 });
 
 test('外形編輯器:moveShapePoint / addShapePoint / removeShapePoint 維持合法控制點', () => {
