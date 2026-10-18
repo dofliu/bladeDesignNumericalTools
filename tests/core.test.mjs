@@ -230,6 +230,28 @@ test('time-domain pitch control feathers above rated, holds power near the limit
   S.load.pitchCtl = false; SIM.pitch = 0;
 });
 
+test('pitch control leaves MPPT untouched below rated and meets the generator limit across the rated knee', () => {
+  setMode('HAWT');
+  const meas = (V, pc) => {
+    S.tun.TI = 0; S.tun.V = V; S.load.ctrl = 'po'; S.load.cutOut = false; S.load.ospd = true; S.load.pitchCtl = pc;
+    SIM.Vmeas = V; SIM.omega = G.lopt * V / G.R * 0.8; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.pAvg = 0;
+    SIM.latch = false; SIM.cutout = false; SIM.n = 0; SIM.po.wref = -1; SIM.trips = 0; SIM.wPrevObs = null; SIM.pitch = 0;
+    for (let t = 0; t < 80; t += 0.004) simStep(0.004);
+    let e = 0, n = 0, pm = 0; const tr = SIM.trips;
+    for (let t = 0; t < 20; t += 0.004) { simStep(0.004); e += SIM.out.el.Pout; pm += SIM.pitch; n++; }
+    return { P: e / n, pitch: pm / n, trips: SIM.trips - tr };
+  };
+  for (const V of [7, 10]) {
+    const off = meas(V, false), on = meas(V, true);
+    assert.ok(Math.abs(on.P - off.P) / off.P < 0.03, `${V} m/s: pitch on ${on.P.toFixed(0)} W vs off ${off.P.toFixed(0)} W`);
+    assert.ok(on.pitch < 0.2, `${V} m/s: no feathering below rated, got ${on.pitch.toFixed(2)}°`);
+  }
+  const r = meas(13, true);
+  assert.ok(r.P > 0.95 * S.load.Pmax && r.P < 1.05 * S.load.Pmax, `13 m/s power ${r.P.toFixed(0)} W near Pmax ${S.load.Pmax} W`);
+  assert.ok(r.pitch > 0 && r.trips === 0, 'slight feathering, no trips just above rated');
+  S.load.pitchCtl = false; SIM.pitch = 0;
+});
+
 test('furling yaws the rotor out of the wind above vFurl, cuts power and recovers below', () => {
   setMode('HAWT');
   const run = (V, dur) => { S.tun.TI = 0; S.tun.V = V; for (let t = 0; t < dur; t += 0.004) simStep(0.004); };
