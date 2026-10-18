@@ -279,6 +279,14 @@ test('wakeDiskInduction:葉根渦(反向 Γ、半徑 0.1R)對圓盤誘導影響 
   assert.ok(pre > 0.75 && pre < 0.95, '預設螺旋 a_w/a ' + pre);
 });
 
+test('wakeDiskInduction:渦心徑向位置(代表 BEM 徑向 Γ 分布向內集中)只會降低圓盤誘導,無法補足缺口', () => {
+  const a = 0.25, ratio = rTip => A.wakeDiskInduction(3, 7, a, { nr: 4, na: 4, rTip }).a / a;
+  const r100 = ratio(1), r90 = ratio(0.9), r80 = ratio(0.8);
+  // 實測 0.82 / 0.73 / 0.55:渦心內移使 a_w/a_BEM 單調下降,與「缺口需往上補」方向相反
+  assert.ok(r100 > r90 && r90 > r80, `單調下降 ${r100} ${r90} ${r80}`);
+  assert.ok(r100 < 0.95 && r80 < 0.7, `r1 ${r100} r0.8 ${r80}`);
+});
+
 test('parseCpCurve:標題/分隔符號、缺 Cq 推得、λ 遞增、Betz 警告與錯誤', () => {
   const r = A.parseCpCurve('lambda,Cp\n# 註解\n0.5, 0.10\n1.0;0.20\n1.5\t0.25 0.2\n');
   assert.equal(r.pts.length, 3);
