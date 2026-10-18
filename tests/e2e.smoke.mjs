@@ -63,6 +63,11 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.click('#flowNext'); await page.waitForTimeout(500);
     const nx = await page.evaluate(() => [...document.querySelectorAll('.flownav [aria-pressed="true"]')].map(b => b.dataset.flow).join() + '|' + document.querySelector('#flowHint').textContent.length);
     check(prevOff && nx.startsWith('geometry|') && !nx.endsWith('|0'), 'desktop: 流程上一步/下一步與步驟說明');
+    {
+      const vis = async id => { await page.click(`.flownav [data-flow="${id}"]`); await page.waitForTimeout(300); return page.evaluate(() => [...document.querySelectorAll('.steps button')].filter(b => b.offsetParent).map(b => b.dataset.step).join()); };
+      const v1 = await vis('geometry'), v2 = await vis('tunnel');
+      check(v1 === '' && v2 === 'tunnel,load', 'desktop: 流程版面依步驟只顯示相關設定分頁(幾何無分頁、虛擬風洞=風洞+負載)');
+    }
     await page.click('.flownav [data-flow="concept"]'); await page.waitForTimeout(400);
     check(await page.evaluate(() => document.querySelectorAll('#pane .fcard').length) >= 7, 'desktop: 概念步驟顯示轉子家族卡片');
     check(await page.evaluate(() => document.querySelectorAll('#pane .gitem [data-guide]').length) === 3, 'desktop: 概念步驟顯示「我的形狀該選哪條路」引導');

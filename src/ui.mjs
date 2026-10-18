@@ -1021,6 +1021,7 @@ export function markNav() {
   const set = $('#app').classList.contains('m-set');
   document.querySelectorAll('.wsnav [data-ws]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ws === S.ws));
   const fs = flowStepOf(S.ws, S.step);
+  $('#app').dataset.fs = fs;
   document.querySelectorAll('.flownav [data-flow]').forEach(b => b.setAttribute('aria-pressed', b.dataset.flow === fs));
   const fh = $('#flowHint'); if (fh) { fh.textContent = FLOW_HINTS[fs] || ''; fh.title = fh.textContent; }
   const fp = $('#flowPrev'), fn = $('#flowNext'); if (fp) fp.disabled = !flowNeighbor(fs, -1); if (fn) fn.disabled = !flowNeighbor(fs, 1);

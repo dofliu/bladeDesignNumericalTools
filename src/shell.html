@@ -64,6 +64,12 @@ aside{border-right:1px solid var(--line);background:var(--panel);display:flex;fl
 .steps button{border:0;background:transparent;padding:10px 4px 9px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;display:flex;flex-direction:column;align-items:center;gap:1px}
 .steps button b{font-size:11px;font-weight:600;width:18px;height:18px;border-radius:50%;border:1px solid currentColor;display:grid;place-items:center}
 .steps button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+/* 流程版面(桌面):只顯示目前步驟相關的設定分頁 */
+@media (min-width:861px){
+.app.flow[data-fs="concept"] .steps,.app.flow[data-fs="geometry"] .steps,.app.flow[data-fs="airfoil"] .steps{display:none}
+.app.flow[data-fs="tunnel"] .steps{grid-template-columns:repeat(2,1fr)}
+.app.flow[data-fs="tunnel"] .steps button[data-step="af"],.app.flow[data-fs="tunnel"] .steps button[data-step="rotor"]{display:none}
+}
 .steps button[aria-selected="true"] b{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .pane{overflow:auto;padding:12px 14px 40px;flex:1;min-height:0}
 .group{margin:0 0 14px}
