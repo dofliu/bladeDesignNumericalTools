@@ -35,7 +35,7 @@
 ## 3. 葉片結構分析
 
 - [x] 截面性質:依翼型外形 + 殼厚計算面積、慣性矩、形心(多邊形積分)。`geo.js` 新增 `polygonMoments`(封閉多邊形面積/一次矩/二次矩,對原點,供組合截面先相加再一次移軸)、`offsetPolygon`(等厚度向內偏移,做薄殼內壁)、`sectionProperties(af, chord, thickness)`(回傳實際單位的面積/形心/Ixx/Iyy/Ixy)。`tests/geo.test.mjs` 以正方形、正多邊形近似圓、圓環解析解與 NACA 0012 實心截面積文獻常數(≈0.6851×t/c)驗證。
-- [ ] 載重:由 BEM 的 dT/dr、dQ/dr 加離心力,算根部彎矩、各截面應力、葉尖撓度;極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況。
+- [x] 載重(三個子步驟皆完成,報告已顯示極端工況,2026-10-19 確認):由 BEM 的 dT/dr、dQ/dr 加離心力,算根部彎矩、各截面應力、葉尖撓度;極端風速(例如 IEC 小型風機 Class II 的 Vref)與停機工況。
   - [x] 分布載重與彎矩:`core.js` 新增 `bladeLoads(rows, elems, omega, rho)`,在 `designHAWT()` 設計點 BEM 解(`resD.elems`)算出每站揮舞向(flapwise,thrust-like)與擺振向(edgewise,torque-like)的分布氣動力,呼叫新的 `aero.js` 通用函式 `cumulativeMoment`/`cumulativeOutboard`(離散懸臂梁:外側點力對某站的彎矩/軸力累加,`tests/aero.test.mjs` 用等分布載重解析解 M=w(L-x)²/2 驗證)沿展長累加成揮舞彎矩;離心軸力則用既有質量迴圈已算出的每站質量 `x.dm` × ω²r 累加。結果存回 `G.rows[i].{Mflap,Medge,Fax,dFz,dFy}` 與 `G.loads.{MflapRoot,MedgeRoot,FaxRoot,omega}`(`designVAWT()` 目前設 `G.loads=null`,垂直軸的結構模型留待之後)。
   - [x] 應力與撓度:`geo.js` 新增 `equivalentThickness(af, chord, targetArea)`(對 `sectionProperties` 的面積做二分搜尋,反解殼厚,如建議用 `MATERIALS[x].fill*airfoilArea*c²` 當目標面積,對齊既有質量模型,沒有新增使用者可調欄位)與 `sectionProperties` 新增回傳 `yMax`/`xMax`(形心到外緣的最大距離,彎曲應力用)、`beamDeflection(rows, M, EI)`(彎矩/EI 曲率由根部往葉尖梯形積分兩次)。`core.js` 的 `bladeLoads` 延伸:對每一站反解等效殼厚 → `sectionProperties` 取 Ixx/Iyy → 揮舞彎曲應力(`Mflap·yMax/Ixx`)、擺振彎曲應力(`Medge·xMax/Iyy`)、離心軸向應力(`Fax/area`)保守直接相加成 `x.stress`,安全係數 `x.safety = mat.allow/x.stress`;揮舞撓度 `x.defl` 用 `beamDeflection` 積分。`MATERIALS` 補上楊氏模數 `E` 與容許應力 `allow` 的合理文獻預設值(玻纖 20 GPa/100 MPa、木材 11 GPa/40 MPa、鋁 69 GPa/110 MPa、PLA 2.3 GPa/20 MPa、碳纖 70 GPa/250 MPa)。`G.loads` 新增 `tipDefl`、`minSafety`。`tests/geo.test.mjs`/`tests/core.test.mjs` 各新增測試(解析解驗證 `beamDeflection`、`equivalentThickness` 面積回代、真實設計點的應力/撓度/安全係數沿展長合理性)。
   - [x] 極端風速與停機工況的載重:`core.js` 的 `EXTREME`(Class II Vref 42.5 m/s、Ve50 = 1.4 Vref、Cn 1.2)+ `bladeLoads` 新增停機(ω=0、無離心力)全失速平板式法向力的揮舞彎矩/應力/撓度/安全係數,結果在 `G.loads.extreme` 與 `G.rows[i].{MflapExt,stressExt,safetyExt}`;`tests/core.test.mjs` 以解析和驗證。預設 HAWT 極端工況安全係數約 2.4(設計點 5.8)。限制:僅揮舞向、無方位/偏航組合、無分項安全係數;UI/報告尚未顯示。
@@ -121,6 +121,8 @@
   - [x] AEP 限額定功率(2026-10-06):`core.mjs` 新增 `idealAEP(m, ratedW)`(理想 MPPT、每個風速輸出以額定功率封頂),`snapAEP` 改用它,方案比較的 AEP/容量因數/LCOE 不再高估(容量因數必 ≤ 100%)。限制:仍是理想 MPPT 穩態,未含保護停機/切出風速。
   - [x] 性能曲線分頁年發電量圖固定占空比曲線限額定(2026-10-06):`ui.mjs` 的固定 D 功率以 `S.load.Pmax` 封頂(MPPT 曲線原本已限),容量因數不再 > 100%。
 - 介面:英文語系、報告 PDF 直接輸出(需處理中文字型)。
+  - [x] 報告 PDF:已有「列印 / 另存 PDF」(瀏覽器列印,沿用系統中文字型,不需內嵌字型;2026-10-19 確認)。
+  - [ ] 英文語系(範圍大、需使用者決定是否值得:UI 文字全在各模組字串中)。
 
 ## 8. 創新外形轉子(2026-10-09 使用者指定,優先)
 
