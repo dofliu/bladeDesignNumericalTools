@@ -221,43 +221,52 @@ test('biotSavart:圓形渦環軸上誘導速度對照解析解 Γ R²/(2(R²+x²
   near(q1.u, 2 * A.biotSavart([ring], { x: 1, y: 0, z: 0 }, 1, 1e-4).u, 1e-9, 'Γ 線性');
 });
 
-test('自由渦尾流:Γ 與遠尾流軸向誘導一致、鬆弛後節距/膨脹合理、a=0 無變化', () => {
-  const B = 3, lam = 7, a = 0.3, per = 48;
+test('自由渦尾流:Γ(Kutta-Joukowski)與遠尾流軸向誘導一致、鬆弛後以片層平均速度 1−a 對流、a=0 無變化', () => {
+  const B = 3, lam = 7, a = 0.25;
   const g = A.tipVortexGamma(B, lam, a);
-  near(g, 2 * a * 2 * Math.PI * (1 - 2 * a) / (lam * B), 1e-12, 'Γ 公式');
-  // 長尾流內部軸上的 Biot-Savart 軸向誘導 ≈ −2a(速度虧損,誤差 < 10%)
-  const w0 = A.tipVortexWake(B, lam, a, { turns: 40, perTurn: per });
-  const q = A.biotSavart(w0, { x: 6, y: 0, z: 0 }, g, 0.05);
-  assert.ok(q.u < 0, '尾流內軸向速度下降');
+  near(g, 4 * Math.PI * a * (1 - a) / (lam * B), 1e-12, 'Γ 公式');
+  // 推力一致:ρΩBΓ/(2π) = ½ρV²·4a(1−a)(以 R、V∞ 無因次化)
+  near(lam * B * g / (2 * Math.PI), 2 * a * (1 - a), 1e-12, 'Kutta-Joukowski 推力');
+  // 鬆弛後(30 圈、6 次):尾流中段節距 ≈ 2π(1−a)/λ(渦位於片層上,以內外平均速度對流;實測 1.05 倍),
+  // 明顯偏離預設螺旋的 2π(1−2a)/λ(2026-10-20 前的逐步鬆弛錯誤會讓尾流停在預設形狀)
+  const per = 24, f = A.freeWake(B, lam, a, { turns: 30, perTurn: per, iters: 6, mix: 0.8 }), L = f.wake[0];
+  const pitch = (L[11 * per].x - L[10 * per].x) * lam / (2 * Math.PI);
+  assert.ok(pitch / (1 - a) > 0.98 && pitch / (1 - a) < 1.12, '節距/(1−a) ' + pitch / (1 - a));
+  assert.ok(pitch / (1 - 2 * a) > 1.4, '已離開預設螺旋 ' + pitch / (1 - 2 * a));
+  // 尾流中段半徑膨脹,不超過動量理論遠尾流 √((1−a)/(1−2a)) = 1.225
+  const r10 = L[10 * per].r;
+  assert.ok(r10 > 1.1 && r10 < 1.25, '尾流半徑 ' + r10);
+  // 尾流中段軸上速度虧損 ≈ 2a(< 10%)
+  const q = A.biotSavart(f.wake, { x: L[10 * per].x, y: 0, z: 0 }, g, 0.05);
   near(-q.u / (2 * a), 1, 0.1, '軸向誘導 vs 2a');
-  // 鬆弛後遠尾流節距接近 2π(1−2a)/λ、半徑膨脹
-  const f = A.freeWake(B, lam, a, { turns: 8, perTurn: per, iters: 4 });
-  const L = f.wake[0], n = L.length - 1;
-  near((L[n].x - L[n - per].x) / (2 * Math.PI * (1 - 2 * a) / lam), 1, 0.1, '節距比');
-  assert.ok(L[n].r > 1.1 && L[n].r < 1.6, '尾流半徑膨脹 ' + L[n].r);
-  for (let i = 1; i <= n; i++) assert.ok(L[i].x > L[i - 1].x, '軸向單調');
+  for (let i = 1; i < L.length; i++) assert.ok(L[i].x > L[i - 1].x, '軸向單調');
   // a=0:Γ=0,回到未誘導的螺旋
-  const z = A.freeWake(1, lam, 0, { turns: 2, perTurn: per });
+  const z = A.freeWake(1, lam, 0, { turns: 2, perTurn: 48 });
   assert.equal(z.gamma, 0);
-  near(z.wake[0][per].x, 2 * Math.PI / lam, 1e-9, 'a=0 節距');
+  near(z.wake[0][48].x, 2 * Math.PI / lam, 1e-9, 'a=0 節距');
 });
 
-test('wakeDiskInduction:與 BEM 平均誘導比對(記錄偏差帶)、a=0 為 0', () => {
+test('wakeDiskInduction:與 BEM 平均誘導比對,同為致動盤假設下 Cp 差 < 5%、a=0 為 0', () => {
   const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('4412'))), b = A.bestLD(ps, 3e5);
   const rows = A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr: 7, aDes: b.a, clDes: b.cl, nSec: 16, linearize: false, chordScale: 1, twistScale: 1, maxChordRatio: 0.2 });
   const cfg = { R: 1.5, Rhub: 0.15, B: 3, rows, rho: 1.225, mu: 1.81e-5, polarFor: () => ps };
-  const r = A.bemPoint(cfg, 8, 7 * 8 / 1.5, 0, 0, {});
-  const aBar = (1 - Math.sqrt(1 - r.Ct)) / 2;
-  const w = A.wakeDiskInduction(3, 7, aBar, { nr: 4, na: 4 });
-  // 僅葉尖渦、均勻負載:渦尾流圓盤誘導約為 BEM 動量平均 a 的 0.65–0.95 倍(實測 0.77),Cp 高估 < 30%
-  const ratio = w.a / aBar;
-  assert.ok(ratio > 0.65 && ratio < 0.95, 'a_w/a_BEM ' + ratio);
-  assert.ok(w.Cp / r.Cp > 1 && w.Cp / r.Cp < 1.3, 'Cp 比 ' + w.Cp / r.Cp);
+  const ideal = a => 4 * a * (1 - a) * (1 - a);
+  for (const lam of [5, 7, 9]) {
+    const r = A.bemPoint(cfg, 8, lam * 8 / 1.5, 0, 0, {});
+    const aBar = (1 - Math.sqrt(1 - r.Ct)) / 2;
+    const w = A.wakeDiskInduction(3, lam, aBar, { nr: 4, na: 4 });
+    // 實測 λ 5/7/9:a_w/a_BEM 0.93/0.93/0.93、理想 Cp 比 0.97/0.99/1.00(修正前 a 比 0.71–0.82)
+    const ratio = w.a / aBar;
+    assert.ok(ratio > 0.88 && ratio < 1.02, `λ${lam} a_w/a_BEM ${ratio}`);
+    assert.ok(Math.abs(w.Cp / ideal(aBar) - 1) < 0.05, `λ${lam} 理想 Cp 比 ${w.Cp / ideal(aBar)}`);
+    // 對 BEM 實際 Cp(含阻力、葉尖損失、尾流旋轉)仍高 19–32%:致動盤沒有這些損失,需升力線耦合才能比
+    assert.ok(w.Cp / r.Cp > 1.05 && w.Cp / r.Cp < 1.45, `λ${lam} 對 BEM Cp ${w.Cp / r.Cp}`);
+  }
   assert.equal(A.wakeDiskInduction(3, 7, 0).a, 0);
 });
 
-test('wakeDiskInduction:葉根渦(反向 Γ、半徑 0.1R)對圓盤誘導影響 < 2%,差距來自尾流膨脹', () => {
-  const a = 0.25, B = 3, lam = 7, opts = { turns: 40, perTurn: 24, iters: 2 };
+test('wakeDiskInduction:葉根渦(反向 Γ、半徑 0.1R)對圓盤誘導影響 < 2%;預設螺旋(未鬆弛)高估', () => {
+  const a = 0.25, B = 3, lam = 7, opts = { turns: 30, perTurn: 24, iters: 6, mix: 0.8 };
   const f = A.freeWake(B, lam, a, opts), root = A.tipVortexWake(B, lam, a, { ...opts, rTip: 0.1 });
   const disk = sgn => {
     let s = 0, w = 0;
@@ -274,17 +283,17 @@ test('wakeDiskInduction:葉根渦(反向 Γ、半徑 0.1R)對圓盤誘導影響 
   };
   const base = disk(0), withRoot = disk(-1);
   assert.ok(Math.abs(withRoot - base) / base < 0.02, `葉根渦影響 ${base} → ${withRoot}`);
-  // 未鬆弛(僅預設螺旋,尾流已膨脹)就已只有約 0.85,可見不足主因是尾流膨脹而非葉根渦
+  // 預設螺旋以 1−2a 對流(節距太短、渦太密),同一 Γ 下高估約 27%;鬆弛後回到 0.93
   const pre = A.wakeDiskInduction(B, lam, a, { nr: 4, na: 4, iters: 0 }).a / a;
-  assert.ok(pre > 0.75 && pre < 0.95, '預設螺旋 a_w/a ' + pre);
+  assert.ok(pre > 1.1 && pre > base + 0.2, '預設螺旋 a_w/a ' + pre);
 });
 
-test('wakeDiskInduction:渦心徑向位置(代表 BEM 徑向 Γ 分布向內集中)只會降低圓盤誘導,無法補足缺口', () => {
+test('wakeDiskInduction:渦心徑向位置(代表 BEM 徑向 Γ 分布向內集中)使圓盤誘導單調下降', () => {
   const a = 0.25, ratio = rTip => A.wakeDiskInduction(3, 7, a, { nr: 4, na: 4, rTip }).a / a;
   const r100 = ratio(1), r90 = ratio(0.9), r80 = ratio(0.8);
-  // 實測 0.82 / 0.73 / 0.55:渦心內移使 a_w/a_BEM 單調下降,與「缺口需往上補」方向相反
+  // 實測 0.93 / 0.83 / 0.61:渦心內移使圓盤平均誘導下降(誘導集中在渦心半徑以內,外圈面積變少)
   assert.ok(r100 > r90 && r90 > r80, `單調下降 ${r100} ${r90} ${r80}`);
-  assert.ok(r100 < 0.95 && r80 < 0.7, `r1 ${r100} r0.8 ${r80}`);
+  assert.ok(r100 > 0.88 && r80 < 0.7, `r1 ${r100} r0.8 ${r80}`);
 });
 
 test('parseCpCurve:標題/分隔符號、缺 Cq 推得、λ 遞增、Betz 警告與錯誤', () => {
