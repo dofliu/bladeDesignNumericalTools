@@ -1,4 +1,5 @@
 /* ===== UI ===== */
+import { t, applyI18n, setLang, getLang } from './i18n.mjs';
 export const $ = s => document.querySelector(s);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 export const fmt = (v, d = 1) => (v == null || !isFinite(v)) ? '–' : (+v).toFixed(d);
@@ -1013,7 +1014,7 @@ export function setFlow(id) {
 }
 export function setLayout(flow) {
   $('#app').classList.toggle('flow', flow);
-  $('#layoutBtn').textContent = flow ? '經典版面' : '流程版面';
+  $('#layoutBtn').textContent = t(flow ? '經典版面' : '流程版面');
   try { localStorage.setItem('wt-layout', flow ? 'flow' : 'classic'); } catch (e) {}
   markNav();
 }
@@ -1023,10 +1024,10 @@ export function markNav() {
   const fs = flowStepOf(S.ws, S.step);
   $('#app').dataset.fs = fs;
   document.querySelectorAll('.flownav [data-flow]').forEach(b => b.setAttribute('aria-pressed', b.dataset.flow === fs));
-  const fh = $('#flowHint'); if (fh) { fh.textContent = FLOW_HINTS[fs] || ''; fh.title = fh.textContent; }
+  const fh = $('#flowHint'); if (fh) { fh.textContent = t(FLOW_HINTS[fs] || ''); fh.title = fh.textContent; }
   const fp = $('#flowPrev'), fn = $('#flowNext'); if (fp) fp.disabled = !flowNeighbor(fs, -1); if (fn) fn.disabled = !flowNeighbor(fs, 1);
   document.querySelectorAll('.bnav [data-mnav]').forEach(b => b.setAttribute('aria-current', set ? b.dataset.mnav === 'set' : b.dataset.mnav === S.ws));
-  $('#sideBtn').textContent = sideHidden ? '顯示設定' : '隱藏設定';
+  $('#sideBtn').textContent = t(sideHidden ? '顯示設定' : '隱藏設定');
 }
 export function renderWS() {
   if (S.ws === 'tunnel') redrawStatic();
@@ -1088,6 +1089,8 @@ export function init() {
   MQ.addEventListener('change', () => { placeOpts(); renderPane(); if (!isMobile()) $('#app').classList.remove('m-set'); markNav(); setTimeout(renderWS, 50); });
   placeOpts();
   new ResizeObserver(() => { if (S.ws !== 'tunnel') renderWS(); }).observe($('main'));
+  $('#langBtn').addEventListener('click', () => { setLang(getLang() === 'en' ? 'zh' : 'en'); markNav(); setLayout($('#app').classList.contains('flow')); });
+  applyI18n();
   $('#themeBtn').addEventListener('click', () => {
     const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
     r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('wt-theme', r.dataset.theme); } catch (e) {}
