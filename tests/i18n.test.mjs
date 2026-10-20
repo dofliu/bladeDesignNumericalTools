@@ -28,3 +28,14 @@ test('EN-2:設定面板常用標籤有英文翻譯,且翻譯不含中文', () =>
   const bad = Object.entries(EN).filter(([k, v]) => k.length > 0 && /[一-鿿]/.test(v) && !/中文/.test(v));
   assert.deepEqual(bad, []);
 });
+
+test('EN-3:圖表 Plot.draw 的標題/座標軸/圖例字串都有英文翻譯', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { EN } = await import('../src/i18n.mjs');
+  const src = ['ui', 'bench', 'flow', 'core', 'report', 'research'].map(n => readFileSync(new URL(`../src/${n}.mjs`, import.meta.url), 'utf8')).join('\n');
+  const miss = new Set();
+  for (const m of src.matchAll(/\b(?:title|xlabel|ylabel|ylabelR|label): *'([^']*[一-鿿][^']*)'/g)) {
+    if (!EN[m[1]]) miss.add(m[1]);
+  }
+  assert.deepEqual([...miss], [], '缺少翻譯: ' + [...miss].join(' | '));
+});

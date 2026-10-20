@@ -1090,7 +1090,7 @@ export function init() {
   MQ.addEventListener('change', () => { placeOpts(); renderPane(); if (!isMobile()) $('#app').classList.remove('m-set'); markNav(); setTimeout(renderWS, 50); });
   placeOpts();
   new ResizeObserver(() => { if (S.ws !== 'tunnel') renderWS(); }).observe($('main'));
-  $('#langBtn').addEventListener('click', () => { setLang(getLang() === 'en' ? 'zh' : 'en'); markNav(); renderPane(); setLayout($('#app').classList.contains('flow')); });
+  $('#langBtn').addEventListener('click', () => { setLang(getLang() === 'en' ? 'zh' : 'en'); markNav(); renderPane(); setLayout($('#app').classList.contains('flow')); redrawStatic(); renderWS(); });
   applyI18n();
   $('#themeBtn').addEventListener('click', () => {
     const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;

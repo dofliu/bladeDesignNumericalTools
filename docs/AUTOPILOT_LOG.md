@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-20 — ROADMAP 7:英文語系 EN-3 圖表字串(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR,續做 EN-3 的圖表部分。`charts.mjs` 的 `Plot.draw` 對標題、座標軸、圖例、標記文字經 `t()` 翻譯;`i18n.mjs` 新增約 130 條圖表字串;語言鈕切換後呼叫 `redrawStatic()`/`renderWS()` 重繪。`tests/i18n.test.mjs` 新增測試:掃描原始碼中靜態的 title/xlabel/ylabel/label 中文字串都必須有翻譯。
+- 驗證:check、npm test 123/123、build、e2e 全過(追蹤率 93–97%);桌面 1440×900 與手機 390×844 切英文後截圖無破版。
+- 已知限制:HUD、轉子摘要、面板說明段落、含數字的動態標題(如「Re 2.67×10⁵ · t/c」以外的組合字串)與各工作區卡片標題仍是中文。
+- 下一步:EN-4 單葉片/流場/研究工作區(含 HUD 與摘要);第 6 項升力線耦合。
+
 ## 2026-10-20 — ROADMAP 7:英文語系 EN-2 設定面板標籤(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR,續做 EN-2。`src/i18n.mjs` 新增約 190 條面板標籤翻譯與 `translateTree()`(翻譯動態建立子樹的文字節點與 aria-label);`renderPane()` 重繪後呼叫,語言鈕切換時一併重繪面板。`tests/i18n.test.mjs` 補一個測試。
