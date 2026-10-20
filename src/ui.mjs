@@ -1,5 +1,5 @@
 /* ===== UI ===== */
-import { t, applyI18n, setLang, getLang } from './i18n.mjs';
+import { t, applyI18n, setLang, getLang, translateTree } from './i18n.mjs';
 export const $ = s => document.querySelector(s);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 export const fmt = (v, d = 1) => (v == null || !isFinite(v)) ? '–' : (+v).toFixed(d);
@@ -254,6 +254,7 @@ export function renderPane() {
   const f = { af: paneAirfoil, rotor: paneRotor, tunnel: paneTunnel, load: paneLoad }[S.step];
   const st = p.scrollTop;
   p.innerHTML = f();
+  translateTree(p);
   p.querySelectorAll('[data-fam]').forEach(b => b.addEventListener('click', () => selectFamily(b.dataset.fam)));
   bindPane(p);
   applyReadonly(p);
@@ -1089,7 +1090,7 @@ export function init() {
   MQ.addEventListener('change', () => { placeOpts(); renderPane(); if (!isMobile()) $('#app').classList.remove('m-set'); markNav(); setTimeout(renderWS, 50); });
   placeOpts();
   new ResizeObserver(() => { if (S.ws !== 'tunnel') renderWS(); }).observe($('main'));
-  $('#langBtn').addEventListener('click', () => { setLang(getLang() === 'en' ? 'zh' : 'en'); markNav(); setLayout($('#app').classList.contains('flow')); });
+  $('#langBtn').addEventListener('click', () => { setLang(getLang() === 'en' ? 'zh' : 'en'); markNav(); renderPane(); setLayout($('#app').classList.contains('flow')); });
   applyI18n();
   $('#themeBtn').addEventListener('click', () => {
     const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
