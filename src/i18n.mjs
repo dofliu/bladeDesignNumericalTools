@@ -180,6 +180,23 @@ try { const l = localStorage.getItem('wt-lang'); if (l === 'en' || l === 'zh') l
 export const getLang = () => lang;
 export const t = zh => (lang === 'en' && EN[zh]) || zh;
 
+// Fragment translation for dynamic strings (numbers interpolated into Chinese text): exact key first,
+// then known phrases (FR) replaced longest-first. Results are cached per string.
+export const FR = {};
+let frKeys = null; const trCache = new Map();
+export function tr(s) {
+  if (lang !== 'en' || !s || !/[一-鿿]/.test(s)) return s;
+  if (EN[s]) return EN[s];
+  let r = trCache.get(s);
+  if (r !== undefined) return r;
+  if (!frKeys) frKeys = Object.keys(FR).sort((a, b) => b.length - a.length);
+  r = s;
+  for (const k of frKeys) if (r.includes(k)) r = r.split(k).join(FR[k]);
+  if (trCache.size > 4000) trCache.clear();
+  trCache.set(s, r);
+  return r;
+}
+
 // Original Chinese is kept in data-zh / data-zh-title so switching back and forth is lossless.
 export function applyI18n(root = document) {
   root.querySelectorAll('[data-i18n]').forEach(el => {
@@ -203,11 +220,14 @@ export function translateTree(root) {
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let n; (n = w.nextNode());) {
     const k = n.nodeValue.trim();
-    if (k && EN[k]) n.nodeValue = n.nodeValue.replace(k, EN[k]);
+    if (k && /[一-鿿]/.test(k)) { const v = tr(k); if (v !== k) n.nodeValue = n.nodeValue.replace(k, v); }
   }
   root.querySelectorAll('[aria-label],[data-g]').forEach(el => {
     const a = el.getAttribute('aria-label');
-    if (a && EN[a]) el.setAttribute('aria-label', EN[a]);
+    if (a && /[一-鿿]/.test(a)) el.setAttribute('aria-label', tr(a));
+  });
+  root.querySelectorAll('[title],[placeholder]').forEach(el => {
+    for (const k of ['title', 'placeholder']) { const a = el.getAttribute(k); if (a && /[一-鿿]/.test(a)) el.setAttribute(k, tr(a)); }
   });
 }
 
@@ -216,3 +236,95 @@ export function setLang(l) {
   try { localStorage.setItem('wt-lang', lang); } catch (e) {}
   applyI18n();
 }
+
+// Dynamic DOM (workspaces, HUD, summaries) is rebuilt with Chinese text; translate additions in English mode.
+export function watchI18n(root = document.body) {
+  let pending = 0;
+  new MutationObserver(() => {
+    if (lang !== 'en' || pending) return;
+    pending = setTimeout(() => { pending = 0; translateTree(root); }, 60);
+  }).observe(root, { childList: true, subtree: true, characterData: true });
+}
+
+// EN-4: Blade / Flow / Research workspaces, tunnel readouts, canvas annotations.
+Object.assign(EN, {
+  '站 1': 'Stn 1', '風': 'Wind', '攻角 α (°)': 'Angle of attack α (°)',
+  '每個站指定一種翼型與它在葉片上的位置;兩站之間的外形與極曲線依位置線性混合,第一站以內、最後一站以外維持該站翼型。常見做法是根部用厚翼型(t/c 18–25%)承受彎矩,中段過渡,尖部用高升阻比的薄翼型(t/c 12–15%),因為功率主要來自外側 60% 展長。':
+    'Each station sets an airfoil and its blade position; shape and polar blend linearly between stations, and the first/last station airfoil is held beyond the ends. Typical practice: thick root airfoil (t/c 18–25%) for bending, a transition in the middle, and thin high-L/D airfoils (t/c 12–15%) at the tip, since most power comes from the outer 60% of span.',
+  '內建模型:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依的摩擦阻力、失速估算與 Viterna 失速後外推(−180°~180°)。需要更高精度時,可貼上 XFOIL 或風洞實測極曲線取代。':
+    'Built-in model: Hess-Smith panel method for inviscid lift slope and zero-lift angle, plus Reynolds-dependent friction drag, a stall estimate and Viterna post-stall extrapolation (−180° to 180°). For higher accuracy, paste XFOIL or wind-tunnel polars instead.',
+  '貼上 XFOIL/實測極曲線': 'Paste XFOIL / measured polar', '套用到': 'Apply to', '套用極曲線': 'Apply polar', '改回內建模型': 'Revert to built-in model',
+  '顯示翼型': 'Show airfoil', '最大厚度 t/c': 'Max thickness t/c', '最大彎度': 'Max camber', '零升攻角(無黏)': 'Zero-lift angle (inviscid)',
+  '升力斜率(無黏)': 'Lift slope (inviscid)', '最大升阻比 @Re 200k': 'Max L/D @ Re 200k', '極曲線來源': 'Polar source', '面板法 + 半經驗修正': 'Panel method + semi-empirical corrections',
+  '剖面位置 r/R': 'Section position r/R', '分析尖速比 λ': 'Analysis tip-speed ratio λ', '7.00(設計)': '7.00 (design)', '3.50(設計)': '3.50 (design)', '3.39°(設計)': '3.39° (design)', '8.00°(設計)': '8.00° (design)',
+  '設計點 λd': 'Design point λd', '目前運轉點': 'Current operating point', '葉片平面形狀與翼型配置': 'Blade planform and airfoil layout', '· 點選或拖曳選擇剖面': '· click or drag to pick a section',
+  '剖面資料': 'Section data', '位置 r': 'Position r', '翼型組合': 'Airfoil blend', '相對厚度 t/c': 'Relative thickness t/c', '扭角 + 槳距 θ': 'Twist + pitch θ', '入流角 φ': 'Inflow angle φ',
+  '局部尖速比 λr': 'Local tip-speed ratio λr', '相對風速 W': 'Relative wind speed W', '雷諾數 Re': 'Reynolds number Re', '誘導因子 a / a′': 'Induction factors a / a′', '葉尖損失 F': 'Tip-loss factor F',
+  '轉子 Cp(此 λ)': 'Rotor Cp (this λ)', '轉速': 'Rotor speed', '剖面形狀與速度三角形': 'Section shape and velocity triangle', '此剖面的極曲線': 'Polar of this section',
+  '剖面疊圖(由葉尖往輪轂看)': 'Section overlay (tip toward hub)', '沿展長的氣動特性變化': 'Aerodynamics along the span', '顯示': 'Show',
+  '垂直軸葉片會經歷正負攻角交替,常用對稱翼型(NACA 00xx)。厚翼型失速較緩和、有助於啟動。': 'VAWT blades see alternating positive and negative angles of attack, so symmetric airfoils (NACA 00xx) are common. Thick airfoils stall more gently and help starting.',
+  '方位角 θ': 'Azimuth θ', '最佳 λopt': 'Best λopt', '葉片外形(側視)': 'Blade shape (side view)', '俯視:葉片位置與速度三角形': 'Top view: blade position and velocity triangle',
+  '局部半徑': 'Local radius', '當地風速 u': 'Local wind speed u', '葉片速度 Ωr': 'Blade speed Ωr', '攻角 α(幾何)': 'Angle of attack α (geometric)', '一圈內攻角範圍': 'AoA range per revolution',
+  '估計失速角': 'Est. stall angle', '攻角隨方位角變化(中段剖面)': 'AoA vs azimuth (mid-span section)', '轉矩隨方位角變化': 'Torque vs azimuth', '翼型極曲線(局部雷諾數)': 'Airfoil polar (local Reynolds number)',
+  '剖面 r/R': 'Section r/R', '用設計點攻角': 'Use design-point AoA', '流線': 'Streamlines', '翼型剖面流場(面板法位勢流)': 'Airfoil section flow (panel-method potential flow)',
+  '翼面壓力分布': 'Surface pressure distribution', '轉子尖速比 λ': 'Rotor tip-speed ratio λ', '設計點': 'Design point', '跟隨目前運轉點': 'Follow operating point',
+  '葉尖渦(螺旋尾流)': 'Tip vortices (helical wake)', '自由渦尾流(Biot-Savart 迭代)': 'Free-vortex wake (Biot-Savart iteration)', '轉子流場(致動盤 + BEM 誘導)': 'Rotor flow (actuator disk + BEM induction)',
+  '轉子流場(雙重多流管)': 'Rotor flow (double multiple stream tube)', '速度剖面': 'Velocity profile', '模型說明': 'Model notes', '預設 8°': 'Default 8°', '最佳 λ': 'Best λ',
+  '翼型剖面:Hess-Smith 面板法(源 + 均勻渦,Kutta 條件)求無黏位勢流,流線以速度場積分。位勢流不含邊界層與分離;分離點由表面速度做 Thwaites(層流)+ Michel 轉捩 + Head(紊流)積分邊界層估計,紅色分離區只是示意,Cl 會高於實際值;實際升阻力請以「極曲線」分頁的黏性修正模型為準。':
+    'Airfoil section: Hess-Smith panel method (source + uniform vortex, Kutta condition) for inviscid potential flow; streamlines are integrated from the velocity field. Potential flow has no boundary layer or separation; the separation point is estimated by integrating the boundary layer from surface speed (Thwaites laminar + Michel transition + Head turbulent). The red separated region is illustrative and Cl is higher than real; use the viscous-corrected model in the Polar tab for actual lift and drag.',
+  '水平軸轉子:以 BEM 求得各截面軸向誘導因子 a(r),搭配致動盤渦柱理論 u = V∞[1 − a(1 + x/√(x²+R²))] 近似軸向速度,流線由各流管質量守恆求得;尾流旋轉未計入;勾選「葉尖渦」會疊上預設螺旋尾流(依葉尖誘導 a 對流、流管膨脹,實線為近側、灰線為遠側),不是自由渦尾流。':
+    'HAWT rotor: BEM gives the axial induction a(r) of each section; actuator-disk vortex-cylinder theory u = V∞[1 − a(1 + x/√(x²+R²))] approximates axial speed, and streamlines follow mass conservation per stream tube. Wake rotation is not included. "Tip vortices" overlays a preset helical wake (convected by tip induction a with stream-tube expansion; solid = near side, grey = far side), not a free-vortex wake.',
+  '垂直軸轉子:以雙重多流管法的上、下風誘導速度組合成俯視流場,示意上風半圈先減速、下風葉片再次取能的特性。':
+    'VAWT rotor: the top-view flow combines upwind and downwind induced speeds from the double multiple stream tube method, showing the upwind half slowing the flow before downwind blades extract energy again.',
+  '研究模式(通用三維線葉片)': 'Research mode (general 3-D line blade)', '部分扭矩係數': 'partial torque coefficient',
+  '不是整機 Cp 或效率,不可與 Betz 極限比較': 'not whole-rotor Cp or efficiency; do not compare with the Betz limit',
+  '資料': 'Data', '載入內建範例': 'Load built-in example', '匯入葉片 JSON': 'Import blade JSON', '匯出目前葉片 JSON': 'Export current blade JSON', '匯出逐截面 CSV': 'Export per-section CSV',
+  '名稱': 'Name', '分支': 'Branches', '分析區間 s': 'Analysis range s', '旋轉複製': 'Rotational copies', '2 份': '2 copies', '說明': 'Notes', '匯入極曲線 JSON': 'Import polar JSON',
+  '攻角範圍': 'AoA range', 'Re 範圍': 'Re range', '資料點': 'Data points', '條件': 'Conditions', '工況與修改': 'Operating point and modifications', '積分節點': 'Integration nodes',
+  'λ 掃描': 'λ sweep', '軸向折減 a': 'Axial reduction a', '安裝角偏移 Δβ(°)': 'Setting-angle offset Δβ (°)', '線性扭角 s0→s1(°)': 'Linear twist s0→s1 (°)',
+  '二次扭角 s1 處(°)': 'Quadratic twist at s1 (°)', '方向': 'Direction', '結果摘要': 'Result summary', '部分 CQ(2 份 × Σ分支 / π)': 'Partial CQ (2 copies × Σbranches / π)', '工況': 'Operating point',
+  '最低資料覆蓋率(弧長加權)': 'Min data coverage (arc-length weighted)', 'I(完整窗)': 'I (full window)', 'I(有資料段)': 'I (data-backed part)', '覆蓋率': 'Coverage',
+  '缺值段與原因': 'Missing segments and reasons', '無': 'None', '扭角/翼型修改比較:部分 CQ–λ': 'Twist / airfoil modification comparison: partial CQ–λ', '加入比較(目前設定)': 'Add to comparison (current)',
+  '清除比較': 'Clear comparison', '匯出 CQ–λ CSV': 'Export CQ–λ CSV', '第一筆為基準;缺完整窗資料的 λ 不畫(不補 0)。': 'First entry is the baseline; λ values lacking full-window data are not plotted (not filled with 0).',
+  '方案(λ 6.00)': 'Case (λ 6.00)', '與基準差': 'Diff vs baseline', '最低覆蓋率': 'Min coverage', '定義檔原樣': 'As in definition file',
+  '立體': '3-D', '正面': 'Front', '側面': 'Side', '俯視': 'Top', '儀表': 'Gauges', '暫停': 'Pause', '偏航誤差': 'Yaw error', '氣動功率': 'Aerodynamic power', '輸出電力': 'Output power', '轉矩': 'Torque',
+  '▾ 收合分析圖表': '▾ Collapse analysis charts', '▸ 展開分析圖表': '▸ Expand analysis charts', '翼型與極曲線': 'Airfoil and polar', '葉片分析': 'Blade analysis', '性能曲線': 'Performance curves',
+  '即時監測': 'Live monitor', 'Cp 攻角': 'Cp AoA', '旋轉平面': 'Rotation plane', '葉尖 →': 'Tip →', '升力 L': 'Lift L', '阻力 D ×10': 'Drag D ×10', '上表面 −Cp': 'Upper surface −Cp', '下表面 −Cp': 'Lower surface −Cp',
+  'α 設計點': 'α design point', '風 ↓(軸向)   葉片運動 →(切向)': 'Wind ↓ (axial)   Blade motion → (tangential)',
+  '綠:當地風速 u   橘:葉片速度 Ωr   藍:相對風速 W': 'Green: local wind u   Orange: blade speed Ωr   Blue: relative wind W',
+  '上風半圈先減速一次,下風葉片在已減速的氣流中再取一次能量': 'Upwind half slows the flow once; downwind blades extract energy again from the slowed flow',
+  '⚠ 已接近或超過失速:紅色為邊界層積分估計的分離區(示意),位勢流結果不再可靠': '⚠ At or beyond stall: red marks the separated region estimated by boundary-layer integration (illustrative); potential-flow results are no longer reliable',
+  '注意:攻角偏大,後段邊界層開始分離': 'Note: AoA is large; the aft boundary layer starts to separate',
+  '匯入外形(STL)轉子': 'Imported-shape (STL) rotor', '阿基米德螺旋轉子': 'Archimedean spiral rotor', '自訂性能曲線轉子': 'Custom performance-curve rotor', 'Savonius 阻力型轉子': 'Savonius drag-type rotor',
+  '俯視幾何': 'Top-view geometry',
+});
+Object.assign(FR, {
+  '上表面': 'Upper surface', '下表面': 'Lower surface', '攻角 α': 'Angle of attack α', '設計點': 'design point', '面板': 'panels',
+  '站 ': 'Stn ', '65 站': '65 stations', '2412 鏡射': '2412 mirrored', '鏡射 NACA 2412': 'mirrored NACA 2412',
+  '壓力分布(無黏,': 'pressure distribution (inviscid, ', '升力與阻力係數': 'Lift and drag coefficients', ';虛線為其他 Re 的 Cl': '; dashed: Cl at other Re', '設計點': 'design point',
+  '升阻比 Cl/Cd,最佳': 'L/D (Cl/Cd), best', '弦向放大': 'Chord exaggeration', '顏色:相對厚度': 'color: thickness', '(淺)': ' (light)', '(深)': ' (dark)', '虛線:變槳軸': 'dashed: pitch axis', '% 弦長)': '% chord)',
+  ' 個剖面,': ' sections, ', '紫(根部)→ 藍(葉尖);': 'purple (root) → blue (tip); ', '黃色為選取剖面': 'yellow = selected section', '黑點為變槳軸': 'black dot = pitch axis',
+  '位勢流 Cl': 'potential-flow Cl', '估計失速角': 'Est. stall angle', '失速角': 'Stall angle', '轉捩': 'transition', '無分離': 'no separation', '分離': 'separation', '−Cp 分布': '−Cp distribution',
+  '側視子午面流場': 'Side-view meridional flow', '平均軸向誘導': 'Mean axial induction', '轉子處': 'at rotor', '遠尾流': 'far wake', '扭矩密度': 'Torque density', '(力 + Cm;單位': ' (force + Cm; unit', '單位': 'unit', '每份': 'per copy',
+  '選取高度': 'Selected height', '局部半徑': 'Local radius', '當地風速': 'local wind speed', '葉片速度': 'blade speed', '相對風速': 'relative wind speed', '綠': 'green', '橘': 'orange', '藍': 'blue',
+  '攻角 vs 方位角': 'AoA vs azimuth', '攻角偏大': 'AoA is large', '注意': 'Note', '俯視流管速度(雙重多流管)': 'Top-view stream-tube speed (double multiple stream tube)',
+  ';自訂外形:此為赤道截面,傾角 > 60° 的高度占': '; custom shape: equatorial section, height fraction with tilt > 60°: ', '(只計阻力)': ' (drag only)',
+  '(上風半圈)': ' (upwind half)', '(下風半圈)': ' (downwind half)', '(設計)': ' (design)', '(V = 8)': ' (V = 8)',
+  '轉矩 vs 方位角': 'Torque vs azimuth', '轉子總轉矩': 'Total rotor torque', '單葉片': 'Single blade',
+  ':逐截面攻角、局部 Re、力與四分之一弦力偶,沿實體弧長積分成': ': per-section AoA, local Re, force and quarter-chord moment, integrated along the physical arc length into the ',
+  '(分母 q∞πR³)。': ' (denominator q∞πR³). ',
+  '不含誘導/尾流(a 只是指定的軸向折減情境)、翼根/翼尖/橋接/輪轂、分支間干涉與三維修正;': 'It excludes induction/wake (a is only a prescribed axial-reduction scenario), root/tip/bridges/hub, inter-branch interference and 3-D corrections; ',
+  '。極曲線為匯入資料(範例為 XFOIL 二維計算,不是量測);超出資料範圍一律標為缺值,不外插、不補 0。說明見 docs/LINE3D.md。': '. Polars are imported data (the example is 2-D XFOIL, not measurement); anything outside the data range is marked missing, never extrapolated or filled with 0. See docs/LINE3D.md.',
+  '內建範例': 'Built-in example', '回翼閉合葉片 v0.2 中心線 + candidate146 扭角': 'Return-wing closed blade v0.2 centerline + candidate146 twist', 'Work(65 站,': 'Work (65 stations, ', 'Return(65 站,': 'Return (65 stations, ',
+  '診斷用:只含 s 0.1–0.9 的工作翼與回翼;不含翼根、翼尖、橋接與輪轂。兩組相隔 180°(copies 2)。長度以 R 為單位,beta 為截面安裝角(度)。': 'Diagnostic: only the work and return wings for s 0.1–0.9; no root, tip, bridges or hub. The two copies are 180° apart (copies 2). Lengths are in units of R; beta is the section setting angle (deg).',
+  ' 有效 / ': ' valid / ', '(無效點保留為缺值)': ' (invalid points kept as missing)', '2 份': '2 copies', ' · 力 + Cm · ': ' · force + Cm · ', ' 節點': ' nodes',
+  'I 為單一分支 ∫(x × F̂ + M̂)': 'I is one branch ∫(x × F̂ + M̂)', ';「有資料段」只是支撐子區的值,不能當成完整結果。端點/中點檢查不保證區間內沒有更窄的缺口。': '; the "data-backed part" is only the supported sub-range value and must not be read as the full result. Endpoint/midpoint checks do not guarantee there is no narrower gap inside the interval.',
+  '沿弧長分佈(實線有資料;紅色底色為缺值區間,紅色虛線為缺值段的攻角/Re)': 'Distribution along arc length (solid = data; red shading = missing interval, red dashed = AoA/Re over missing segments)',
+  '目前設定缺值的 λ:': 'λ values missing for the current setup: ', '比較表取掃描格點中最接近目前 λ 者;掃描用 161 節點以加快速度,與摘要的 321 節點略有差異。': 'The comparison table uses the sweep grid point nearest the current λ; the sweep uses 161 nodes for speed, so it differs slightly from the 321-node summary.',
+  'a 為指定的純軸向速度折減(W = (1−a)e': 'a is a prescribed pure axial speed reduction (W = (1−a)e',
+  '×x),不是由誘導模型算出。Δβ 加在定義檔的安裝角上;線性/二次扭角以分支弧長正規化(u=0 在起點,u=1 在終點),線性項加 u×值、二次項加 u²×值;翼型改動套用整支分支。': '×x), not computed by an induction model. Δβ is added to the setting angle in the definition file; linear/quadratic twist is normalized by branch arc length (u=0 at start, u=1 at end), the linear term adds u×value and the quadratic term u²×value; an airfoil change applies to the whole branch.',
+  '水平軸 ': 'HAWT, ', '垂直軸 ': 'VAWT, ', ' 葉': ' blades', ',R ': ', R ', '可信度 中高': 'Confidence: medium-high', '可信度 中低': 'Confidence: medium-low', '可信度 中': 'Confidence: medium', '可信度': 'Confidence',
+  'BEM 扭角': 'BEM twist', 'Schmitz 扭角': 'Schmitz twist', '線性扭角': 'linear twist', ',3 葉,': ', 3 blades, ', ',3 葉': ', 3 blades',
+  'BEM + 半經驗極曲線': 'BEM + semi-empirical polars', 'DMST,未含動態失速': 'DMST, no dynamic stall',
+  'H 型(直葉片)': 'H-type (straight blades)', '、': ', ', '。': '. ',
+});

@@ -39,3 +39,10 @@ test('EN-3:圖表 Plot.draw 的標題/座標軸/圖例字串都有英文翻譯',
   }
   assert.deepEqual([...miss], [], '缺少翻譯: ' + [...miss].join(' | '));
 });
+
+test('EN-4:片段翻譯表 FR 的值不含中文,且單葉片/流場/研究的代表字串有翻譯', async () => {
+  const { FR, EN, tr } = await import('../src/i18n.mjs');
+  assert.deepEqual(Object.entries(FR).filter(([, v]) => /[一-鿿]/.test(v)), []);
+  for (const k of ['剖面資料', '翼面壓力分布', '工況與修改', '部分扭矩係數', '升力 L', '旋轉平面']) assert.ok(EN[k] || FR[k], k);
+  assert.equal(tr('剖面資料'), '剖面資料', '中文語系下 tr() 原樣回傳');
+});

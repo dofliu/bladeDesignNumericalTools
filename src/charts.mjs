@@ -1,5 +1,5 @@
 /* ===== Tiny canvas plotting helper (real ES module; bundled to the global `Plot` by scripts/build.mjs via Vite) ===== */
-import { t } from './i18n.mjs';
+import { t, tr } from './i18n.mjs';
 export function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function niceStep(range, n) {
   const raw = range / Math.max(1, n), p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
@@ -100,27 +100,27 @@ export function draw(cv, o) {
   }
   for (const v of (o.vlines || [])) {
     g.strokeStyle = v.color || muted; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(X(v.x), padT); g.lineTo(X(v.x), padT + ph); g.stroke(); g.setLineDash([]);
-    if (v.label) { g.fillStyle = v.color || muted; g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText(t(v.label), X(v.x) + 3, padT + 2); }
+    if (v.label) { g.fillStyle = v.color || muted; g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText(tr(v.label), X(v.x) + 3, padT + 2); }
   }
   for (const m of (o.markers || [])) {
     const yF = m.axis === 'R' ? YR : Y; const px = X(m.x), py = yF(m.y);
     g.fillStyle = m.color || ink; g.strokeStyle = css('--panel'); g.lineWidth = 2;
     g.beginPath(); g.arc(px, py, m.r || 5, 0, 7); g.fill(); g.stroke();
-    if (m.label) { g.fillStyle = ink; g.textAlign = 'left'; g.textBaseline = 'bottom'; g.fillText(t(m.label), px + 7, py - 3); }
+    if (m.label) { g.fillStyle = ink; g.textAlign = 'left'; g.textBaseline = 'bottom'; g.fillText(tr(m.label), px + 7, py - 3); }
   }
   g.restore();
   // frame & labels
   g.strokeStyle = muted; g.globalAlpha = 0.6; g.strokeRect(padL + 0.5, padT + 0.5, pw, ph); g.globalAlpha = 1;
   g.fillStyle = muted; g.textAlign = 'center'; g.textBaseline = 'bottom';
-  if (o.xlabel) g.fillText(t(o.xlabel), padL + pw / 2, H - 2);
-  if (o.ylabel) { g.save(); g.translate(11, padT + ph / 2); g.rotate(-Math.PI / 2); g.textBaseline = 'middle'; g.fillText(t(o.ylabel), 0, 0); g.restore(); }
-  if (o.ylabelR) { g.save(); g.translate(W - 9, padT + ph / 2); g.rotate(Math.PI / 2); g.textBaseline = 'middle'; g.fillText(t(o.ylabelR), 0, 0); g.restore(); }
-  if (o.title) { g.fillStyle = ink; g.font = '600 12px ' + css('--font-ui'); g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText(t(o.title), Math.min(padL, 8), 5, W - Math.min(padL, 8) - 6); g.font = font; }
+  if (o.xlabel) g.fillText(tr(o.xlabel), padL + pw / 2, H - 2);
+  if (o.ylabel) { g.save(); g.translate(11, padT + ph / 2); g.rotate(-Math.PI / 2); g.textBaseline = 'middle'; g.fillText(tr(o.ylabel), 0, 0); g.restore(); }
+  if (o.ylabelR) { g.save(); g.translate(W - 9, padT + ph / 2); g.rotate(Math.PI / 2); g.textBaseline = 'middle'; g.fillText(tr(o.ylabelR), 0, 0); g.restore(); }
+  if (o.title) { g.fillStyle = ink; g.font = '600 12px ' + css('--font-ui'); g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText(tr(o.title), Math.min(padL, 8), 5, W - Math.min(padL, 8) - 6); g.font = font; }
   // legend
   const leg = o.series.filter(s => s.label);
   if (leg.length) {
     g.textAlign = 'left'; g.textBaseline = 'middle';
-    const widths = leg.map(s => g.measureText(t(s.label)).width + 26), maxW = pw - 12;
+    const widths = leg.map(s => g.measureText(tr(s.label)).width + 26), maxW = pw - 12;
     const rows = [[]]; let rw = 0;
     leg.forEach((s, i) => { if (rw + widths[i] > maxW && rows[rows.length - 1].length) { rows.push([]); rw = 0; } rows[rows.length - 1].push(i); rw += widths[i]; });
     rows.forEach((r, k) => {
@@ -131,7 +131,7 @@ export function draw(cv, o) {
         const s = leg[i];
         g.strokeStyle = s.color; g.lineWidth = 2; g.setLineDash(s.dash || []);
         g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 16, ly); g.stroke(); g.setLineDash([]);
-        g.fillStyle = ink; g.fillText(t(s.label), lx + 20, ly); lx += widths[i];
+        g.fillStyle = ink; g.fillText(tr(s.label), lx + 20, ly); lx += widths[i];
       });
     });
   }
