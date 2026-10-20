@@ -835,18 +835,21 @@
     return { u, v, w };
   }
 
-  /* Tip-vortex strength from far-wake axial momentum: B helices of circulation Γ (pitch p=2π(1-2a)/λ, in R) act like a solenoid whose
-     axial induction BΓ/p must equal the far-wake deficit 2a, so Γ = 2a·p/B (units V·R). Lightly-loaded, uniform-loading approximation. */
+  /* Tip-vortex strength from the rotor thrust (Kutta-Joukowski on the disk = axial momentum): B blades of circulation Γ give a
+     pressure jump ρΩBΓ/(2π), which must equal ½ρV²·4a(1-a), so Γ = 4πa(1-a)/(Bλ) (units V·R). Far downstream the helices then form a
+     solenoid of pitch p=2π(1-a)/λ (vortices convect at the sheet mean speed 1-a) whose axial jump BΓ/p is the momentum deficit 2a.
+     Uniform-loading approximation. (Before 2026-10-20 this used p=2π(1-2a)/λ, i.e. Γ too low by (1-2a)/(1-a).) */
   function tipVortexGamma(B, lam, aTip) {
-    const a = clamp(aTip, 0, 0.45); return 2 * a * 2 * Math.PI * (1 - 2 * a) / (Math.max(lam, 1e-6) * B);
+    const a = clamp(aTip, 0, 0.45); return 4 * Math.PI * a * (1 - a) / (Math.max(lam, 1e-6) * B);
   }
   /* Disk-averaged axial induction factor from the (relaxed) tip-vortex wake: Biot-Savart axial velocity deficit sampled on the rotor
      plane (area-weighted over nr radii × na azimuths, hub excluded), a_w = -u/V∞. Also returns the ideal-actuator Cp = 4a(1-a)² and
      Ct = 4a(1-a) it implies. Uniform-loading, tip-vortex-only (no root/bound vortex, no tip-loss, no wake rotation) so it is an
-     independent consistency check of BEM's mean induction, not a replacement for it. Units R, V∞. */
+     independent consistency check of BEM's mean induction, not a replacement for it. Defaults (30 turns, 6 iterations, mix 0.8) are
+     converged to < 1%; the vortex core (0.05 R) lowers the samples near the tip, so even an ideal cylinder gives ~0.96a. Units R, V∞. */
   function wakeDiskInduction(B, lam, aTip, opts = {}) {
     const nr = opts.nr || 8, na = opts.na || 6, core = opts.core || 0.05, rHub = opts.rHub || 0.1;
-    const f = freeWake(B, lam, aTip, { turns: 40, perTurn: 24, iters: 2, ...opts });
+    const f = freeWake(B, lam, aTip, { turns: 30, perTurn: 24, iters: 6, mix: 0.8, ...opts });
     let s = 0, w = 0;
     for (let i = 0; i < nr; i++) {
       const r = rHub + (1 - rHub) * (i + 0.5) / nr;
@@ -859,7 +862,9 @@
     return { a, Cp: 4 * a * (1 - a) * (1 - a), Ct: 4 * a * (1 - a), gamma: f.gamma };
   }
   /* Relaxed free wake: start from the prescribed wake, then iteratively re-march every tip vortex from the disk using the local
-     Biot-Savart velocity of the previous iterate (axial 1+u, radial v_r; angular step fixed by ωt=λτ). No vortex roll-up/merging,
+     Biot-Savart velocity of the previous iterate (axial 1+u, radial v_r; angular step fixed by ωt=λτ) and blend the whole marched
+     trajectory with the previous one (under-relaxation `mix`). The march itself is not blended step by step: doing so (before
+     2026-10-20) damped every correction geometrically, so the wake never left the prescribed shape. No vortex roll-up/merging,
      no far-wake truncation correction, the first segment's own singular contribution is removed by the core. Units R, V∞. */
   function freeWake(B, lam, aTip, opts = {}) {
     const iters = opts.iters == null ? 4 : opts.iters, core = opts.core || 0.05, mix = opts.mix || 0.6;
@@ -867,19 +872,17 @@
     const gam = tipVortexGamma(B, lam, aTip); if (gam === 0) return { wake, gamma: gam };
     const dth = wake[0].length > 1 ? Math.abs(wake[0][1].th - wake[0][0].th) : 0, dt = dth / Math.max(lam, 1e-6);
     for (let it = 0; it < iters; it++) {
-      const next = wake.map(L => {
+      wake = wake.map(L => {
         const out = [L[0]]; let x = L[0].x, r = L[0].r;
         for (let i = 1; i < L.length; i++) {
           const q = biotSavart(wake, L[i - 1], gam, core), th = L[i - 1].th;
           const vr = q.v * Math.cos(th) + q.w * Math.sin(th);
           x += (1 + q.u) * dt; r = Math.max(0.2, r + vr * dt);
-          const t2 = L[i].th; out.push({ x: L[i].x + mix * (x - L[i].x), r: L[i].r + mix * (r - L[i].r), th: t2, y: 0, z: 0 });
-          x = out[i].x; r = out[i].r;
+          out.push({ x: L[i].x + mix * (x - L[i].x), r: L[i].r + mix * (r - L[i].r), th: L[i].th, y: 0, z: 0 });
         }
         for (const p of out) { p.y = p.r * Math.cos(p.th); p.z = p.r * Math.sin(p.th); }
         return out;
       });
-      wake = next;
     }
     return { wake, gamma: gam };
   }

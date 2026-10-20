@@ -187,7 +187,7 @@ export const Flow = (function () {
       fluxLines(g, (x, y) => fd.uf(x, -y), x0, x1, 0, ym, 90, seeds, true, (x, y) => T(x, -y), ink);
       if (F.tipv || F.freev) {
         const tipE = fd.elems.filter(e => e.r / G.R > 0.85), aT = tipE.length ? tipE.reduce((m, e) => m + A.clamp(e.a, 0, 0.5), 0) / tipE.length : fd.aMean;
-        const wk = F.freev ? A.freeWake(S.hawt.B, lam, aT, { turns: 3, perTurn: 48, iters: 3 }).wake : A.tipVortexWake(S.hawt.B, lam, aT, { turns: 3, perTurn: 48 });
+        const wk = F.freev ? A.freeWake(S.hawt.B, lam, aT, { turns: 8, perTurn: 32, iters: 4, mix: 0.8 }).wake : A.tipVortexWake(S.hawt.B, lam, aT, { turns: 3, perTurn: 48 });
         g.lineWidth = 1.5;
         wk.forEach(pts => { for (let i = 1; i < pts.length; i++) {
           const q = pts[i], q0 = pts[i - 1]; if (q.x > x1) break;
