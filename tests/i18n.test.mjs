@@ -22,3 +22,9 @@ test('shell.html 每個 data-i18n 文字與 title 都有英文翻譯', () => {
   }
   assert.deepEqual(missing, []);
 });
+
+test('EN-2:設定面板常用標籤有英文翻譯,且翻譯不含中文', () => {
+  for (const k of ['風速', '紊流強度', 'MPPT 控制', '轉子半徑 R', '扭角方式', '電氣即時值', '匯入翼型資料庫座標']) assert.ok(EN[k], k);
+  const bad = Object.entries(EN).filter(([k, v]) => k.length > 0 && /[一-鿿]/.test(v) && !/中文/.test(v));
+  assert.deepEqual(bad, []);
+});
