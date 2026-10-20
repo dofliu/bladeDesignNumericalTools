@@ -268,42 +268,43 @@ aside .sidehead{display:none}
 <body>
 <div class="app" id="app">
   <header>
-    <h1>風力機葉片設計<small>虛擬風洞 · 葉片 · 流場 · 報告</small></h1>
-    <div class="seg" id="modeSeg" role="group" aria-label="風機型式">
-      <button id="mHAWT" aria-pressed="true">水平軸</button>
-      <button id="mVAWT" aria-pressed="false">垂直軸</button>
+    <h1><span data-i18n>風力機葉片設計</span><small data-i18n>虛擬風洞 · 葉片 · 流場 · 報告</small></h1>
+    <div class="seg" id="modeSeg" role="group" aria-label="風機型式" data-i18n-title>
+      <button id="mHAWT" aria-pressed="true" data-i18n>水平軸</button>
+      <button id="mVAWT" aria-pressed="false" data-i18n>垂直軸</button>
     </div>
-    <div class="seg wsnav" role="tablist" aria-label="工作區">
-      <button data-ws="tunnel" aria-pressed="true">風洞</button>
-      <button data-ws="blade" aria-pressed="false">單葉片</button>
-      <button data-ws="flow" aria-pressed="false">流場</button>
-      <button data-ws="report" aria-pressed="false">報告</button>
-      <button data-ws="research" aria-pressed="false" title="通用三維線葉片(研究模式)">研究</button>
+    <div class="seg wsnav" role="tablist" aria-label="工作區" data-i18n-title>
+      <button data-ws="tunnel" aria-pressed="true" data-i18n>風洞</button>
+      <button data-ws="blade" aria-pressed="false" data-i18n>單葉片</button>
+      <button data-ws="flow" aria-pressed="false" data-i18n>流場</button>
+      <button data-ws="report" aria-pressed="false" data-i18n>報告</button>
+      <button data-ws="research" aria-pressed="false" title="通用三維線葉片(研究模式)" data-i18n data-i18n-title>研究</button>
     </div>
-    <div class="seg flownav" role="tablist" aria-label="設計流程">
-      <button data-flow="concept" aria-pressed="false">① 概念</button>
-      <button data-flow="geometry" aria-pressed="false">② 幾何</button>
-      <button data-flow="airfoil" aria-pressed="false">③ 翼型</button>
-      <button data-flow="tunnel" aria-pressed="false">④ 虛擬風洞</button>
-      <button data-flow="report" aria-pressed="false">⑤ 比較與報告</button>
-      <button data-flow="field" aria-pressed="false">流場</button>
-      <button data-flow="research" aria-pressed="false" title="通用三維線葉片(研究模式)">研究</button>
+    <div class="seg flownav" role="tablist" aria-label="設計流程" data-i18n-title>
+      <button data-flow="concept" aria-pressed="false" data-i18n>① 概念</button>
+      <button data-flow="geometry" aria-pressed="false" data-i18n>② 幾何</button>
+      <button data-flow="airfoil" aria-pressed="false" data-i18n>③ 翼型</button>
+      <button data-flow="tunnel" aria-pressed="false" data-i18n>④ 虛擬風洞</button>
+      <button data-flow="report" aria-pressed="false" data-i18n>⑤ 比較與報告</button>
+      <button data-flow="field" aria-pressed="false" data-i18n>流場</button>
+      <button data-flow="research" aria-pressed="false" title="通用三維線葉片(研究模式)" data-i18n data-i18n-title>研究</button>
     </div>
     <span class="flowhint" id="flowHint"></span>
-    <span class="flowstep"><button class="iconbtn" id="flowPrev" title="上一步">‹ 上一步</button><button class="iconbtn" id="flowNext" title="下一步">下一步 ›</button></span>
+    <span class="flowstep"><button class="iconbtn" id="flowPrev" title="上一步" data-i18n data-i18n-title>‹ 上一步</button><button class="iconbtn" id="flowNext" title="下一步" data-i18n data-i18n-title>下一步 ›</button></span>
     <div class="hspace"></div>
-    <button class="iconbtn" id="layoutBtn" title="切換流程式 / 經典版面">流程版面</button>
-    <button class="iconbtn sidetog" id="sideBtn" title="收合/展開設定面板">設定面板</button>
-    <button class="iconbtn" id="exportBtn" title="匯出葉片 STL 與數據">匯出</button>
-    <button class="iconbtn" id="themeBtn" title="切換深淺色" aria-label="切換深淺色">◐</button>
+    <button class="iconbtn" id="layoutBtn" title="切換流程式 / 經典版面" data-i18n-title>流程版面</button>
+    <button class="iconbtn sidetog" id="sideBtn" title="收合/展開設定面板" data-i18n-title>設定面板</button>
+    <button class="iconbtn" id="exportBtn" title="匯出葉片 STL 與數據" data-i18n data-i18n-title>匯出</button>
+    <button class="iconbtn" id="themeBtn" title="切換深淺色" aria-label="切換深淺色" data-i18n-title>◐</button>
+    <button class="iconbtn" id="langBtn" title="切換語言(中文 / English)" aria-label="切換語言">EN</button>
   </header>
   <aside id="side">
-    <div class="sidehead"><span>設計設定</span><button class="iconbtn" id="sideDone">完成</button></div>
+    <div class="sidehead"><span data-i18n>設計設定</span><button class="iconbtn" id="sideDone" data-i18n>完成</button></div>
     <div class="steps" role="tablist">
-      <button role="tab" data-step="af" aria-selected="true"><b>1</b>翼型</button>
-      <button role="tab" data-step="rotor" aria-selected="false"><b>2</b>轉子</button>
-      <button role="tab" data-step="tunnel" aria-selected="false"><b>3</b>風洞</button>
-      <button role="tab" data-step="load" aria-selected="false"><b>4</b>負載</button>
+      <button role="tab" data-step="af" aria-selected="true"><b>1</b><span data-i18n>翼型</span></button>
+      <button role="tab" data-step="rotor" aria-selected="false"><b>2</b><span data-i18n>轉子</span></button>
+      <button role="tab" data-step="tunnel" aria-selected="false"><b>3</b><span data-i18n>風洞</span></button>
+      <button role="tab" data-step="load" aria-selected="false"><b>4</b><span data-i18n>負載</span></button>
     </div>
     <div class="pane" id="pane"></div>
   </aside>
@@ -340,13 +341,13 @@ aside .sidehead{display:none}
     <section class="ws page" id="ws-report"><div class="inner" id="reportInner"></div></section>
     <section class="ws page" id="ws-research"><div class="inner" id="researchInner"></div></section>
   </main>
-  <nav class="bnav" aria-label="工作區">
-    <button data-mnav="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>設定</button>
-    <button data-mnav="tunnel" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 12v9M12 12 5 6M12 12l8-3M12 12l-1 8" opacity=".35"/><circle cx="12" cy="12" r="1.6"/><path d="M12 12 6 5M12 12l8 1M12 12l-2 7"/></svg>風洞</button>
-    <button data-mnav="blade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 14c4-5 12-7 18-5-5 1-11 4-18 5z"/></svg>單葉片</button>
-    <button data-mnav="flow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8c4-2 6 2 10 0s6-2 8-1M3 13c4-2 6 2 10 0s6-2 8-1M3 18c4-2 6 2 10 0s6-2 8-1"/></svg>流場</button>
-    <button data-mnav="report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg>報告</button>
-    <button data-mnav="research"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 18c3-8 6-12 8-12s4 4 8 12"/><path d="M4 20h16" opacity=".5"/><circle cx="12" cy="6" r="1.6"/></svg>研究</button>
+  <nav class="bnav" aria-label="工作區" data-i18n-title>
+    <button data-mnav="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span data-i18n>設定</span></button>
+    <button data-mnav="tunnel" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 12v9M12 12 5 6M12 12l8-3M12 12l-1 8" opacity=".35"/><circle cx="12" cy="12" r="1.6"/><path d="M12 12 6 5M12 12l8 1M12 12l-2 7"/></svg><span data-i18n>風洞</span></button>
+    <button data-mnav="blade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 14c4-5 12-7 18-5-5 1-11 4-18 5z"/></svg><span data-i18n>單葉片</span></button>
+    <button data-mnav="flow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8c4-2 6 2 10 0s6-2 8-1M3 13c4-2 6 2 10 0s6-2 8-1M3 18c4-2 6 2 10 0s6-2 8-1"/></svg><span data-i18n>流場</span></button>
+    <button data-mnav="report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg><span data-i18n>報告</span></button>
+    <button data-mnav="research"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 18c3-8 6-12 8-12s4 4 8 12"/><path d="M4 20h16" opacity=".5"/><circle cx="12" cy="6" r="1.6"/></svg><span data-i18n>研究</span></button>
   </nav>
 </div>
 <div class="toast" id="toast" role="status"></div>
