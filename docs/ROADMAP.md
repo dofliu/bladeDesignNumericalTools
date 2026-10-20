@@ -128,7 +128,7 @@
     - [x] EN-1 基礎(2026-10-20):`src/i18n.mjs`(以中文原文為鍵的 `t()`、`applyI18n()`、`wt-lang`),標頭新增語言鈕(EN/中);靜態標記用 `data-i18n`/`data-i18n-title`,頂部導覽、流程步驟、側欄步驟、手機底部導覽與流程提示已翻譯;`tests/i18n.test.mjs` 檢查 shell.html 每個標記都有翻譯。原規格:`src/i18n.mjs`(`t(key)`、`S.lang`/localStorage `wt-lang`、標頭語言切換鈕),先翻頂部導覽與流程步驟。
     - [x] EN-2 左側設定面板標籤(2026-10-20):`translateTree()` 在 `renderPane()` 後翻譯文字節點與 aria-label,語言鈕切換時重繪面板;標籤/群組標題/按鈕/選項已譯。**剩餘**:說明段落(`.note`)、動態字串(「站 N」、摘要 kv)留待 EN-3 起。
     - [x] EN-3 圖表(2026-10-20):`Plot.draw` 對 title/xlabel/ylabel/ylabelR/圖例/標記經 `t()` 翻譯,新增約 130 條圖表字串翻譯;語言鈕切換後重繪圖表;`tests/i18n.test.mjs` 檢查原始碼中的靜態圖表字串都有翻譯。**剩餘**:HUD、轉子摘要、面板說明段落、含數字的動態標題(併入 EN-4)。
-    - [ ] EN-4 單葉片、流場、研究工作區。
+    - [x] EN-4 單葉片、流場、研究工作區(2026-10-20):`tr()` 片段翻譯(完整字串 → `FR` 片語長者優先,有快取);`fitCv` 包裝 `fillText`、`Plot.draw` 改用 `tr()`;`watchI18n()` 的 MutationObserver 在英文模式下翻譯動態 DOM(HUD、摘要、工作區卡片)。以 Playwright 逐工作區(HAWT/VAWT × 單葉片/流場/研究/風洞)掃描,畫面與畫布文字已無中文殘留。**剩餘**:報告工作區(EN-5)、面板說明段落以外尚未掃到的狀態(如 STL/自訂外形分支)。
     - [ ] EN-5 報告與匯出檔(CSV 欄名維持中英並列或依語系)。
     - [ ] EN-6 e2e 切換英文後無中文殘留(白名單除外)的檢查。
 

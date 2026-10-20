@@ -1,3 +1,4 @@
+import { tr } from './i18n.mjs';
 /* ===== Shared drawing helpers ===== */
 export function fitCv(cv) {
   const fs = Plot.draw.force;
@@ -7,6 +8,7 @@ export function fitCv(cv) {
   if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
   g.font = '11px ' + Plot.css('--font-ui');
+  if (!g.__tr) { const ft = g.fillText; g.fillText = function (s, ...a) { return ft.call(this, typeof s === 'string' ? tr(s) : s, ...a); }; g.__tr = 1; }
   return { g, W, H };
 }
 export function interp1(xs, ys, x) {

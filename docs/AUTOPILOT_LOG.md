@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-20 — ROADMAP 7:英文語系 EN-4 單葉片/流場/研究工作區(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR,續做 EN-4。`i18n.mjs` 新增 `tr()`(完整字串優先,其次片語替換、有快取)與 `watchI18n()`(MutationObserver,英文模式下翻譯動態 DOM);`fitCv` 包裝 `fillText`、`Plot.draw` 改用 `tr()`,翻譯畫布上含數字的動態字串;補約 330 條單葉片/流場/研究/風洞讀值翻譯;`tests/i18n.test.mjs` 新增測試。
+- 驗證:check、npm test、build、e2e 見 PR 內文;以 Playwright 掃描 HAWT/VAWT × 單葉片/流場/研究/風洞,英文模式下 DOM 與畫布文字已無中文(語言鈕「中」除外);桌面 1440×900 與手機 390×844 截圖無破版。
+- 已知限制:報告工作區、匯出檔仍是中文;Savonius/STL/自訂外形分支只掃到部分;片語替換對未收錄的新字串會留中文(EN-6 加 e2e 偵測)。
+- 下一步:EN-5 報告與匯出檔;EN-6 e2e 中文殘留檢查;第 6 項升力線耦合。
+
 ## 2026-10-20 — ROADMAP 7:英文語系 EN-3 圖表字串(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR,續做 EN-3 的圖表部分。`charts.mjs` 的 `Plot.draw` 對標題、座標軸、圖例、標記文字經 `t()` 翻譯;`i18n.mjs` 新增約 130 條圖表字串;語言鈕切換後呼叫 `redrawStatic()`/`renderWS()` 重繪。`tests/i18n.test.mjs` 新增測試:掃描原始碼中靜態的 title/xlabel/ylabel/label 中文字串都必須有翻譯。
