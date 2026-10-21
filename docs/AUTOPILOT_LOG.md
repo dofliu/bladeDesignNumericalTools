@@ -2,6 +2,12 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-21 — ROADMAP 6:升力線鄰葉束縛渦檢驗(排程,負面結果)
+
+- 做了什麼:無開著的 `[autopilot]` PR。在 `liftingLinePoint` 試加其他葉片的徑向束縛渦段誘導,Cp/Ct 比 BEM 與原值三位小數相同(軸向誘導在對稱葉片間抵消),已還原程式碼,僅在 ROADMAP 記錄結論:缺口主因是剛性不膨脹尾流,非鄰葉束縛渦。
+- 驗證:僅文件變更,原始碼與 dist 未動;check/test 見 PR。
+- 下一步:升力線尾流膨脹(固定 aW 或用 BEM Ct 決定膨脹);其餘子項多為需使用者決定或需實驗數據。
+
 ## 2026-10-21 — ROADMAP 7:英文語系 EN-6 e2e 中文殘留檢查(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR,續做 EN-6。`tests/e2e.smoke.mjs` 新增檢查:切英文後在 HAWT/VAWT × 風洞/葉片/流場/報告掃描 DOM 文字、title/aria-label/placeholder 與畫布 `fillText` 文字,不得含中文。第一次掃描抓到 220 處(51 條不同字串:面板說明段落、摘要列、單葉片下拉選項等),全部補進 `i18n.mjs`。英文語系 EN-1~EN-6 完成。
