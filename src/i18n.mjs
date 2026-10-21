@@ -1,5 +1,7 @@
 // Minimal i18n: Chinese source text is the key. t(zh) returns English when S.lang === 'en'.
 // Static markup uses data-i18n (text) / data-i18n-title (title + aria-label); applyI18n() re-renders both.
+import { registerReport } from './i18n-report.mjs';
+
 export const EN = {
   // header
   '風力機葉片設計': 'Wind Turbine Blade Design',
@@ -187,6 +189,8 @@ let frKeys = null; const trCache = new Map();
 export function tr(s) {
   if (lang !== 'en' || !s || !/[一-鿿]/.test(s)) return s;
   if (EN[s]) return EN[s];
+  const num = s.match(/^(\d+\.\s+)([^\d].*)$/); // numbered report headings: "3. 葉片幾何"
+  if (num && EN[num[2]]) return num[1] + EN[num[2]];
   let r = trCache.get(s);
   if (r !== undefined) return r;
   if (!frKeys) frKeys = Object.keys(FR).sort((a, b) => b.length - a.length);
@@ -195,6 +199,14 @@ export function tr(s) {
   if (trCache.size > 4000) trCache.clear();
   trCache.set(s, r);
   return r;
+}
+
+// Translate the text nodes and alt/title attributes of an HTML string (generated report); skips <style>.
+export function trHtml(html) {
+  if (lang !== 'en') return html;
+  return html.split(/(<style[\s\S]*?<\/style>)/).map((seg, i) => i % 2 ? seg : seg
+    .replace(/>([^<]*[一-鿿][^<]*)</g, (m, x) => '>' + tr(x) + '<')
+    .replace(/\b(alt|title)="([^"]*[一-鿿][^"]*)"/g, (m, k, x) => k + '="' + tr(x) + '"')).join('');
 }
 
 // Original Chinese is kept in data-zh / data-zh-title so switching back and forth is lossless.
@@ -328,3 +340,5 @@ Object.assign(FR, {
   'BEM + 半經驗極曲線': 'BEM + semi-empirical polars', 'DMST,未含動態失速': 'DMST, no dynamic stall',
   'H 型(直葉片)': 'H-type (straight blades)', '、': ', ', '。': '. ',
 });
+
+registerReport(EN, FR);

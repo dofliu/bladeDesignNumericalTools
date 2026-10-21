@@ -46,3 +46,27 @@ test('EN-4:片段翻譯表 FR 的值不含中文,且單葉片/流場/研究的�
   for (const k of ['剖面資料', '翼面壓力分布', '工況與修改', '部分扭矩係數', '升力 L', '旋轉平面']) assert.ok(EN[k] || FR[k], k);
   assert.equal(tr('剖面資料'), '剖面資料', '中文語系下 tr() 原樣回傳');
 });
+
+test('EN-5:報告與 core 的靜態中文片段英文模式下都有翻譯,trHtml 只翻文字節點與 alt', async () => {
+  const { readFileSync } = await import('node:fs');
+  const I = await import('../src/i18n.mjs');
+  const keep = globalThis.document;
+  globalThis.document = { querySelectorAll() { return []; }, documentElement: {}, getElementById() { return null; } };
+  I.setLang('en');
+  try {
+    const miss = new Set();
+    for (const n of ['report', 'core']) {
+      const src = readFileSync(new URL(`../src/${n}.mjs`, import.meta.url), 'utf8').replace(/\$\{[^{}]*(\{[^{}]*\}[^{}]*)*\}/g, '\u0001');
+      for (const m of src.matchAll(/[^`'"\u0001<>\n]*[一-鿿][^`'"\u0001<>\n]*/g)) {
+        const s = m[0], u = s.trim();
+        if (!u || u.startsWith('//') || u.startsWith('/*') || u.startsWith('/^')) continue;
+        if (/[一-鿿]/.test(I.tr(s)) && /[一-鿿]/.test(I.tr(u))) miss.add(u);
+      }
+    }
+    assert.deepEqual([...miss], [], '缺少翻譯: ' + [...miss].join(' | '));
+    const h = I.trHtml('<style>.a::after{content:"設計條件"}</style><h2>設計條件</h2><img alt="圖:弦長與扭角" src="x"><td>3 葉水平軸風力機 R 1.5 m</td>');
+    assert.ok(h.includes('content:"設計條件"'), 'style 不翻譯');
+    assert.ok(h.includes('<h2>Design conditions</h2>') && h.includes('alt="Figure: chord and twist"'));
+    assert.ok(!/[一-鿿]/.test(h.replace(/<style[\s\S]*?<\/style>/, '')), h);
+  } finally { I.setLang('zh'); globalThis.document = keep; }
+});
