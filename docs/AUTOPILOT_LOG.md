@@ -2,6 +2,12 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-21 — ROADMAP 6:升力線渦核心與站數敏感度檢驗(排程,負面結果)
+
+- 做了什麼:無開著的 `[autopilot]` PR。檢驗 `liftingLineExpanded` 的 Cp/BEM 殘差是否來自渦核心或站數:核心 0.03/0.05/0.08R、站數 12/24。整體只平移約 ±2%,λ 4→9 的 +8%→−9% 斜率不變(結構性差異,與 BEM Prandtl 尖端損失的模型不同),未改程式,僅在 ROADMAP 記錄。
+- 驗證:僅文件變更;check、npm test 見 PR。dist 未動。
+- 下一步:ROADMAP 第 6、7 項的可自動推進子步驟已用完;其餘多為需使用者決定(例如是否把升力線接上 UI、是否以實驗資料校正)或需外部資料。建議使用者指定新方向。
+
 ## 2026-10-21 — ROADMAP 6:升力線尾流膨脹(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR。`aero.mjs` 新增 `liftingLinePoint` 的 `opts.aWake`(流管膨脹尾流)與 `liftingLineExpanded`(以自身 Ct 的動量等效 a 做 0.5 鬆弛迭代,3–4 輪收斂);`tests/aero.test.mjs` 新增比對測試。
