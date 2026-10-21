@@ -177,6 +177,40 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
   await page.close();
 }
 
+// EN-6: 切到英文後,各工作區的 DOM 文字、屬性與畫布文字不得殘留中文(語言鈕「中」除外)
+{
+  const pg = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await prep(pg);
+  await pg.goto(url); await pg.waitForTimeout(2000);
+  await pg.evaluate(() => {
+    window.__cv = new Set(); const f = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (t, ...a) { window.__cv.add(String(t)); return f.call(this, t, ...a); };
+  });
+  await pg.click('#langBtn'); await pg.waitForTimeout(800);
+  const scan = () => pg.evaluate(() => {
+    const zh = /[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/, bad = [];
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n; (n = w.nextNode());) {
+      const p = n.parentElement; if (!p || p.closest('script,style,#langBtn,textarea,[data-keepzh]')) continue;
+      if (zh.test(n.nodeValue)) bad.push('text:' + n.nodeValue.trim().slice(0, 400));
+    }
+    document.querySelectorAll('[title],[aria-label],[placeholder]').forEach(e => { if (e.id === 'langBtn') return; for (const k of ['title', 'aria-label', 'placeholder']) { const a = e.getAttribute(k); if (a && zh.test(a)) bad.push(k + ':' + a.slice(0, 400)); } });
+    for (const t of window.__cv) if (zh.test(t)) bad.push('canvas:' + t.slice(0, 400));
+    return [...new Set(bad)];
+  });
+  const leftovers = [];
+  for (const mode of ['HAWT', 'VAWT']) {
+    if (mode === 'VAWT') { await pg.evaluate(() => setMode('VAWT')); await pg.waitForTimeout(1500); }
+    for (const fid of ['tunnel', 'geometry', 'field', 'report']) {
+      await pg.click(`.flownav [data-flow="${fid}"]`); await pg.waitForTimeout(1500);
+      for (const b of await scan()) leftovers.push(`${mode}/${fid} ${b}`);
+    }
+  }
+  if (leftovers.length) console.log(leftovers.slice(0, +(process.env.EN_LIST || 20)).join('\n'));
+  check(leftovers.length === 0, `en: 英文模式 HAWT/VAWT × 四工作區無中文殘留(${leftovers.length} 處)`);
+  await pg.close();
+}
+
 // controller regression: steady tracking efficiency below rated wind must stay >= 0.9 of ideal
 const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
 await prep(page);

@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-21 — ROADMAP 7:英文語系 EN-6 e2e 中文殘留檢查(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR,續做 EN-6。`tests/e2e.smoke.mjs` 新增檢查:切英文後在 HAWT/VAWT × 風洞/葉片/流場/報告掃描 DOM 文字、title/aria-label/placeholder 與畫布 `fillText` 文字,不得含中文。第一次掃描抓到 220 處(51 條不同字串:面板說明段落、摘要列、單葉片下拉選項等),全部補進 `i18n.mjs`。英文語系 EN-1~EN-6 完成。
+- 驗證:check、npm test 125/125、build、e2e 全過(含新檢查 0 處殘留,追蹤率 93–97%)。
+- 已知限制:掃描只涵蓋預設狀態的四工作區;其他分支(Savonius/自訂外形/STL)、對話框與動態提示可能仍有中文。
+- 下一步:第 6 項升力線耦合(研究性質)或使用者新指示。
+
 ## 2026-10-21 — ROADMAP 6:升力線求解器第一版(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR;依「目前優先」先做第 6 項。`aero.mjs` 新增 `liftingLinePoint`(束縛渦 + 逐站界面螺旋尾流渦,Biot-Savart 影響係數取代 BEM 動量,Γ 鬆弛迭代、尾流節距外圈迭代);`tests/aero.test.mjs` 新增與 BEM 比對測試(釘住偏高帶、葉尖誘導下降、Betz 上限)。

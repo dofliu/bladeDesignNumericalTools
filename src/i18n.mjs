@@ -341,4 +341,34 @@ Object.assign(FR, {
   'H 型(直葉片)': 'H-type (straight blades)', '、': ', ', '。': '. ',
 });
 
+// EN-6: strings found by the e2e Chinese-residue scan (settings panel notes, summary rows, bench/flow selects).
+Object.assign(EN, {
+  '視角': 'View', '精簡/完整儀表': 'Compact / full gauges', '快速調整風洞': 'Quick wind-tunnel controls', '施加陣風': 'Apply gust',
+  '儲存目前方案': 'Save current design', '清除手動修改': 'Clear manual edits', '截面表(可逐一手動修改)': 'Section table (each cell editable)',
+  '弦長 m': 'Chord m', '扭轉 °': 'Twist °', '轉到最佳轉速': 'Spin to optimum speed', '擾動觀察 P&O': 'Perturb & observe (P&O)',
+  '空氣密度 ρ': 'Air density ρ', '動黏度 μ': 'Dynamic viscosity μ', '轉動慣量 J': 'Moment of inertia J', '單葉質量': 'Mass per blade',
+  '實度': 'Solidity', '展弦比 H/c': 'Aspect ratio H/c', '對應轉速': 'Corresponding speed', '模型Confidence': 'Model confidence',
+  'LCOE(概估)': 'LCOE (rough)', '資本支出(概估)': 'CAPEX (rough)', '噪音(概估,design point)': 'Noise (rough, design point)',
+  '靜止啟動轉矩(概估)': 'Static start-up torque (rough)', '可自行啟動': 'Self-starting', '否(有轉矩死區,需輔助起轉)': 'No (torque dead band, needs assisted start)', '是': 'Yes',
+  '功率 @ 8.0 m/s': 'Power @ 8.0 m/s', '速度大小 |V|/V∞': 'Speed magnitude |V|/V∞', '壓力係數 Cp': 'Pressure coefficient Cp',
+  '攻角 α(實際 vs 最佳升阻比)': 'Angle of attack α (actual vs best L/D)', '升力係數 Cl / 阻力係數 Cd': 'Lift coefficient Cl / drag coefficient Cd',
+  '入流角 φ 與扭角 θ': 'Inflow angle φ and twist θ', '弦長 c/R 與扭角 θ': 'Chord c/R and twist θ', '誘導因子 a, a′ 與葉尖損失 F': 'Induction factors a, a′ and tip-loss F',
+  '推力與轉矩分布 dT/dr, dQ/dr': 'Thrust and torque distribution dT/dr, dQ/dr',
+  '結構:合成應力與容許應力': 'Structure: combined vs allowable stress', '結構:截面積與慣性矩': 'Structure: section area and second moment',
+  '結構:揮舞/擺振彎矩': 'Structure: flap/edge bending moment', '結構:揮舞撓度': 'Structure: flapwise deflection',
+  '站1 4421': 'Stn 1 4421', '站2 4415': 'Stn 2 4415', '站3 4412': 'Stn 3 4412',
+  '弦長與扭轉線性化(以 35%/85% 展長為基準,便於製造)': 'Linearize chord and twist (anchored at 35%/85% span, easier to manufacture)',
+  '弦長以 Schmitz 公式依設計尖速比與各截面翼型的升力係數求得。': 'Chord is derived from the Schmitz formula using the design tip-speed ratio and each section airfoil lift coefficient.',
+  '正值往順槳方向轉,可降低功率與推力,用來做過速保護或啟動。': 'Positive values pitch toward feather, lowering power and thrust; use for overspeed protection or start-up.',
+  '偏航誤差下以分區方位角 BEM 計算(偏斜入流),大約遵循 cos²~cos³ 的功率衰減。': 'Under yaw error the model uses azimuth-sector BEM (skewed inflow); power loss roughly follows cos²–cos³.',
+  '垂直軸轉子不需對風,風向改變只影響轉矩漣波的相位,可以轉動風向滑桿觀察。': 'A vertical-axis rotor needs no yaw alignment; wind direction only shifts the phase of the torque ripple, which you can see by moving the direction slider.',
+  '性能以雙重多流管法(DMST)計算,含葉片展弦比修正與支撐臂寄生阻力;流線彎曲與動態失速預設關閉(可勾選簡化版,係數未校正),低實度高尖速比下結果偏樂觀。': 'Performance uses the double-multiple-streamtube method (DMST) with blade aspect-ratio correction and support-arm parasitic drag; streamline curvature and dynamic stall are off by default (a simplified, uncalibrated version can be enabled), and results are optimistic at low solidity and high tip-speed ratio.',
+  '把目前的翼型分布、扭角與幾何存成方案,到下方「方案比較」分頁疊圖比較 Cp–λ、扭角/攻角分布與年發電量,也可一鍵載入回來繼續修改。': 'Save the current airfoil layout, twist and geometry as a design, then overlay Cp–λ, twist/angle-of-attack distributions and annual energy in the Compare tab below; one click loads it back for further editing.',
+  '在設計尖速比與設計風速下,以完整 BEM(含軸向/切向誘導、葉尖與輪轂損失、實際雷諾數)對每個截面搜尋讓局部轉矩最大的扭角。結果多半接近最大升阻比攻角,但葉尖附近會因葉尖損失而略為降低攻角。此模式不使用「目標攻角」設定。': 'At the design tip-speed ratio and wind speed, full BEM (axial/tangential induction, tip and hub loss, actual Reynolds number) searches each section for the twist that maximizes local torque. Results are usually near the best-L/D angle of attack, slightly lower near the tip because of tip loss. This mode ignores the "target angle of attack" setting.',
+});
+Object.assign(FR, {
+  '50 m 約': '50 m: ~', '(未加權': '(unweighted', ',僅供設計間相對比較': ', for relative comparison between designs only',
+  'Cq 平均': 'Cq mean', ',最小': ', min', '站1': 'Stn 1', '站2': 'Stn 2', '站3': 'Stn 3', '站4': 'Stn 4', '站5': 'Stn 5', '站6': 'Stn 6',
+});
+
 registerReport(EN, FR);
