@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-21 — ROADMAP 7:英文語系 EN-5 報告與匯出檔(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR,續做 EN-5。新增 `src/i18n-report.mjs`(約 400 條報告/轉子家族/材料字串);`i18n.mjs` 新增 `trHtml()`(翻譯 HTML 字串的文字節點與 alt,跳過 `<style>`)並讓 `tr()` 支援「3. 葉片幾何」編號標題;`report.mjs` 在英文模式下對產生的報告套用,下載檔 `<html lang>`/標題隨語系。CSV 欄名本來就是英文,不需改。`tests/i18n.test.mjs` 新增測試:掃描 report/core 原始碼的靜態中文片段都有翻譯。
+- 驗證:check、npm test 125/125、build、e2e 全過(追蹤率 93–97%);以 Playwright 在英文模式產生 HAWT/VAWT 報告(含虛擬風洞測試)並掃描 DOM,無中文殘留;桌面 1440×900 英文報告截圖無破版。
+- 已知限制:報告語系以產生當下為準,切語言後需重新產生;使用者輸入的專案名稱/目標原樣保留;`.note` 面板說明段落以外尚未掃到的狀態仍可能有中文。
+- 下一步:EN-6 e2e 切換英文後無中文殘留檢查;第 6 項升力線耦合。
+
 ## 2026-10-20 — ROADMAP 7:英文語系 EN-4 單葉片/流場/研究工作區(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR,續做 EN-4。`i18n.mjs` 新增 `tr()`(完整字串優先,其次片語替換、有快取)與 `watchI18n()`(MutationObserver,英文模式下翻譯動態 DOM);`fitCv` 包裝 `fillText`、`Plot.draw` 改用 `tr()`,翻譯畫布上含數字的動態字串;補約 330 條單葉片/流場/研究/風洞讀值翻譯;`tests/i18n.test.mjs` 新增測試。
