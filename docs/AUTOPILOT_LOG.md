@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-21 — ROADMAP 7:英文語系 EN-6 e2e 中文殘留檢查(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR,續做 EN-6。`tests/e2e.smoke.mjs` 新增檢查:切英文後在 HAWT/VAWT × 風洞/葉片/流場/報告掃描 DOM 文字、title/aria-label/placeholder 與畫布 `fillText` 文字,不得含中文。第一次掃描抓到 220 處(51 條不同字串:面板說明段落、摘要列、單葉片下拉選項等),全部補進 `i18n.mjs`。英文語系 EN-1~EN-6 完成。
+- 驗證:check、npm test 125/125、build、e2e 全過(含新檢查 0 處殘留,追蹤率 93–97%)。
+- 已知限制:掃描只涵蓋預設狀態的四工作區;其他分支(Savonius/自訂外形/STL)、對話框與動態提示可能仍有中文。
+- 下一步:第 6 項升力線耦合(研究性質)或使用者新指示。
+
 ## 2026-10-21 — ROADMAP 7:英文語系 EN-5 報告與匯出檔(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR,續做 EN-5。新增 `src/i18n-report.mjs`(約 400 條報告/轉子家族/材料字串);`i18n.mjs` 新增 `trHtml()`(翻譯 HTML 字串的文字節點與 alt,跳過 `<style>`)並讓 `tr()` 支援「3. 葉片幾何」編號標題;`report.mjs` 在英文模式下對產生的報告套用,下載檔 `<html lang>`/標題隨語系。CSV 欄名本來就是英文,不需改。`tests/i18n.test.mjs` 新增測試:掃描 report/core 原始碼的靜態中文片段都有翻譯。
