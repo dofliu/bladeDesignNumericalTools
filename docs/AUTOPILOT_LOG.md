@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-21 — ROADMAP 6:升力線求解器第一版(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR;依「目前優先」先做第 6 項。`aero.mjs` 新增 `liftingLinePoint`(束縛渦 + 逐站界面螺旋尾流渦,Biot-Savart 影響係數取代 BEM 動量,Γ 鬆弛迭代、尾流節距外圈迭代);`tests/aero.test.mjs` 新增與 BEM 比對測試(釘住偏高帶、葉尖誘導下降、Betz 上限)。
+- 結果(誠實記錄):預設 HAWT λ 4/5/7/9,Cp 比 BEM 高 7/13/18/25%、Ct 高 3/6/9/11%,**未達 < 5% 目標**。原因推測:剛性不膨脹尾流、無鄰葉束縛渦;加入尾流膨脹會使 aW 迭代發散,已移除。
+- 驗證:見 PR 內文(check、npm test、build、e2e)。未動 UI,dist 重建。
+- 下一步:升力線後續(穩定的尾流膨脹、鄰葉束縛渦);或 EN-6 e2e 中文殘留檢查。
+
 ## 2026-10-21 — ROADMAP 7:英文語系 EN-5 報告與匯出檔(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR,續做 EN-5。新增 `src/i18n-report.mjs`(約 400 條報告/轉子家族/材料字串);`i18n.mjs` 新增 `trHtml()`(翻譯 HTML 字串的文字節點與 alt,跳過 `<style>`)並讓 `tr()` 支援「3. 葉片幾何」編號標題;`report.mjs` 在英文模式下對產生的報告套用,下載檔 `<html lang>`/標題隨語系。CSV 欄名本來就是英文,不需改。`tests/i18n.test.mjs` 新增測試:掃描 report/core 原始碼的靜態中文片段都有翻譯。

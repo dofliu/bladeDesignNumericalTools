@@ -355,3 +355,24 @@ test('8B: monotoneCubic 通過控制點、不過衝;自訂外形傾角與扭轉'
   assert.throws(() => A.vawtSlices({ type: 'custom', H: 1, pts: [{ zf: 0, r: 1 }] }), /2 個控制點/);
   assert.throws(() => A.vawtSlices({ type: 'custom', H: 1, pts: [{ zf: 0.5, r: 1 }, { zf: 0.5, r: 1 }] }), /遞增/);
 });
+
+test('liftingLinePoint:升力線(剛性螺旋尾流)與 BEM 比對——趨勢正確、Cp 偏高帶被釘住,葉尖誘導下降', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('4412'))), b = A.bestLD(ps, 3e5);
+  const rows = A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr: 7, aDes: b.a, clDes: b.cl, nSec: 12, linearize: false, chordScale: 1, twistScale: 1, maxChordRatio: 0.2 });
+  const cfg = { R: 1.5, Rhub: 0.15, B: 3, rows, rho: 1.225, mu: 1.81e-5, polarFor: () => ps };
+  // 實測 λ 4/5/7/9:Cp 比(LL/BEM)約 1.07/1.13/1.18/1.25、Ct 比 1.03/1.06/1.09/1.11(剛性不膨脹尾流、無鄰葉束縛渦 → 目標 < 5% 未達成)
+  let prev = 0;
+  for (const lam of [4, 5, 7, 9]) {
+    const om = lam * 8 / 1.5, bem = A.bemPoint(cfg, 8, om, 0, 0, {}), ll = A.liftingLinePoint(cfg, 8, om);
+    assert.ok(ll.Cp > 0 && ll.Cp < 16 / 27, `λ${lam} Cp ${ll.Cp}`);
+    const rc = ll.Cp / bem.Cp, rt = ll.Ct / bem.Ct;
+    assert.ok(rc > 0.95 && rc < 1.35, `λ${lam} Cp 比 ${rc}`);
+    assert.ok(rt > 0.95 && rt < 1.2, `λ${lam} Ct 比 ${rt}`);
+    assert.ok(ll.aW > prev, 'aW 隨 λ 增加'); prev = ll.aW;
+    const e = ll.elems, tip = e[e.length - 1], mid = e[Math.floor(e.length / 2)];
+    if (lam >= 7) assert.ok(tip.a < mid.a, `λ${lam} 葉尖誘導 ${tip.a} 應低於中段 ${mid.a}`);   // 葉尖損失由尾流自然產生
+    assert.ok(e.every(x => x.gamma > 0), 'Γ > 0');
+  }
+  // 無旋轉 → 無升力線誘導以外的功率
+  assert.ok(Math.abs(A.liftingLinePoint(cfg, 8, 1e-6).Cp) < 1e-3);
+});
