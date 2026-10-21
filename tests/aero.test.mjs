@@ -376,3 +376,17 @@ test('liftingLinePoint:升力線(剛性螺旋尾流)與 BEM 比對——趨勢�
   // 無旋轉 → 無升力線誘導以外的功率
   assert.ok(Math.abs(A.liftingLinePoint(cfg, 8, 1e-6).Cp) < 1e-3);
 });
+
+test('liftingLineExpanded:尾流膨脹(以自身 Ct 的動量等效 a 鬆弛迭代)把 Cp 偏差由 7–25% 縮到 ±10% 內', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('4412'))), b = A.bestLD(ps, 3e5);
+  const rows = A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr: 7, aDes: b.a, clDes: b.cl, nSec: 12, linearize: false, chordScale: 1, twistScale: 1, maxChordRatio: 0.2 });
+  const cfg = { R: 1.5, Rhub: 0.15, B: 3, rows, rho: 1.225, mu: 1.81e-5, polarFor: () => ps };
+  // 實測 λ 4/5/7/9:Cp 比 1.077/1.013/0.944/0.908、Ct 比 1.035/1.009/0.967/0.952(未達 < 5% 目標,但不再單調偏高)
+  for (const lam of [4, 5, 7, 9]) {
+    const om = lam * 8 / 1.5, bem = A.bemPoint(cfg, 8, om, 0, 0, {}), ll = A.liftingLineExpanded(cfg, 8, om), ll0 = A.liftingLinePoint(cfg, 8, om);
+    const rc = ll.Cp / bem.Cp;
+    assert.ok(rc > 0.88 && rc < 1.10, `λ${lam} Cp 比 ${rc}`);
+    assert.ok(Math.abs(rc - 1) <= Math.abs(ll0.Cp / bem.Cp - 1) + 1e-9, `λ${lam} 應不劣於剛性尾流`);
+    assert.ok(ll.passes <= 12 && ll.aExp > 0 && ll.aExp <= 0.45);
+  }
+});

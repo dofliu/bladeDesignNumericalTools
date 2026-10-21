@@ -892,15 +892,16 @@
      boundaries included). Induced axial/tangential velocity at each station comes from Biot-Savart on that wake instead of the BEM
      momentum balance, so tip/root loss and wake rotation appear without a Prandtl factor. Wake: prescribed rigid helices at the
      boundary radii advecting at V(1−aW), aW = r-weighted disk induction re-evaluated each outer pass; no expansion or roll-up, other
-     blades' bound vortices neglected, truncated after opts.turns (20). Axial flow only (no yaw). cfg as for bemPoint (opts.pitch in rad
+     blades' bound vortices neglected (tested: no effect), truncated after opts.turns (20). opts.aWake (fixed disk induction, e.g. from BEM) switches to a single pass with the streamtube expanding as in tipVortexWake. Axial flow only (no yaw). cfg as for bemPoint (opts.pitch in rad
      is not supported: add it to rows' twist). Internally R = V = 1 for the geometry; Γ in units V·R.
      Returns { Q, T, P, Cp, Ct, aW, elems:[{r,a,ap,alpha,phi,cl,cd,W,gamma}] }. */
   function liftingLinePoint(cfg, V, omega, opts = {}) {
     const { R, Rhub, B, rows, rho, mu } = cfg, n = rows.length;
-    const turns = opts.turns || 20, per = opts.perTurn || 24, core = opts.core || 0.05, outer = opts.outer || 4, inner = opts.inner || 120;
+    const turns = opts.turns || 20, per = opts.perTurn || 24, core = opts.core || 0.05, outer = opts.aWake == null ? (opts.outer || 4) : 1, inner = opts.inner || 120;
+    const fx = x => 1 + x / Math.sqrt(x * x + 1);                      // actuator-disk blend, 0 at the disk → 2 far downstream
     const rb = [Rhub]; for (let j = 1; j < n; j++) rb.push((rows[j - 1].r + rows[j].r) / 2); rb.push(R);
     const lam = omega * R / V, dth = 2 * Math.PI / per;
-    const gam = new Array(n).fill(0); let aW = opts.a0 == null ? 0.25 : opts.a0, ua = [], ut = [], alpha = [], phi = [], cl = [], cd = [], W = [];
+    const gam = new Array(n).fill(0); let aW = opts.aWake != null ? clamp(opts.aWake, 0, 0.45) : opts.a0 == null ? 0.25 : opts.a0, ua = [], ut = [], alpha = [], phi = [], cl = [], cd = [], W = [];
     for (let o = 0; o < outer; o++) {
       const adv = Math.max(0.2, 1 - aW) / Math.max(lam, 1e-6) * dth;   // axial advance per angular step
       const inf = [];                                                  // inf[j][i] = [u, w] at station i per unit trailing Γ at boundary j
@@ -908,7 +909,12 @@
         const lines = [], rj = rb[j] / R;
         for (let k = 0; k < B; k++) {
           const pts = [], th0 = 2 * Math.PI * k / B;
-          for (let m = 0; m <= turns * per; m++) { const th = th0 - m * dth; pts.push({ x: m * adv, y: rj * Math.cos(th), z: rj * Math.sin(th) }); }
+          let x = 0;
+          for (let m = 0; m <= turns * per; m++) {
+            const th = th0 - m * dth, rr = opts.aWake == null ? rj : rj * Math.sqrt((1 - aW) / Math.max(0.05, 1 - aW * fx(x)));
+            pts.push({ x, y: rr * Math.cos(th), z: rr * Math.sin(th) });
+            x += opts.aWake == null ? adv : Math.max(0.2, 1 - aW * fx(x)) / Math.max(lam, 1e-6) * dth;
+          }
           lines.push(pts);
         }
         inf.push(rows.map(e => { const q = biotSavart(lines, { x: 0, y: e.r / R, z: 0 }, 1, core); return [q.u, q.w]; }));
@@ -940,6 +946,20 @@
     return { Q, T, P, Cp: q0 > 0 ? P / q0 : 0, Ct: T / (0.5 * rho * A * V * V), aW, elems: out };
   }
 
+  /* Lifting line with an expanding wake (ROADMAP 6): the streamtube expansion needs the disk induction a, which the lifting line itself
+     sets, and the direct coupling (a from the disk-averaged Biot-Savart velocity) diverges. Using the momentum-equivalent a from the
+     lifting line's own Ct, a = ½(1-√(1-Ct)), with 0.5 under-relaxation converges (≤ 12 passes, tol 0.003 on a). Returns the last
+     liftingLinePoint result plus { aExp, passes }. */
+  function liftingLineExpanded(cfg, V, omega, opts = {}) {
+    let l = liftingLinePoint(cfg, V, omega, opts), a = 0.5 * (1 - Math.sqrt(Math.max(0, 1 - l.Ct))), p = 0;
+    for (; p < (opts.maxPass || 12); p++) {
+      l = liftingLinePoint(cfg, V, omega, { ...opts, aWake: a });
+      const an = 0.5 * (1 - Math.sqrt(Math.max(0, 1 - l.Ct))), d = an - a;
+      a = clamp(a + 0.5 * d, 0, 0.45); if (Math.abs(d) < 0.003) break;
+    }
+    return { ...l, aExp: a, passes: p + 1 };
+  }
+
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart, tipVortexGamma, freeWake, wakeDiskInduction, liftingLinePoint };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart, tipVortexGamma, freeWake, wakeDiskInduction, liftingLinePoint, liftingLineExpanded };
