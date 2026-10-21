@@ -2,6 +2,13 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-21 — ROADMAP 7:英文語系 EN-5 報告(排程)
+
+- 做了什麼:無開著的 `[autopilot]` PR,續做 EN-5。`i18n.mjs` 新增 `trHtml()`(英文模式下翻譯 HTML 字串的文字節點與 title/alt)與約 250 條報告片語/表單字串;`report.mjs` 產生報告後對本體套用 `trHtml`,下載/列印檔的 `lang` 與標題依語系。新增 `tests/i18n.report.test.mjs`(獨立行程以 `localStorage=en` 載入,驗證動態句子翻譯後無中文)。
+- 驗證:check、npm test 125/125、build、e2e 全過(追蹤率 95–97%、3 種匯出);以 Playwright 在英文模式產生 HAWT/VAWT 完整報告,預覽 DOM 已無中文殘留;截圖確認排版。
+- 已知限制:報告產生後切換語言不會改寫已產生內容;匯出檔(CSV/STL/ZIP)維持原樣。
+- 下一步:EN-6 e2e 切換英文後無中文殘留檢查;第 6 項升力線耦合。
+
 ## 2026-10-20 — ROADMAP 7:英文語系 EN-4 單葉片/流場/研究工作區(排程)
 
 - 做了什麼:無開著的 `[autopilot]` PR,續做 EN-4。`i18n.mjs` 新增 `tr()`(完整字串優先,其次片語替換、有快取)與 `watchI18n()`(MutationObserver,英文模式下翻譯動態 DOM);`fitCv` 包裝 `fillText`、`Plot.draw` 改用 `tr()`,翻譯畫布上含數字的動態字串;補約 330 條單葉片/流場/研究/風洞讀值翻譯;`tests/i18n.test.mjs` 新增測試。

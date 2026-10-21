@@ -1,4 +1,5 @@
 /* ===== Design & virtual wind-tunnel test report ===== */
+import { t, trHtml, getLang } from './i18n.mjs';
 export const Report = (function () {
   const R0 = { name: '', author: '', goal: '', incTest: true, incFlow: true, incCmp: true };
   let last = null, busy = false, isStale = false, builtUI = false;
@@ -281,14 +282,14 @@ export const Report = (function () {
       let t = null;
       if (R0.incTest) t = await runTests((f, txt) => { pg.innerHTML = `<progress value="${f}" max="1" style="width:220px;vertical-align:middle"></progress> ${Math.round(f * 100)}% · ${txt}`; });
       pg.textContent = '繪製圖表與排版…'; await sleep();
-      last = build(t); isStale = false;
+      last = build(t); last.body = trHtml(last.body); isStale = false;
       $r('rpView').innerHTML = `<style>${CSS}</style><div class="rpt">${last.body}</div>`;
       $r('rpCard').classList.remove('hidden'); $r('rpDl').classList.remove('hidden'); $r('rpPrint').classList.remove('hidden');
       pg.textContent = `已產生(${last.date})。設計若再修改,請重新產生報告。`;
     } catch (e) { console.error(e); pg.textContent = '產生失敗:' + e.message; }
     btn.disabled = false; btn.textContent = '重新產生報告'; busy = false;
   }
-  function fullHtml() { return `<!DOCTYPE html><html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(last.title)} · 設計與測試報告</title><style>body{margin:0;background:#E6ECEE}${CSS}</style></head><body><div class="rpt">${last.body}</div></body></html>`; }
+  function fullHtml() { return `<!DOCTYPE html><html lang="${getLang() === 'en' ? 'en' : 'zh-Hant-TW'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(last.title)} · ${t('設計與測試報告')}</title><style>body{margin:0;background:#E6ECEE}${CSS}</style></head><body><div class="rpt">${last.body}</div></body></html>`; }
   async function download() {
     if (!last) return;
     const name = `wind-turbine-report-${last.date.replace(/-/g, '')}.html`;

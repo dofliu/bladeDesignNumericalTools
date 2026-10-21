@@ -231,6 +231,22 @@ export function translateTree(root) {
   });
 }
 
+// Translate an HTML string (report body) in English mode: text nodes and title/alt attributes.
+export function trHtml(html) {
+  if (lang !== 'en' || !/[一-鿿]/.test(html)) return html;
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  const w = document.createTreeWalker(tpl.content, NodeFilter.SHOW_TEXT);
+  for (let n; (n = w.nextNode());) {
+    const k = n.nodeValue.trim();
+    if (k && /[一-鿿]/.test(k)) n.nodeValue = n.nodeValue.replace(k, tr(k));
+  }
+  tpl.content.querySelectorAll('[title],[alt]').forEach(el => {
+    for (const a of ['title', 'alt']) { const v = el.getAttribute(a); if (v && /[一-鿿]/.test(v)) el.setAttribute(a, tr(v)); }
+  });
+  return tpl.innerHTML;
+}
+
 export function setLang(l) {
   lang = l === 'en' ? 'en' : 'zh';
   try { localStorage.setItem('wt-lang', lang); } catch (e) {}
@@ -328,3 +344,94 @@ Object.assign(FR, {
   'BEM + 半經驗極曲線': 'BEM + semi-empirical polars', 'DMST,未含動態失速': 'DMST, no dynamic stall',
   'H 型(直葉片)': 'H-type (straight blades)', '、': ', ', '。': '. ',
 });
+
+// EN-5: report workspace (generated report body is translated with trHtml → tr).
+Object.assign(FR, {
+  '功率曲線測試': 'Power-curve test', '偏航測試': 'Yaw test', '紊流測試 TI 15%': 'Turbulence test TI 15%', '陣風測試': 'Gust test', '啟動測試': 'Start-up test',
+  '設計尖速比 λd = ': 'Design tip-speed ratio λd = ', ' 時 Cp = ': ' gives Cp = ', ',比最佳值 ': ', below the optimum ', ')低;可將設計尖速比調向 ': ') ; consider moving the design tip-speed ratio toward ',
+  ',或讓 MPPT 追蹤 λopt。': ', or let the MPPT track λopt. ', '設計點 Cp ': 'Design-point Cp ', '已接近本轉子的最佳值,扭角與弦長分布與設計尖速比匹配良好。': 'is close to the best for this rotor; twist and chord distributions match the design tip-speed ratio well. ',
+  '在 12 m/s 以最佳尖速比運轉時葉尖速度約 ': 'At 12 m/s and optimal tip-speed ratio the tip speed is about ', ' m/s,超過 70 m/s 容易產生明顯噪音,住宅區使用建議降低設計尖速比或設定轉速上限。': ' m/s; above 70 m/s noise is likely audible, so for residential sites lower the design tip-speed ratio or set a speed limit. ',
+  '根部翼型相對厚度僅 ': 'Root airfoil thickness is only ', '%,根部彎矩最大,建議改用 t/c ≥ 18–21% 的翼型或加厚根部結構。': '% while the root bending moment is largest; use an airfoil with t/c ≥ 18–21% or thicken the root structure. ',
+  '目前採用線性扭角,部分截面偏離最佳攻角;若製造允許,可比較「BEM 數值最佳化」扭角的 Cp 差異(方案比較分頁)。': 'Linear twist is used and some sections deviate from the optimal angle of attack; if manufacturing allows, compare the Cp of "BEM numerical optimization" twist (Design comparison tab). ',
+  '設計點最大攻角約 ': 'Maximum design-point angle of attack is about ', '°,靠近失速,低風速或陣風時可能提早失速。': '°, close to stall; stall may occur early in low wind or gusts. ',
+  '實度 Bc/R = ': 'Solidity Bc/R = ', ';最佳尖速比 ': '; optimal tip-speed ratio ', '、Cp,max ': ', Cp,max ', '。實度越高最佳尖速比越低、啟動越容易但最高效率下降。': '. Higher solidity lowers the optimal tip-speed ratio and eases start-up but reduces peak efficiency. ',
+  '自訂外形有約 ': 'The custom shape has about ', '% 的葉片高度傾角超過 60°(接近水平的橫段),DMST 在這些段只計阻力、不產生轉矩,此外形的 Cp 可信度較低,建議以風洞實驗或 CFD 驗證。': '% of blade height tilted beyond 60° (nearly horizontal segments); DMST counts only drag there and produces no torque, so Cp confidence is low. Verify with wind-tunnel tests or CFD. ',
+  '自訂外形沒有傾角超過 60° 的葉片段;DMST 仍未含流線彎曲與動態失速,傾角較大處的 Cp 偏樂觀。': 'The custom shape has no blade segments tilted beyond 60°; DMST still omits streamline curvature and dynamic stall, so Cp is optimistic where tilt is large. ',
+  ' m/s 區間實測輸出達理想 MPPT 的 ': ' m/s the measured output reaches ', ' m/s 區間實測輸出只有理想 MPPT 的 ': ' m/s the measured output is only ', '%,追蹤效果良好。': '% of ideal MPPT; tracking is good. ',
+  '%;可嘗試最佳尖速比/最佳轉矩控制,或調整 P&O 擾動步長與週期。': '% of ideal MPPT; try optimal tip-speed-ratio / optimal-torque control, or tune the P&O step and period. ',
+  '已啟用側偏收尾:': 'Furling enabled: ', ' m/s 起機艙開始側偏,最高測試風速 ': ' m/s the nacelle starts yawing away; at the highest test speed ', ' m/s 時平均側偏角約 ': ' m/s the mean furl angle is about ', '°(上限 ': '° (limit ', '°),輸出功率 ': '°), output power ', '(發電機額定 ': ' (generator rated ',
+  ');為簡化模型,不含尾翼力矩與被動收尾遲滯。': '); simplified model without tail-vane moment or passive-furl hysteresis. ', '已啟用側偏收尾(啟動風速 ': 'Furling enabled (onset speed ', ' m/s),但測試風速範圍內未達到側偏條件。': ' m/s) but the furling condition is not reached within the tested range. ',
+  '已啟用主動變槳:': 'Active pitch enabled: ', ' m/s 起槳距開始順槳,最高測試風速 ': ' m/s the blades start feathering; at the highest test speed ', ' m/s 時穩態槳距約 ': ' m/s the steady pitch is about ', ');變槳取代降轉速軟失速,額定以上轉速維持在額定轉速。': '); pitch replaces speed-reduction soft stall and speed stays at rated above rated wind. ',
+  '風速 ': 'Above wind speed ', ' m/s 以上,轉子氣動功率超過發電機額定(': ' m/s the rotor aerodynamic power exceeds the generator rating (', '),定槳距轉子即使降轉速進入失速仍無法把功率壓在額定內,多次觸發過速/過功率保護。': '); a fixed-pitch rotor cannot hold power within rating even when slowed into stall, so overspeed/overpower protection trips repeatedly. ',
+  '目前已啟用切出風速停機(': 'Cut-out shutdown is enabled (', ' m/s),可避免在額定風速以上反覆觸發保護,測試風速已延伸至 ': ' m/s), avoiding repeated protection trips above rated wind; test speeds are extended to ', ' m/s 以涵蓋切出風速,功率曲線在切出後降為 0;仍建議依實際場址風況調整切出/重啟風速。': ' m/s to cover cut-out and the power curve drops to 0 after cut-out; still adjust cut-out/restart speeds to the actual site. ',
+  '可在「負載→保護」啟用切出風速停機來避免反覆觸發,或加入側偏收尾(furling)、變槳機構;若場址常有高風速,也可加大發電機額定。': 'Enable cut-out shutdown under "Load → Protection" to avoid repeated trips, or add furling / a pitch mechanism; for high-wind sites also consider a larger generator rating. ',
+  '測試風速範圍(至 ': 'No protection trip within the tested range (up to ', ' m/s)內未觸發保護,發電機額定 ': ' m/s); the generator rating ', ' 足以涵蓋此轉子。': ' is sufficient for this rotor. ',
+  '實測切入風速約 ': 'Measured cut-in wind speed is about ', ' m/s(輸出 ': ' m/s (output ', '啟動測試中 ': 'In the start-up test, ',
+  ' 無法在 60 秒內自行起轉到 λopt 的一半,需要馬達輔助啟動、增加實度或改用混合 Savonius 啟動器。': ' cannot self-start to half of λopt within 60 s; use motor-assisted start, increase solidity, or add a hybrid Savonius starter. ',
+  '在 4、6、8 m/s 皆能自行啟動,達到半最佳轉速時間分別為 ': 'Self-starts at 4, 6 and 8 m/s; time to half optimal speed: ', '陣風測試觸發保護煞車,代表轉速或功率餘裕不足;可提高發電機額定或轉速上限。': 'The gust test triggered the protection brake, indicating insufficient speed or power margin; raise the generator rating or speed limit. ',
+  '葉根疲勞壽命估計只有約 ': 'Estimated root fatigue life is only about ', ' 年(8 m/s、紊流 15% 連續運轉),低於常用的 20 年設計壽命;可改用強度較高的材料、加大根部弦長或厚度,或降低設計尖速比以減少推力。': ' years (continuous 8 m/s, 15% turbulence), below the usual 20-year design life; use a stronger material, enlarge root chord or thickness, or lower the design tip-speed ratio to reduce thrust. ',
+  ';轉子慣量越大功率越平順但追蹤越慢。': '; larger rotor inertia smooths power but slows tracking. ', '紊流 15% 下平均輸出 ': 'At 15% turbulence the mean output is ', ',功率標準差 ': ', power standard deviation ',
+  '葉水平軸風力機 R': '-blade HAWT, R', '設計規劃與虛擬風洞測試報告': 'Design planning and virtual wind-tunnel test report', ' · 由風力機葉片設計工具產生': ' · generated by the wind-turbine blade design tool',
+  '最大功率係數 Cp': 'Max power coefficient Cp', '最佳尖速比': 'Optimal tip-speed ratio', '氣動功率 @ ': 'Aerodynamic power @ ', '年發電量 kWh(理想,Weibull 年均 ': 'Annual energy kWh (ideal, Weibull mean ', ' m/s、k=': ' m/s, k=',
+  '容量因數(對發電機額定 ': 'Capacity factor (vs generator rating ', '模型可信度:': 'Model confidence: ', '極曲線資料來源:': 'Polar data source: ', '設計目標:': 'Design goal: ', '設計條件': 'Design conditions',
+  '型式': 'Type', '水平軸': 'HAWT', '垂直軸': 'VAWT', '轉子半徑 / 輪轂半徑': 'Rotor radius / hub radius', '掃掠面積': 'Swept area', '設計風速 / 設計尖速比': 'Design wind speed / tip-speed ratio', '扭角設計方式': 'Twist design method',
+  '數值最佳化': 'numerical optimization', '解析解': 'analytic', '線性': 'linear', '槳距角': 'Pitch angle', '材料 / 單葉質量': 'Material / mass per blade', '空氣條件': 'Air conditions', '海拔': 'altitude',
+  '負載': 'Load', '電池充電': 'Battery charging', '(升降壓轉換器)': ' (buck-boost converter)', '電阻負載': 'Resistive load', '控制': 'Control', '擾動觀察法': 'Perturb & observe', '最佳尖速比控制': 'Optimal tip-speed-ratio control',
+  '最佳轉矩控制': 'Optimal-torque control', '最佳轉矩': 'Optimal torque', '固定占空比': 'Fixed duty cycle', '發電機': 'Generator', ',額定 ': ', rated ', ',轉速上限 ': ', speed limit ',
+  '噪音估計(設計點,葉尖速度法)': 'Noise estimate (design point, tip-speed method)', '葉尖速度 ': 'Tip speed ', ' m/s,聲功率級約 ': ' m/s, sound power level about ', ' m 處約 ': ' m about ',
+  '(經驗式,誤差約 ±5 dB,不含音調/調幅噪音)': ' (empirical, error about ±5 dB, excludes tonal/amplitude-modulated noise)', '後緣自噪音(BPM 頻譜)': 'Trailing-edge self-noise (BPM spectrum)', '、未加權 ': ', unweighted ',
+  '(改用邊界層積分 δ* 交叉驗證:': ' (cross-check with boundary-layer integral δ*: ', ';1/3 八度頻帶加總,僅含紊流邊界層後緣自噪音,不含入流紊流/鈍後緣噪音;只適合設計間相對比較,絕對值誤差可達 ±5 dB 以上)': '; 1/3-octave sum, turbulent-boundary-layer trailing-edge self-noise only, excluding inflow-turbulence and blunt-trailing-edge noise; suited to relative comparison between designs, absolute error can exceed ±5 dB)',
+  '葉尖渦噪音(BPM)': 'Tip-vortex noise (BPM)', '(葉尖攻角 ': ' (tip angle of attack ', ';與後緣自噪音能量相加約 ': '; energy-summed with trailing-edge noise about ', ';圓弧葉尖經驗式、未含葉尖形狀差異,僅供相對比較)': '; rounded-tip empirical formula, tip-shape differences not included, for relative comparison only)',
+  '成本與 LCOE 粗估': 'Cost and LCOE estimate', '葉片/轉子材料約 NT$ ': 'Blade/rotor material about NT$ ', '、發電機與電控約 NT$ ': ', generator and electronics about NT$ ', '、塔架基礎約 NT$ ': ', tower and foundation about NT$ ', ',合計 NT$ ': ', total NT$ ',
+  ';以年固定費率 ': '; with annual fixed charge rate ', ' 維運 ': ' O&M ', ' 估算,LCOE 約 NT$ ': ' the LCOE is about NT$ ', '(以理想年發電量計,單價為概念性假設': ' (based on ideal annual energy; unit prices are conceptual assumptions',
+  '已套用使用者自訂單價': 'User-defined unit prices applied', '側偏收尾': 'Furling', ' m/s 起側偏,上限 ': ' m/s onset, limit ', ',速率 ': ', rate ', '切出/重啟風速': 'Cut-out / restart speed', ' m/s(1 秒低通平均風速,含遲滯)': ' m/s (1 s low-pass mean wind, with hysteresis)',
+  '後緣自噪音 1/3 八度頻譜(': 'Trailing-edge self-noise 1/3-octave spectrum (', '未加權 dB': 'unweighted dB', '加權 dB(A)': 'weighted dB(A)', '頻率 (Hz)': 'Frequency (Hz)', '圖:BPM 後緣自噪音頻譜(設計點;僅設計間相對比較)': 'Fig.: BPM trailing-edge self-noise spectrum (design point; relative comparison only)',
+  '翼型選擇與極曲線': 'Airfoil selection and polars', '站': 'Stn', '位置': 'Position', '翼型': 'Airfoil', '設計 Re': 'Design Re', '最大升阻比': 'Max L/D', '最佳攻角': 'Best AoA',
+  '升力係數 Cl–α(各站設計雷諾數)': 'Lift coefficient Cl–α (design Reynolds number per station)', '攻角 α (°)': 'Angle of attack α (°)', '升阻比 L/D–α': 'L/D–α', '圖:各翼型升力曲線': 'Fig.: Lift curves per airfoil', '圖:各翼型升阻比': 'Fig.: L/D per airfoil',
+  '葉片幾何': 'Blade geometry', '轉子幾何': 'Rotor geometry', '圖:葉片平面形狀(弦向放大)與翼型站位置,顏色代表相對厚度': 'Fig.: Blade planform (chord exaggerated) and airfoil stations; color = relative thickness', '圖:剖面疊圖(由葉尖往輪轂看)': 'Fig.: Section overlay (viewed from tip toward hub)',
+  '弦長與扭角分布': 'Chord and twist distribution', '圖:弦長與扭角': 'Fig.: Chord and twist', '弦長 (mm)': 'Chord (mm)', '扭角 (°)': 'Twist (°)', '翼型組合': 'Airfoil mix', '設計 α (°)': 'Design α (°)',
+  '設計點氣動分析': 'Design-point aerodynamic analysis', '設計點 λd = ': 'Design point λd = ', '、V = ': ', V = ', ',轉速 ': ', speed ', ',推力 ': ', thrust ', ',轉矩 ': ', torque ',
+  '圖:攻角分布(實際 vs 最佳升阻比)': 'Fig.: Angle-of-attack distribution (actual vs best L/D)', '圖:升阻比分布': 'Fig.: L/D distribution', '圖:推力與轉矩分布': 'Fig.: Thrust and torque distribution', '圖:誘導因子與葉尖損失': 'Fig.: Induction factors and tip loss',
+  '攻角 vs 方位角(λ': 'AoA vs azimuth (λ', '方位角 (°)': 'Azimuth (°)', '圖:中段剖面攻角變化(灰區為下風半圈)': 'Fig.: Mid-span section AoA variation (grey = downwind half)', '轉矩 vs 方位角(8 m/s)': 'Torque vs azimuth (8 m/s)', '總轉矩': 'Total torque', '單葉': 'Single blade', '圖:轉矩漣波': 'Fig.: Torque ripple',
+  '葉片結構(設計點與極端風速)': 'Blade structure (design point and extreme wind)', '材料': 'Material', ',容許應力 ': ', allowable stress ', '根部彎矩(揮舞 / 擺振)': 'Root bending moment (flap / edge)', '根部離心軸力': 'Root centrifugal force',
+  '設計點最小安全係數': 'Design-point minimum safety factor', '設計點葉尖揮舞撓度': 'Design-point tip flap deflection', '% 半徑)': '% of radius)', '極端風速停機工況最小安全係數': 'Extreme-wind parked minimum safety factor', '截面積 (mm²)': 'Section area (mm²)', '應力 (MPa)': 'Stress (MPa)', '安全係數': 'Safety factor',
+  '疲勞(葉根,雨流計數 + Miner 法則)': 'Fatigue (blade root, rainflow counting + Miner rule)', '取紊流測試(平均風速 8 m/s、紊流強度 15%)': 'Taking the turbulence test (mean wind 8 m/s, turbulence intensity 15%), ',
+  ' 秒的葉根應力時間序列(推力揮舞 + 氣動轉矩擺振 + 離心力 + 每轉一次的重力擺振),以 ASTM E1049 雨流計數得到 ': ' s root-stress time series (thrust flap + aerodynamic-torque edge + centrifugal + once-per-rev gravity edge), ASTM E1049 rainflow counting gives ',
+  ' 個循環,最大應力範圍 ': ' cycles, maximum stress range ', ',1 Hz 等效應力範圍 ': ', 1 Hz equivalent stress range ', '以 Basquin S-N 曲線(極限強度 ': 'Miner damage is computed with a Basquin S-N curve (ultimate strength ', ',斜率 m = ': ', slope m = ', '、斜率 m = ': ', slope m = ',
+  ')與 Goodman 平均應力修正計算 Miner 損傷,若長期都在此工況運轉,估計疲勞壽命': ') and Goodman mean-stress correction; if operated long-term in this condition, the estimated fatigue life is ', '小型風機常用設計壽命 20 年)': 'typical small-turbine design life 20 years)', '年': ' years',
+  '葉根應力時間序列(前 5 秒)': 'Root-stress time series (first 5 s)', '葉根應力 (MPa)': 'Root stress (MPa)', '時間 (s)': 'Time (s)', '圖:紊流測試中的葉根應力': 'Fig.: Root stress during the turbulence test',
+  '執行虛擬風洞自動測試後,這一節會加入以紊流測試應力時間序列做雨流計數的疲勞壽命估計。': 'After running the virtual wind-tunnel tests, this section adds a fatigue-life estimate from rainflow counting of the turbulence-test stress series. ',
+  '結構為單一等效殼截面的懸臂梁模型:只含揮舞/擺振彎曲與離心軸力的保守相加,無扭轉、屈曲與分項安全係數;疲勞只取單一風況、S-N 參數為材料典型值,壽命估計的數量級比絕對值更有意義;安全係數低於 1.5 以紅色標示,僅供概念設計參考。': 'The structure is a cantilever model with a single equivalent shell section: flap/edge bending and centrifugal force are added conservatively; no torsion, buckling or partial safety factors. Fatigue uses a single wind condition and typical S-N parameters, so the order of magnitude matters more than the absolute value. Safety factors below 1.5 are shown in red; for concept design only. ',
+  '轉子性能預測': 'Rotor performance prediction', '尖速比 λ': 'Tip-speed ratio λ', '理想 MPPT(限額定)': 'Ideal MPPT (capped at rated)', '虛擬風洞實測': 'Virtual wind-tunnel measured', '固定 D': 'Fixed D', '功率曲線': 'Power curve', '風速 (m/s)': 'Wind speed (m/s)', '電功率 (W)': 'Electrical power (W)',
+  '圖:功率係數與推力係數': 'Fig.: Power and thrust coefficients', '圖:功率曲線(預測與實測)': 'Fig.: Power curve (predicted and measured)', '虛擬風洞測試結果': 'Virtual wind-tunnel test results', '穩態功率曲線測試': 'Steady-state power-curve test',
+  '紊流 0%、自動對風,每個風速模擬 ': 'Turbulence 0%, auto yaw-alignment, each wind speed simulated for ', ' 秒並取後段平均;控制策略:': ' s with the late-window average; control strategy: ', '轉速 (rpm)': 'Speed (rpm)', '實測': 'Measured', '氣動功率': 'Aerodynamic power', '輸出電功率': 'Output electrical power',
+  '系統效率': 'System efficiency', '理想 MPPT': 'Ideal MPPT', '追蹤率': 'Tracking ratio', '占空比': 'Duty cycle', '槳距': 'Pitch', '側偏角': 'Furl angle', '⚠保護 ': '⚠ protection ', ' 次': ' times', '偏航誤差測試(8 m/s)': 'Yaw-error test (8 m/s)', '偏航誤差': 'Yaw error', '相對 0°': 'Relative to 0°', '參考': 'reference',
+  '紊流與陣風測試': 'Turbulence and gust test', '平均風速 8 m/s、紊流強度 15%:平均輸出 ': 'Mean wind 8 m/s, turbulence intensity 15%: mean output ', ',標準差 ': ', standard deviation ', ',平均系統效率 ': ', mean system efficiency ', ',最高轉速 ': ', peak speed ', '陣風(6 秒內增加 45%)下最高轉速 ': 'Under the gust (+45% within 6 s) peak speed ',
+  '(穩態 ': ' (steady ', ')、最高輸出 ': '), peak output ', '觸發保護煞車': 'protection brake triggered', '未觸發保護': 'no protection trip', '紊流測試時間序列': 'Turbulence-test time series', '輸出 (W)': 'Output (W)', '陣風響應': 'Gust response', '圖:紊流下的風速與輸出功率': 'Fig.: Wind speed and output power under turbulence', '圖:陣風下的轉速與功率': 'Fig.: Speed and power under gust',
+  '達到 ½·λopt 所需時間': 'Time to reach ½·λopt', ' 秒後 λ': ' s λ', ' 秒後轉速': ' s speed', '未能自行啟動': 'Did not self-start', '靜止起轉過程': 'Spin-up from rest', '圖:由靜止起轉的轉速變化': 'Fig.: Speed during spin-up from rest', '流場分析': 'Flow analysis', '圖:': 'Fig.: ', '剖面': ' section', ' 在設計攻角下的位勢流速度場與流線': ' potential-flow velocity field and streamlines at design AoA',
+  '圖:設計點轉子子午面軸向速度與流管擴張': 'Fig.: Design-point rotor meridional axial velocity and stream-tube expansion', '圖:最佳尖速比下的俯視流管速度': 'Fig.: Top-view stream-tube speed at optimal tip-speed ratio', '方案比較': 'Design comparison', '方案': 'Design', '高效區 λ': 'High-efficiency λ', '–λ 比較': '–λ comparison', '圖:各方案功率係數': 'Fig.: Power coefficient per design',
+  '結論與建議': 'Conclusions and recommendations', '模型說明與限制': 'Model notes and limitations',
+  '翼型極曲線:Hess-Smith 面板法求無黏升力斜率與零升攻角,加上雷諾數相依摩擦阻力、失速估算與 Viterna 失速後外推;精度低於 XFOIL 或風洞實測,可在工具中匯入極曲線取代;匯入資料只在其攻角範圍內使用,範圍外仍由此模型外推,且工具不驗證匯入資料的品質(實驗或 XFOIL 皆然)。': 'Airfoil polars: Hess-Smith panel method for inviscid lift slope and zero-lift angle, plus Reynolds-dependent friction drag, a stall estimate and Viterna post-stall extrapolation; less accurate than XFOIL or wind-tunnel data, and imported polars can replace it. Imported data is used only within its AoA range; outside it the model extrapolates, and the tool does not validate imported data quality (experiment or XFOIL alike). ',
+  '水平軸:葉片元素動量理論(BEM),含 Prandtl 葉尖/輪轂損失與 Buhl 高誘導修正;偏航以分區方位角計算。': 'HAWT: blade-element momentum theory (BEM) with Prandtl tip/hub loss and Buhl high-induction correction; yaw is computed by azimuth sectors. ',
+  '垂直軸:雙重多流管法(DMST),含展弦比修正與支撐臂阻力,未含動態失速與流線彎曲,高尖速比結果偏樂觀。Savonius 為經驗曲線。': 'VAWT: double multiple stream tube (DMST) with aspect-ratio correction and support-arm drag; no dynamic stall or streamline curvature, so high tip-speed-ratio results are optimistic. Savonius uses an empirical curve. ',
+  '本設計的性能來源為「匯入曲線(使用者提供)」': 'This design\'s performance comes from an "imported curve (user-provided)"', '本工具不計算此轉子的氣動性能,Cp–λ 的準確度完全取決於資料來源(論文、CFD 或實驗),所有發電量與控制結果都以該曲線為前提。': 'This tool does not compute the aerodynamics of this rotor; the accuracy of Cp–λ depends entirely on the data source (paper, CFD or experiment), and all energy and control results assume that curve. ',
+  '目前載入的是內建「示意」曲線(非實測),請先換成自己的資料再引用結果。': 'The built-in "illustrative" curve (not measured) is loaded; replace it with your own data before citing results. ',
+  '電氣系統:永磁發電機 + 整流 + 升降壓轉換器的準穩態模型;虛擬風洞測試為時域模擬,不含結構振動、塔影與地面邊界層。': 'Electrical system: quasi-steady model of a permanent-magnet generator + rectifier + buck-boost converter; the virtual wind-tunnel tests are time-domain simulations without structural vibration, tower shadow or ground boundary layer. ',
+  '本報告數值適合概念設計與方案比較;製造前建議以 CFD 或實體風洞驗證。': 'Values in this report suit concept design and design comparison; verify with CFD or a physical wind tunnel before manufacturing. ',
+  '設計規劃與測試報告': 'Design planning and test report', '設計與測試報告': 'Design and test report',
+  '報告會彙整目前的設計條件、翼型配置、葉片幾何表、氣動分析、性能曲線、方案比較與流場圖,並可在虛擬風洞中自動執行功率曲線、偏航、紊流/陣風與啟動測試(約需 10–40 秒)。產生後可下載成 HTML 檔,用瀏覽器開啟後可列印或另存成 PDF。': 'The report compiles the current design conditions, airfoil layout, blade geometry table, aerodynamic analysis, performance curves, design comparison and flow plots, and can automatically run power-curve, yaw, turbulence/gust and start-up tests in the virtual wind tunnel (about 10–40 s). Download it as an HTML file, then open it in a browser to print or save as PDF. ',
+  '平均風速': 'mean wind speed', '計算:': 'Computed by: ', '葉片元素動量理論': 'blade-element momentum theory', '內建半經驗極曲線': 'built-in semi-empirical polars', '雙重多流管': 'double multiple stream tube', '中高:': 'Medium-high: ', '中:': 'Medium: ',
+  '玻纖複合材': 'Fiberglass composite', '空心殼': 'hollow shell', '木材(實心)': 'Wood (solid)', '鋁擠型(空心)': 'Extruded aluminium (hollow)', '3D 列印 PLA(30% 填充)': '3D-printed PLA (30% infill)', '碳纖複合材': 'Carbon-fiber composite',
+  '半徑 / 高度': 'Radius / height', '弦長 / ': 'Chord / ', '實度 Bc/R': 'Solidity Bc/R', '的位勢流速度場與流線': ': potential-flow velocity field and streamlines', '在設計攻角下': ' at design AoA', '設計攻角': 'design AoA',
+  '葉尖': 'tip', '葉根': 'root', '葉片': 'blade', '轉子': 'rotor', '水平軸風力機': 'HAWT', '風力機': 'wind turbine', '設計': 'design', '葉': ' blades',
+});
+Object.assign(EN, {
+  '設計規劃與測試報告': 'Design planning and test report', '專案名稱': 'Project name', '設計者': 'Designer', '設計目標': 'Design goal', '姓名或單位': 'Name or organization',
+  '例:社區示範 1 kW 小型風機': 'e.g. Community demo 1 kW small turbine', '例:年均風速 5.5 m/s 的屋頂場址,48 V 電池充電,希望低噪音': 'e.g. Rooftop site with 5.5 m/s mean wind, 48 V battery charging, low noise wanted',
+  '執行虛擬風洞測試(功率曲線、偏航、紊流/陣風、啟動)': 'Run virtual wind-tunnel tests (power curve, yaw, turbulence/gust, start-up)', '包含流場分析圖': 'Include flow-analysis plots', '包含方案比較(若已儲存方案)': 'Include design comparison (if designs are saved)',
+  '產生報告': 'Generate report', '重新產生報告': 'Regenerate report', '產生中…': 'Generating…', '下載報告 HTML': 'Download report HTML', '列印 / 另存 PDF': 'Print / save as PDF', '報告預覽': 'Report preview', '繪製圖表與排版…': 'Rendering charts and layout…',
+  '設計已變更,報告內容可能已過時,請重新產生。': 'The design has changed; the report may be outdated. Please regenerate it.',
+  '若沒有開始下載,請改用「列印 / 另存 PDF」': 'If the download does not start, use "Print / save as PDF"', '此環境無法下載,請改用「列印 / 另存 PDF」': 'Downloads are unavailable here; use "Print / save as PDF"',
+  '此環境無法列印,請下載 HTML 後用瀏覽器列印': 'Printing is unavailable here; download the HTML and print it from a browser',
+});
+Object.assign(FR, { '已產生(': 'Generated (', ')。設計若再修改,請重新產生報告。': '). If the design changes again, regenerate the report. ', '產生失敗:': 'Generation failed: ' });
