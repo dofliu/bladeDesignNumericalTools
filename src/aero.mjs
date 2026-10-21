@@ -887,6 +887,59 @@
     return { wake, gamma: gam };
   }
 
+  /* Lifting-line rotor solver (ROADMAP 6): the blade is a bound vortex Γ(r) (Kutta-Joukowski, Γ = ½·W·c·Cl from the polar) and the
+     spanwise Γ gradient is shed as trailing helical vortices, one per station boundary and blade (strength Γ_{j-1} − Γ_j; root and tip
+     boundaries included). Induced axial/tangential velocity at each station comes from Biot-Savart on that wake instead of the BEM
+     momentum balance, so tip/root loss and wake rotation appear without a Prandtl factor. Wake: prescribed rigid helices at the
+     boundary radii advecting at V(1−aW), aW = r-weighted disk induction re-evaluated each outer pass; no expansion or roll-up, other
+     blades' bound vortices neglected, truncated after opts.turns (20). Axial flow only (no yaw). cfg as for bemPoint (opts.pitch in rad
+     is not supported: add it to rows' twist). Internally R = V = 1 for the geometry; Γ in units V·R.
+     Returns { Q, T, P, Cp, Ct, aW, elems:[{r,a,ap,alpha,phi,cl,cd,W,gamma}] }. */
+  function liftingLinePoint(cfg, V, omega, opts = {}) {
+    const { R, Rhub, B, rows, rho, mu } = cfg, n = rows.length;
+    const turns = opts.turns || 20, per = opts.perTurn || 24, core = opts.core || 0.05, outer = opts.outer || 4, inner = opts.inner || 120;
+    const rb = [Rhub]; for (let j = 1; j < n; j++) rb.push((rows[j - 1].r + rows[j].r) / 2); rb.push(R);
+    const lam = omega * R / V, dth = 2 * Math.PI / per;
+    const gam = new Array(n).fill(0); let aW = opts.a0 == null ? 0.25 : opts.a0, ua = [], ut = [], alpha = [], phi = [], cl = [], cd = [], W = [];
+    for (let o = 0; o < outer; o++) {
+      const adv = Math.max(0.2, 1 - aW) / Math.max(lam, 1e-6) * dth;   // axial advance per angular step
+      const inf = [];                                                  // inf[j][i] = [u, w] at station i per unit trailing Γ at boundary j
+      for (let j = 0; j <= n; j++) {
+        const lines = [], rj = rb[j] / R;
+        for (let k = 0; k < B; k++) {
+          const pts = [], th0 = 2 * Math.PI * k / B;
+          for (let m = 0; m <= turns * per; m++) { const th = th0 - m * dth; pts.push({ x: m * adv, y: rj * Math.cos(th), z: rj * Math.sin(th) }); }
+          lines.push(pts);
+        }
+        inf.push(rows.map(e => { const q = biotSavart(lines, { x: 0, y: e.r / R, z: 0 }, 1, core); return [q.u, q.w]; }));
+      }
+      for (let it = 0; it < inner; it++) {
+        const tr = []; for (let j = 0; j <= n; j++) tr.push((j > 0 ? gam[j - 1] : 0) - (j < n ? gam[j] : 0));
+        let dmax = 0;
+        for (let i = 0; i < n; i++) {
+          const e = rows[i];
+          let u = 0, w = 0; for (let j = 0; j <= n; j++) { u += tr[j] * inf[j][i][0]; w += tr[j] * inf[j][i][1]; }
+          ua[i] = V * (1 + u); ut[i] = omega * e.r - V * w;            // swirl opposes rotation → relative tangential speed grows
+          phi[i] = Math.atan2(ua[i], ut[i]); W[i] = Math.hypot(ua[i], ut[i]); alpha[i] = phi[i] - e.tw * D2R;
+          [cl[i], cd[i]] = lookup(cfg.polarFor(i), alpha[i], Math.max(1e3, rho * W[i] * e.c / mu));
+          const gn = 0.5 * W[i] * e.c * cl[i] / (V * R);
+          dmax = Math.max(dmax, Math.abs(gn - gam[i])); gam[i] += 0.3 * (gn - gam[i]);
+        }
+        if (dmax < 1e-5) break;
+      }
+      let s = 0, ws = 0; for (let i = 0; i < n; i++) { s += (1 - ua[i] / V) * rows[i].r * rows[i].dr; ws += rows[i].r * rows[i].dr; }
+      aW = clamp(aW + 0.5 * (s / ws - aW), 0, 0.45);
+    }
+    let Q = 0, T = 0; const out = [];
+    for (let i = 0; i < n; i++) {
+      const e = rows[i], sp = Math.sin(phi[i]), cph = Math.cos(phi[i]), q = 0.5 * rho * W[i] * W[i] * e.c * e.dr;
+      Q += B * q * (cl[i] * sp - cd[i] * cph) * e.r; T += B * q * (cl[i] * cph + cd[i] * sp);
+      out.push({ r: e.r, a: 1 - ua[i] / V, ap: ut[i] / (omega * e.r) - 1, alpha: alpha[i] * R2D, phi: phi[i] * R2D, cl: cl[i], cd: cd[i], W: W[i], gamma: gam[i] * V * R });
+    }
+    const A = Math.PI * R * R, P = Q * omega, q0 = 0.5 * rho * A * V * V * V;
+    return { Q, T, P, Cp: q0 > 0 ? P / q0 : 0, Ct: T / (0.5 * rho * A * V * V), aW, elems: out };
+  }
+
 export { D2R, R2D, NX, XS, NTH, clamp, wrapPi, naca4, naca5, circularArc, parseDat, blendAirfoil, airfoilArea,
   panel, boundaryLayer, buildAeroModel, polarAtRe, buildPolarSet, parsePolarText, lookup, bestLD, designHAWT, bemPoint, hawtCurve,
-  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart, tipVortexGamma, freeWake, wakeDiskInduction };
+  cumulativeOutboard, cumulativeMoment, vawtSlices, monotoneCubic, customShape, vawtArea, dmstPoint, vawtStaticTorque, vawtCurve, savoniusCurve, parseCpCurve, customCurve, tipVortexWake, biotSavart, tipVortexGamma, freeWake, wakeDiskInduction, liftingLinePoint };
