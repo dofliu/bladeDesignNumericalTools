@@ -253,6 +253,7 @@ export const Flow = (function () {
         ${S.mode === 'VAWT' && noAirfoil(S.vawt) ? '' : `<div class="card span3"><div class="ctrlbar"><label>轉子尖速比 λ <input type="range" id="fLam" min="0.5" max="${lmax.toFixed(1)}" step="0.05"><output id="fLamo"></output></label><button class="iconbtn" id="fLd">${H ? '設計點' : '最佳 λ'}</button><label><input type="checkbox" id="fFol"> 跟隨目前運轉點</label>${H ? '<label><input type="checkbox" id="fTv"> 葉尖渦(螺旋尾流)</label><label><input type="checkbox" id="fFv"> 自由渦尾流(Biot-Savart 迭代)</label>' : ''}</div></div>
         ${card(H ? '轉子流場(致動盤 + BEM 誘導)' : '轉子流場(雙重多流管)', '<canvas id="fRot" style="height:340px"></canvas>', 'span2')}
         ${card('速度剖面', '<canvas id="fProf" style="height:340px"></canvas>')}`}
+        ${H ? card('升力線求解(Biot-Savart 誘導,對照 BEM)', '<div class="ctrlbar"><button class="iconbtn" id="fLL">計算升力線</button><span class="hint" id="fLLs">依目前 λ 以升力線求解(約 1 秒),與 BEM 比較沿展長誘導與攻角。</span></div><canvas id="fLLa" style="height:300px"></canvas>', 'span2') + card('升力線攻角', '<canvas id="fLLb" style="height:300px"></canvas>') : ''}
         ${card('模型說明', `<p class="hint">翼型剖面:Hess-Smith 面板法(源 + 均勻渦,Kutta 條件)求無黏位勢流,流線以速度場積分。位勢流不含邊界層與分離;分離點由表面速度做 Thwaites(層流)+ Michel 轉捩 + Head(紊流)積分邊界層估計,紅色分離區只是示意,Cl 會高於實際值;實際升阻力請以「極曲線」分頁的黏性修正模型為準。<br>水平軸轉子:以 BEM 求得各截面軸向誘導因子 a(r),搭配致動盤渦柱理論 u = V∞[1 − a(1 + x/√(x²+R²))] 近似軸向速度,流線由各流管質量守恆求得;尾流旋轉未計入;勾選「葉尖渦」會疊上預設螺旋尾流(依葉尖誘導 a 對流、流管膨脹,實線為近側、灰線為遠側),不是自由渦尾流。<br>垂直軸轉子:以雙重多流管法的上、下風誘導速度組合成俯視流場,示意上風半圈先減速、下風葉片再次取能的特性。</p>`, 'span3', null, false)}
       </div>`;
     $f('flowInner').innerHTML = h;
@@ -266,6 +267,7 @@ export const Flow = (function () {
     on('fLd', 'click', () => { F.lam = null; F.follow = false; const c = $f('fFol'); if (c) c.checked = false; render(); });
     on('fFv', 'change', e => { F.freev = e.target.checked; renderRotor(); });
     on('fTv', 'change', e => { F.tipv = e.target.checked; renderRotor(); });
+    on('fLL', 'click', () => { F.ll = true; renderLL(true); });
     on('fFol', 'change', e => { F.follow = e.target.checked; render(); });
     document.querySelectorAll('#flowInner details').forEach(d => d.addEventListener('toggle', () => { if (d.open) render(); }));
   }
@@ -299,7 +301,23 @@ export const Flow = (function () {
       Plot.draw($f('fProf'), { title: '橫向速度剖面 u/V∞', series: [{ x: ys, y: ys.map(y => fd.uf(0, y)), color: Plot.css('--c1'), label: '轉子中心 x = 0' }, { x: ys, y: ys.map(y => fd.uf(2.5, y)), color: Plot.css('--c2'), dash: [4, 3], label: '下游 x = 2.5R' }], xlabel: 'y/R', ylabel: 'u/V∞', ylim: [0, 1.1] });
     }
   }
-  function render() { if (!G.perf) return; layout(); renderSection(); renderRotor(); }
+  // Lifting-line vs BEM spanwise comparison (HAWT only). Run on demand and cached per design generation + λ.
+  let llCache = { key: '', res: null };
+  function renderLL(force) {
+    if (S.mode !== 'HAWT' || !$f('fLLa')) return;
+    const lam = lamNow(), key = G.gen + '|' + lam.toFixed(3) + '|' + S.hawt.pitch;
+    if (llCache.key !== key) {
+      if (!force) return;
+      const st = $f('fLLs'); if (st) st.textContent = '計算中…';
+      const V = S.hawt.Vd, om = lam * V / G.R, cfg = hawtCfg();
+      llCache = { key, res: { bem: Bench.hawtAt(lam), ll: A.liftingLineExpanded(cfg, V, om) } };
+    }
+    const { bem, ll } = llCache.res, rs = e => e.map(x => x.r / G.R);
+    const st = $f('fLLs'); if (st) st.textContent = `λ ${lam.toFixed(2)}:Cp 升力線 ${ll.Cp.toFixed(3)} / BEM ${bem.Cp.toFixed(3)}(${(100 * (ll.Cp / bem.Cp - 1)).toFixed(1)}%),Ct ${ll.Ct.toFixed(2)} / ${bem.Ct.toFixed(2)}。升力線為剛性不膨脹螺旋尾流 + 動量等效膨脹,與 BEM 差約 ±9%,屬研究性質比對。`;
+    Plot.draw($f('fLLa'), { title: '軸向誘導因子 a(r)', series: [{ x: rs(bem.elems), y: bem.elems.map(e => e.a), color: Plot.css('--c1'), label: 'BEM(Prandtl)' }, { x: rs(ll.elems), y: ll.elems.map(e => e.a), color: Plot.css('--c2'), dash: [4, 3], label: '升力線' }], xlabel: 'r/R', ylabel: 'a' });
+    Plot.draw($f('fLLb'), { title: '攻角 α(r)', series: [{ x: rs(bem.elems), y: bem.elems.map(e => e.alpha), color: Plot.css('--c1'), label: 'BEM' }, { x: rs(ll.elems), y: ll.elems.map(e => e.alpha), color: Plot.css('--c2'), dash: [4, 3], label: '升力線' }], xlabel: 'r/R', ylabel: 'α (°)' });
+  }
+  function render() { if (!G.perf) return; layout(); renderSection(); renderRotor(); renderLL(false); }
   function tick() { if (F.follow && performance.now() - lastFollow > 700) { lastFollow = performance.now(); renderRotor(); } }
   return { render, tick, drawSection, drawRotor, sectionInput, state: F, reset() { built = ''; } };
 })();
