@@ -38,6 +38,13 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     await page.waitForTimeout(1200);
     await page.screenshot({ path: join(out, `${vp.tag}-${ws}.png`) });
   }
+  if (!mobile) { // 升力線求解卡(流場工作區,HAWT)
+    await page.click('.flownav [data-flow="field"]'); await page.waitForTimeout(600);
+    await page.click('#fLL'); await page.waitForTimeout(4000);
+    const ll = await page.evaluate(() => document.querySelector('#fLLs').textContent);
+    check(/Cp 升力線 0\.\d+ \/ BEM 0\.\d+/.test(ll), '流場: 升力線求解卡顯示 Cp 對照');
+    await page.screenshot({ path: join(out, `${vp.tag}-flow-ll.png`) });
+  }
   if (mobile) { // 手機版只檢視:設計面板控制項全部停用並有說明,快速操作仍可用
     await page.click('[data-mnav="set"]'); await page.waitForTimeout(500);
     const ro = await page.evaluate(() => ({ note: !!document.querySelector('#pane .mnote'), n: document.querySelectorAll('#pane input,#pane select,#pane textarea,#pane button').length, off: document.querySelectorAll('#pane input:not([disabled]),#pane select:not([disabled]),#pane textarea:not([disabled]),#pane button:not([disabled])').length, q: document.querySelectorAll('#quickBody input:not([disabled])').length }));
