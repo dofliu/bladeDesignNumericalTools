@@ -279,6 +279,7 @@ Object.assign(EN, {
   '局部半徑': 'Local radius', '當地風速 u': 'Local wind speed u', '葉片速度 Ωr': 'Blade speed Ωr', '攻角 α(幾何)': 'Angle of attack α (geometric)', '一圈內攻角範圍': 'AoA range per revolution',
   '估計失速角': 'Est. stall angle', '攻角隨方位角變化(中段剖面)': 'AoA vs azimuth (mid-span section)', '轉矩隨方位角變化': 'Torque vs azimuth', '翼型極曲線(局部雷諾數)': 'Airfoil polar (local Reynolds number)',
   '剖面 r/R': 'Section r/R', '用設計點攻角': 'Use design-point AoA', '流線': 'Streamlines', '翼型剖面流場(面板法位勢流)': 'Airfoil section flow (panel-method potential flow)',
+  '被動尾翼式(遲滯:風速降到門檻以下才回正)': 'Passive tail-vane (hysteresis: returns only below the threshold)', '回正遲滯': 'Return hysteresis', '回正速率比': 'Return rate ratio',
   '軸向誘導因子 a(r)': 'Axial induction a(r)', '攻角 α(r)': 'Angle of attack α(r)', '升力線': 'Lifting line', '升力線求解(Biot-Savart 誘導,對照 BEM)': 'Lifting-line solution (Biot-Savart induction vs BEM)',
   '計算升力線': 'Run lifting line', '依目前 λ 以升力線求解(約 1 秒),與 BEM 比較沿展長誘導與攻角。': 'Solve with the lifting line at the current λ (about 1 s) and compare spanwise induction and angle of attack with BEM.', '升力線攻角': 'Lifting-line angle of attack', '計算中…': 'Computing…',
   '翼面壓力分布': 'Surface pressure distribution', '轉子尖速比 λ': 'Rotor tip-speed ratio λ', '設計點': 'Design point', '跟隨目前運轉點': 'Follow operating point',
