@@ -75,7 +75,7 @@ export function registerReport(EN, FR) {
     '自訂外形沒有傾角超過 60° 的葉片段;DMST 仍未含流線彎曲與動態失速,傾角較大處的 Cp 偏樂觀。': 'The custom shape has no blade segment tilted beyond 60°; DMST still excludes streamline curvature and dynamic stall, so Cp is optimistic where the tilt is larger. ',
     '6–10 m/s 區間實測輸出達理想 MPPT 的': 'Between 6–10 m/s the measured output reaches ', '%,追蹤效果良好。': '% of ideal MPPT; tracking is good. ',
     '6–10 m/s 區間實測輸出只有理想 MPPT 的': 'Between 6–10 m/s the measured output is only ', '%;可嘗試最佳尖速比/最佳轉矩控制,或調整 P&O 擾動步長與週期。': '% of ideal MPPT; try optimal tip-speed-ratio / optimal-torque control, or adjust the P&O step and period. ',
-    '已啟用側偏收尾:': 'Furling enabled: ', 'm/s 起機艙開始側偏,最高測試風速': 'm/s the nacelle starts to furl; at the highest test wind speed ', 'm/s 時平均側偏角約': 'm/s the mean furl angle is about ',
+    '已啟用側偏收尾:': 'Furling enabled: ', ',被動尾翼式(回正遲滯 ': ', passive tail-vane (return hysteresis ', ' m/s、回正速率 ': ' m/s, return rate ', '×)': '×)', 'm/s 起機艙開始側偏,最高測試風速': 'm/s the nacelle starts to furl; at the highest test wind speed ', 'm/s 時平均側偏角約': 'm/s the mean furl angle is about ',
     '°(上限': '° (limit ', '°),輸出功率': '°), output power ', '(發電機額定': '(generator rating ', ');為簡化模型,不含尾翼力矩與被動收尾遲滯。': '); for simplicity the model excludes tail-vane moment and passive furling hysteresis. ',
     '已啟用側偏收尾(啟動風速': 'Furling enabled (start wind speed ', 'm/s),但測試風速範圍內未達到側偏條件。': 'm/s), but the furling condition was not reached within the test wind range. ',
     '已啟用主動變槳:': 'Active pitch enabled: ', 'm/s 起槳距開始順槳,最高測試風速': 'm/s the blades start to feather; at the highest test wind speed ', 'm/s 時穩態槳距約': 'm/s the steady pitch is about ',

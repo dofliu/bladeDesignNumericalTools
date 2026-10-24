@@ -270,6 +270,25 @@ test('furling yaws the rotor out of the wind above vFurl, cuts power and recover
   S.load.furl = false; SIM.furlAng = 0;
 });
 
+test('被動尾翼式側偏:遲滯(風速回到門檻以下但高於 vFurl−hyst 仍側偏)、回正比展出慢,低於遲滯下限才回正', () => {
+  setMode('HAWT');
+  const run = (V, dur) => { S.tun.TI = 0; S.tun.V = V; for (let t = 0; t < dur; t += 0.004) simStep(0.004); };
+  S.tun.yawMode = 'auto'; S.tun.dir = 0; SIM.yaw = 0;
+  S.load.ctrl = 'po'; S.load.cutOut = false; S.load.pitchCtl = false; S.load.ospd = true;
+  S.load.furl = true; S.load.furlPassive = true; S.load.vFurl = 11; S.load.furlMax = 60; S.load.furlRate = 4; S.load.furlHyst = 3; S.load.furlBack = 0.25;
+  SIM.Vmeas = 8; SIM.omega = G.lopt * 8 / G.R * 0.8; SIM.D = 0.5; SIM.Di = null; SIM.tEst = null; SIM.wcap = -1; SIM.latch = false; SIM.cutout = false; SIM.n = 0; SIM.po.wref = -1; SIM.furlAng = 0; SIM.furlOut = false; SIM.pitch = 0;
+  run(13, 30);
+  assert.ok(SIM.furlOut && SIM.furlAng > 40, `furled out at 13 m/s, got ${SIM.furlAng}`);
+  const a13 = SIM.furlAng;
+  run(10, 8);   // below vFurl (11) but above vFurl − hyst (8): scheduled model would already be returning to 0
+  assert.ok(SIM.furlOut && SIM.furlAng > 0, 'hysteresis keeps the nacelle furled at 10 m/s');
+  assert.ok(a13 - SIM.furlAng <= 4 * 0.25 * 8 + 0.1, `${a13} -> ${SIM.furlAng}; ` + 'return rate is furlBack × furlRate');
+  run(6, 120);
+  assert.equal(SIM.furlAng, 0, 'returns to 0 once wind falls below vFurl − hyst');
+  assert.ok(!SIM.furlOut);
+  S.load.furl = false; S.load.furlPassive = false; SIM.furlAng = 0;
+});
+
 test('parseWindSeries 取每行最後一個數值並略過標題與負值', () => {
   const v = parseWindSeries('time,speed\n2020-01-01 00:00,5.5\n2020-01-01 01:00;6\n\n7\nabc\n-3\n');
   assert.deepEqual(v, [5.5, 6, 7]);

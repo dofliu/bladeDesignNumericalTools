@@ -254,7 +254,7 @@ const S = {
   vawt: { type: 'H', R: 1.0, H: 2.0, B: 3, c: 0.15, pitch: 0, helix: 120, struts: 2, dynStall: false, curvature: false, overlap: 0.2, endPlates: true, material: 'gfrp' },
   tun: { V: 8, dir: 0, TI: 0.08, T: 15, alt: 0, yawMode: 'auto', yawRate: 8, yawFixed: 0, timeScale: 1, running: true },
   load: { kind: 'bat', RL: 5, Vbat: 48, ke: 2, Rs: 0.5, Vdiode: 1.4, eta: 0.95, ctrl: 'po', D: 0.5, poStep: 0.03, poT: 1.0, ospd: true, wmaxRpm: 900, Pmax: 2500, auto: true,
-    cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5, furl: false, vFurl: 11, furlMax: 60, furlRate: 4 },
+    cutOut: false, vCutOut: 20, vRestart: 15, pitchCtl: false, pitchRate: 5, furl: false, vFurl: 11, furlMax: 60, furlRate: 4, furlPassive: false, furlHyst: 3, furlBack: 0.25 },
   perf: { Vavg: 5.5, k: 2, series: null, cost: {} },
   // Imported Cp-lambda rotor (vawt.type 'custom', ROADMAP 8A): performance comes entirely from user data (pts from A.parseCpCurve)
   arch: { D: 1.0, L: 1.2, blades: 3, turns: 0.75, thick: 0.004, hubD: 0.08, tipFrac: 1.0 },
@@ -881,7 +881,7 @@ function frictionT(omega) {
 }
 
 /* ---------- simulation ---------- */
-const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, D: 0.5, brake: false, latch: false, cutout: false, pitch: 0, furlAng: 0,
+const SIM = { t: 0, omega: 0, theta: 0, yaw: 0, n: 0, gust: 0, gustT: -1, V: 8, Vmeas: 8, D: 0.5, brake: false, latch: false, cutout: false, pitch: 0, furlAng: 0, furlOut: false,
   po: { acc: 0, cnt: 0, tim: 0, last: 0, dir: 1, wref: -1 }, out: {}, hist: { t: [], V: [], rpm: [], Pa: [], Po: [], D: [], lam: [], cp: [] }, histT: 0, traj: [] };
 function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 // converter with inner current control: find the duty that gives generator current Iref (inverse of electrical())
@@ -937,9 +937,16 @@ function simStep(dt) {
   // passive furling (simplified): above vFurl the nacelle turns out of the wind, reaching furlMax at vFurl + 6 m/s;
   // the 1 s mean wind drives the target, the angle is rate-limited (heavy tail vane) and adds to the yaw error
   if (S.mode === 'HAWT' && L.furl) {
-    const tgt = L.furlMax * A.clamp((SIM.Vmeas - L.vFurl) / 6, 0, 1), d = tgt - SIM.furlAng, mv = L.furlRate * dt;
+    let tgt, back = 1;
+    if (L.furlPassive) {
+      // passive tail-vane furling: the rotor's thrust-offset moment overcomes the tail/gravity restoring moment at vFurl, then the nacelle
+      // snaps out; it only returns once the wind falls below vFurl − furlHyst, and slower (furlBack × rate: tail weight/damping)
+      if (SIM.Vmeas > L.vFurl) SIM.furlOut = true; else if (SIM.Vmeas < L.vFurl - L.furlHyst) SIM.furlOut = false;
+      tgt = SIM.furlOut ? L.furlMax * A.clamp((SIM.Vmeas - (L.vFurl - L.furlHyst)) / 6, 0, 1) : 0; back = L.furlBack;
+    } else tgt = L.furlMax * A.clamp((SIM.Vmeas - L.vFurl) / 6, 0, 1);
+    const d = tgt - SIM.furlAng, mv = L.furlRate * dt * (d < 0 ? back : 1);
     SIM.furlAng += Math.abs(d) < mv ? d : Math.sign(d) * mv;
-  } else SIM.furlAng = 0;
+  } else { SIM.furlAng = 0; SIM.furlOut = false; }
   const gam = S.mode === 'HAWT' ? A.wrapPi((T.dir - SIM.yaw) * A.D2R) * A.R2D + SIM.furlAng : 0;
   const Vs = Math.max(V, 0.05);
   const lam = SIM.omega * G.R / Vs;
