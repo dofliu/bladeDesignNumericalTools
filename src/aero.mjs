@@ -892,11 +892,11 @@
      boundaries included). Induced axial/tangential velocity at each station comes from Biot-Savart on that wake instead of the BEM
      momentum balance, so tip/root loss and wake rotation appear without a Prandtl factor. Wake: prescribed rigid helices at the
      boundary radii advecting at V(1−aW), aW = r-weighted disk induction re-evaluated each outer pass; no expansion or roll-up, other
-     blades' bound vortices neglected (tested: no effect), truncated after opts.turns (20). opts.aWake (fixed disk induction, e.g. from BEM) switches to a single pass with the streamtube expanding as in tipVortexWake. Axial flow only (no yaw). cfg as for bemPoint (opts.pitch in rad
-     is not supported: add it to rows' twist). Internally R = V = 1 for the geometry; Γ in units V·R.
+     blades' bound vortices neglected (tested: no effect), truncated after opts.turns (20). opts.aWake (fixed disk induction, e.g. from BEM) switches to a single pass with the streamtube expanding as in tipVortexWake. Axial flow only (no yaw). cfg as for bemPoint; opts.pitch (deg,
+     default 0) is added to every row's twist exactly like bemPoint's pitch argument. Internally R = V = 1 for the geometry; Γ in units V·R.
      Returns { Q, T, P, Cp, Ct, aW, elems:[{r,a,ap,alpha,phi,cl,cd,W,gamma}] }. */
   function liftingLinePoint(cfg, V, omega, opts = {}) {
-    const { R, Rhub, B, rows, rho, mu } = cfg, n = rows.length;
+    const { R, Rhub, B, rows, rho, mu } = cfg, n = rows.length, pitch = opts.pitch || 0;
     const turns = opts.turns || 20, per = opts.perTurn || 24, core = opts.core || 0.05, outer = opts.aWake == null ? (opts.outer || 4) : 1, inner = opts.inner || 120;
     const fx = x => 1 + x / Math.sqrt(x * x + 1);                      // actuator-disk blend, 0 at the disk → 2 far downstream
     const rb = [Rhub]; for (let j = 1; j < n; j++) rb.push((rows[j - 1].r + rows[j].r) / 2); rb.push(R);
@@ -926,7 +926,7 @@
           const e = rows[i];
           let u = 0, w = 0; for (let j = 0; j <= n; j++) { u += tr[j] * inf[j][i][0]; w += tr[j] * inf[j][i][1]; }
           ua[i] = V * (1 + u); ut[i] = omega * e.r - V * w;            // swirl opposes rotation → relative tangential speed grows
-          phi[i] = Math.atan2(ua[i], ut[i]); W[i] = Math.hypot(ua[i], ut[i]); alpha[i] = phi[i] - e.tw * D2R;
+          phi[i] = Math.atan2(ua[i], ut[i]); W[i] = Math.hypot(ua[i], ut[i]); alpha[i] = phi[i] - (e.tw + pitch) * D2R;
           [cl[i], cd[i]] = lookup(cfg.polarFor(i), alpha[i], Math.max(1e3, rho * W[i] * e.c / mu));
           const gn = 0.5 * W[i] * e.c * cl[i] / (V * R);
           dmax = Math.max(dmax, Math.abs(gn - gam[i])); gam[i] += 0.3 * (gn - gam[i]);

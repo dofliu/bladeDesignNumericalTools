@@ -2,6 +2,12 @@
 
 最新的放最上面。規則見 `docs/AUTOPILOT.md`。
 
+## 2026-10-24 — ROADMAP 6:修正升力線卡在非零槳距時的設定不一致(使用者回報)
+
+- 問題:流場「升力線求解」卡的 BEM 用 `S.hawt.pitch`,升力線只用各站扭角,非零槳距時比較的不是同一支葉片(預設設計 λ7、槳距 5°:BEM 0.362,升力線卻用 0° 葉片得 0.453)。
+- 修正:`aero.mjs` 的 `liftingLinePoint` 新增 `opts.pitch`(度,加到每站扭角,與 `bemPoint` 一致;`liftingLineExpanded` 透傳),`flow.mjs` 傳入槳距;`tests/aero.test.mjs` 新增測試(pitch 4° 與扭角 +4° 結果完全相同、順槳降低 Cp)。修正後槳距 5°:BEM 0.362、升力線 0.376。
+- 驗證:check、npm test 129/129、build、e2e 全過。
+
 ## 2026-10-23 — ROADMAP 4:被動尾翼式側偏收尾(使用者指定)
 
 - 做了什麼:升力線 UI 已以 #158 合併。接著做進階被動側偏:`core.mjs` 新增 `furlPassive`/`furlHyst`/`furlBack` 與 `SIM.furlOut` 遲滯狀態,負載面板、報告條件列與英文翻譯同步;`tests/core.test.mjs` 新增遲滯與回正速率測試。
