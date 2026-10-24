@@ -310,7 +310,7 @@ export const Flow = (function () {
       if (!force) return;
       const st = $f('fLLs'); if (st) st.textContent = '計算中…';
       const V = S.hawt.Vd, om = lam * V / G.R, cfg = hawtCfg();
-      llCache = { key, res: { bem: Bench.hawtAt(lam), ll: A.liftingLineExpanded(cfg, V, om) } };
+      llCache = { key, res: { bem: Bench.hawtAt(lam), ll: A.liftingLineExpanded(cfg, V, om, { pitch: S.hawt.pitch }) } };
     }
     const { bem, ll } = llCache.res, rs = e => e.map(x => x.r / G.R);
     const st = $f('fLLs'); if (st) st.textContent = `λ ${lam.toFixed(2)}:Cp 升力線 ${ll.Cp.toFixed(3)} / BEM ${bem.Cp.toFixed(3)}(${(100 * (ll.Cp / bem.Cp - 1)).toFixed(1)}%),Ct ${ll.Ct.toFixed(2)} / ${bem.Ct.toFixed(2)}。升力線為剛性不膨脹螺旋尾流 + 動量等效膨脹,與 BEM 差約 ±9%,屬研究性質比對。`;

@@ -377,6 +377,17 @@ test('liftingLinePoint:升力線(剛性螺旋尾流)與 BEM 比對——趨勢�
   assert.ok(Math.abs(A.liftingLinePoint(cfg, 8, 1e-6).Cp) < 1e-3);
 });
 
+test('liftingLinePoint:opts.pitch 與 bemPoint 的 pitch 引數一致(等同把槳距加到每站扭角)', () => {
+  const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('4412'))), b = A.bestLD(ps, 3e5);
+  const rows = A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr: 7, aDes: b.a, clDes: b.cl, nSec: 10, linearize: false, chordScale: 1, twistScale: 1, maxChordRatio: 0.2 });
+  const cfg = { R: 1.5, Rhub: 0.15, B: 3, rows, rho: 1.225, mu: 1.81e-5, polarFor: () => ps };
+  const cfgP = { ...cfg, rows: rows.map(e => ({ ...e, tw: e.tw + 4 })) }, om = 7 * 8 / 1.5;
+  const a = A.liftingLinePoint(cfg, 8, om, { pitch: 4, turns: 8 }), c = A.liftingLinePoint(cfgP, 8, om, { turns: 8 }), z = A.liftingLinePoint(cfg, 8, om, { turns: 8 });
+  assert.ok(Math.abs(a.Cp - c.Cp) < 1e-12 && Math.abs(a.Ct - c.Ct) < 1e-12, `pitch 4° ${a.Cp} vs 扭角 +4° ${c.Cp}`);
+  assert.ok(a.Cp < z.Cp - 0.02, '順槳 4° 應明顯降低 Cp(與 BEM 同方向)');
+  assert.ok(A.bemPoint(cfg, 8, om, 0, 4, {}).Cp < A.bemPoint(cfg, 8, om, 0, 0, {}).Cp - 0.02);
+});
+
 test('liftingLineExpanded:尾流膨脹(以自身 Ct 的動量等效 a 鬆弛迭代)把 Cp 偏差由 7–25% 縮到 ±10% 內', () => {
   const ps = A.buildPolarSet(A.buildAeroModel(A.naca4('4412'))), b = A.bestLD(ps, 3e5);
   const rows = A.designHAWT({ R: 1.5, Rhub: 0.15, B: 3, tsr: 7, aDes: b.a, clDes: b.cl, nSec: 12, linearize: false, chordScale: 1, twistScale: 1, maxChordRatio: 0.2 });
