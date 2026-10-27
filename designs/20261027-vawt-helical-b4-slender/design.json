@@ -1,0 +1,10 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261027-vawt-helical-b4-slender",
+ "name": "四葉細長螺旋型垂直軸(弦長 0.10 m)",
+ "date": "2026-10-27",
+ "mode": "VAWT",
+ "hypothesis": "垂直軸 H 型預設弦長 0.15 m、3 葉。改成 4 葉螺旋(扭轉 90°)、弦長縮到 0.10 m、翼型改 NACA 0015,實度由 0.225 降到 0.20 而葉片總材料大減,預期質量與 LCOE 明顯下降、Cp,max 不降;代價是葉片雷諾數變低,DMST 在此區域偏樂觀。",
+ "cfg": { "vawt": { "type": "helical", "B": 4, "helix": 90, "c": 0.10 }, "vaf": "n4:0015" },
+ "wind": { "Vavg": 5.5, "k": 2 }
+}
