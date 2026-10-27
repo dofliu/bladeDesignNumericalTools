@@ -972,7 +972,7 @@ export function setWS(ws) {
   markNav();
   requestAnimationFrame(() => renderWS());
 }
-/* 流程式外殼:五步驟對應到既有的工作區與設定面板步驟(功能不減,與經典版面共用同一套狀態) */
+/* 流程式外殼:五步驟對應到既有的工作區與設定面板步驟 */
 export const FLOW_STEPS = {
   concept: { ws: 'tunnel', step: 'rotor' },
   geometry: { ws: 'blade', step: 'rotor' },
@@ -1015,15 +1015,8 @@ export function setFlow(id) {
   if (f.step) setStep(f.step);
   markNav();
 }
-export function setLayout(flow) {
-  $('#app').classList.toggle('flow', flow);
-  $('#layoutBtn').textContent = t(flow ? '經典版面' : '流程版面');
-  try { localStorage.setItem('wt-layout', flow ? 'flow' : 'classic'); } catch (e) {}
-  markNav();
-}
 export function markNav() {
   const set = $('#app').classList.contains('m-set');
-  document.querySelectorAll('.wsnav [data-ws]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ws === S.ws));
   const fs = flowStepOf(S.ws, S.step);
   $('#app').dataset.fs = fs;
   document.querySelectorAll('.flownav [data-flow]').forEach(b => b.setAttribute('aria-pressed', b.dataset.flow === fs));
@@ -1068,9 +1061,6 @@ export function init() {
   document.querySelectorAll('.flownav [data-flow]').forEach(b => b.addEventListener('click', () => setFlow(b.dataset.flow)));
   $('#flowPrev').addEventListener('click', () => { const n = flowNeighbor(flowStepOf(S.ws, S.step), -1); if (n) setFlow(n); });
   $('#flowNext').addEventListener('click', () => { const n = flowNeighbor(flowStepOf(S.ws, S.step), 1); if (n) setFlow(n); });
-  $('#layoutBtn').addEventListener('click', () => { setLayout(!$('#app').classList.contains('flow')); renderPane(); });
-  let lay = ''; try { lay = localStorage.getItem('wt-layout') || ''; } catch (e) {}
-  setLayout(lay !== 'classic'); // 預設流程版面;使用者明確選過經典才維持經典
   document.querySelectorAll('#ctabs [data-c]').forEach(b => b.addEventListener('click', () => {
     S.ctab = b.dataset.c; document.querySelectorAll('#ctabs [data-c]').forEach(x => x.setAttribute('aria-selected', x === b)); setCmpLayout(S.ctab === 'cmp'); chartOpts(); redrawStatic();
   }));
@@ -1079,7 +1069,6 @@ export function init() {
   $('#mVAWT').addEventListener('click', () => setMode('VAWT'));
   $('#runBtn').addEventListener('click', e => { S.tun.running = !S.tun.running; e.target.textContent = S.tun.running ? '暫停' : '繼續'; });
   $('#exportBtn').addEventListener('click', openExport);
-  document.querySelectorAll('.wsnav [data-ws]').forEach(b => b.addEventListener('click', () => setWS(b.dataset.ws)));
   document.querySelectorAll('.bnav [data-mnav]').forEach(b => b.addEventListener('click', () => setWS(b.dataset.mnav)));
   $('#sideDone').addEventListener('click', () => setWS(S.ws));
   $('#sideBtn').addEventListener('click', () => { sideHidden = !sideHidden; $('#app').classList.toggle('noside', sideHidden); markNav(); setTimeout(renderWS, 50); });
@@ -1092,7 +1081,7 @@ export function init() {
   MQ.addEventListener('change', () => { placeOpts(); renderPane(); if (!isMobile()) $('#app').classList.remove('m-set'); markNav(); setTimeout(renderWS, 50); });
   placeOpts();
   new ResizeObserver(() => { if (S.ws !== 'tunnel') renderWS(); }).observe($('main'));
-  $('#langBtn').addEventListener('click', () => { setLang(getLang() === 'en' ? 'zh' : 'en'); markNav(); renderPane(); setLayout($('#app').classList.contains('flow')); redrawStatic(); renderWS(); translateTree(document.body); });
+  $('#langBtn').addEventListener('click', () => { setLang(getLang() === 'en' ? 'zh' : 'en'); markNav(); renderPane(); redrawStatic(); renderWS(); translateTree(document.body); });
   applyI18n(); watchI18n();
   $('#themeBtn').addEventListener('click', () => {
     const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
