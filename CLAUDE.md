@@ -23,6 +23,9 @@ npm test          # 氣動核心回歸測試(Node 內建 test runner,無需安�
 npm run build     # 串接 src/ → dist/wind-turbine-designer.html
 npm run serve     # build 後用 http-server 在 :5173 開啟
 npm run test:e2e  # 瀏覽器煙霧測試 + MPPT 控制回歸(需先 npm i -D playwright && npx playwright install chromium)
+npm run lab:eval -- designs/<id>/design.json   # 葉片設計實驗:Node 評估(--all 重算全部)
+npm run lab:ui -- designs/<id>                 # 葉片設計實驗:載入 dist 驗證 + 報告 + 截圖
+npm run lab:board                              # 重建 designs/LEADERBOARD.md
 ```
 
 離線跑 e2e:`CHROME_PATH=... THREE_LOCAL=path/to/three.min.js npm run test:e2e`(three.js 預設從 cdnjs 載入)。
@@ -124,3 +127,5 @@ rebuild(geo): designHAWT()/designVAWT() → computePerf() → autoMatchGen() →
 見 `docs/ROADMAP.md`(依效益排序)。互動工作階段中,開始新功能前先向使用者確認優先順序。
 
 **自動開發排程**:使用者已設定每 6 小時自動推進一次 ROADMAP,並明確確認授權自動 commit / push / 建立 PR / 合併到 `main`(不需人工審查)。排程執行時依 `docs/AUTOPILOT.md` 的規則進行(依 ROADMAP 順序、不需再詢問),進度記在 `docs/AUTOPILOT_LOG.md`。
+
+**葉片設計實驗排程**:使用者 2026-10-27 另設每 12 小時一次的排程,每次設計一個新葉片並用本工具驗證,結果放 `designs/`(排行榜 `designs/LEADERBOARD.md`)。規則與排程提示詞見 `docs/BLADE_LAB.md`;該排程不改 `src/`。

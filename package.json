@@ -9,7 +9,10 @@
     "test": "node --test tests/*.test.mjs",
     "check": "node scripts/check.mjs",
     "serve": "npm run build && npx --yes http-server dist -p 5173 -c-1",
-    "test:e2e": "node tests/e2e.smoke.mjs"
+    "test:e2e": "node tests/e2e.smoke.mjs",
+    "lab:eval": "node lab/evaluate.mjs",
+    "lab:ui": "node lab/verify-ui.mjs",
+    "lab:board": "node lab/leaderboard.mjs"
   },
   "engines": {
     "node": ">=18"
