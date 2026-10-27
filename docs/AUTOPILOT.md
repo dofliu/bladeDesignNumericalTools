@@ -26,6 +26,7 @@
    ```
    - 另外用 Playwright 截圖桌面 1440×900 與手機 390×844 各至少一張受影響的畫面,自己看過確認沒有破版。
    - `dist/wind-turbine-designer.html` 必須是本次原始碼重新建置的結果,一起 commit。
+   - `tests/lab.test.mjs` 會檢查 `designs/` 的葉片設計實驗結果仍與模型一致;合理的模型改動讓它失敗時,在同一個 PR 跑 `npm run lab:eval -- --all && npm run lab:board` 並在 PR 說明(見 `docs/BLADE_LAB.md`「給 Autopilot 的備註」)。
 6. **提交與合併**
    - commit 訊息、PR 標題與內文一律繁體中文。PR 標題格式:`[autopilot] <ROADMAP 項次>:<這次做了什麼>`。
    - PR 內文包含:做了什麼、為什麼、驗證結果(貼上測試輸出摘要)、已知限制、下一步。
