@@ -127,9 +127,7 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
     }
     await page.click('#pane .fcard[data-fam="HAWT"]'); await page.waitForTimeout(800);
     await page.screenshot({ path: join(out, 'desktop-flow.png') });
-    await page.click('#layoutBtn');
-    check(await page.evaluate(() => getComputedStyle(document.querySelector('.wsnav')).display !== 'none' && localStorage.getItem('wt-layout') === 'classic'), 'desktop: 可切回經典版面並記住選擇');
-    await page.click('#layoutBtn');
+    check(await page.evaluate(() => !document.querySelector('#layoutBtn') && !document.querySelector('.wsnav')), 'desktop: 經典版面已移除(無切換鈕與舊工作區導覽)');
   }
   { // 研究模式(三維線葉片):內建範例 λ6 部分 CQ 與 fixture 一致;指定 a 後缺值不補 0;比較組可加入
     await page.click(mobile ? '[data-mnav="research"]' : '.flownav [data-flow="research"]'); await page.waitForTimeout(1500);
