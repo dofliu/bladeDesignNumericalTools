@@ -1,0 +1,10 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261029-vawt-savonius-b3",
+ "name": "三葉 Savonius 阻力型垂直軸(重疊比 0.25、端板)",
+ "date": "2026-10-29",
+ "mode": "VAWT",
+ "hypothesis": "改用 Savonius 阻力型(3 葉、重疊比 0.25、加端板、R 0.7 m、H 2 m)。預期靜止即可自行啟動(起轉風速明顯低於所有升力型設計,< 2 m/s)且雜訊極低、結構簡單;代價是 Cp,max 僅約 0.2 級,年發電量與 LCOE 遠劣於水平軸基準。此為經驗曲線,可信度低,只作相對趨勢參考。",
+ "cfg": { "vawt": { "type": "sav", "B": 3, "overlap": 0.25, "endPlates": true, "R": 0.7, "H": 2.0 } },
+ "wind": { "Vavg": 5.5, "k": 2 }
+}
