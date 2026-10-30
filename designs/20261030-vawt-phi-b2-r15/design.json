@@ -1,0 +1,10 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261030-vawt-phi-b2-r15",
+ "name": "兩葉 Φ 型垂直軸放大(R 1.5 m、開啟流線彎曲與動態失速)",
+ "date": "2026-10-30",
+ "mode": "VAWT",
+ "hypothesis": "上一個三葉 Φ 型(R 1 m)Cp,max 高但掃掠面積小使年發電量少 24%。把半徑放大到 1.5 m、改兩葉(弦長 0.12 m、NACA 0015),並同時開啟 curvature 與 dynStall 較保守的假設,預期掃掠面積 4.0 m² 與基準相當,年發電量不低於 H 型基準,質量仍明顯較輕;代價是 Cp,max 因保守假設與兩葉稀實度而下降,起轉風速仍高、需輔助起轉。",
+ "cfg": { "vawt": { "type": "phi", "B": 2, "R": 1.5, "c": 0.12, "curvature": true, "dynStall": true }, "vaf": "n4:0015" },
+ "wind": { "Vavg": 5.5, "k": 2 }
+}
