@@ -1,0 +1,10 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261101-hawt-b3-linear",
+ "name": "三葉易製造線性化葉片(線性弦長與線性扭角、木材)",
+ "date": "2026-11-01",
+ "mode": "HAWT",
+ "hypothesis": "預設三葉 λd 7 改用線性化弦長(直線邊緣)搭配線性扭角(根 18° → 尖 2°)與木材,預期葉片可用平板加工、質量與 LCOE 下降;Cp,max 損失應小於 5%(BEM 最佳扭角與線性差約 6% 見 CLAUDE.md 比較),代價是起轉扭矩與結構強度(木材)可能變差。",
+ "cfg": { "hawt": { "linearize": true, "twMode": "linear", "twRoot": 18, "twTip": 2, "material": "wood" } },
+ "wind": { "Vavg": 5.5, "k": 2 }
+}
