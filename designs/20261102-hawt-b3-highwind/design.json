@@ -1,0 +1,10 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261102-hawt-b3-highwind",
+ "name": "三葉高風速場址轉子(Vd 11 m/s、λd 8、弦長上限 0.10 m、CFRP)",
+ "date": "2026-11-02",
+ "mode": "HAWT",
+ "hypothesis": "為年平均風速 7.5 m/s(k 2)的高風速場址,把設計風速由 8 提高到 11 m/s、λd 提高到 8、弦長上限降到 0.10 m 並改用 CFRP:細長葉片在高風速下仍可維持 Cp,max 損失小於 2%,質量預期減少 35% 以上、LCOE 下降;代價是起轉風速大幅升高(預期 > 6 m/s)、無法在低風速自啟動,且極端工況結構裕度下降。",
+ "cfg": { "hawt": { "Vd": 11, "tsr": 8, "maxChord": 0.1, "material": "cfrp" } },
+ "wind": { "Vavg": 7.5, "k": 2 }
+}
