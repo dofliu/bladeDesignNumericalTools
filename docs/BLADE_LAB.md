@@ -7,7 +7,7 @@
 | | Blade Lab(本文件)| Autopilot |
 |---|---|---|
 | 做什麼 | 設計新葉片、驗證、記錄結果 | 改程式、推進 ROADMAP |
-| 可以改的檔案 | `designs/` 底下新增一個資料夾、`designs/LEADERBOARD.md`、本文件最下方的「實驗日誌」| `src/`、`tests/`、`docs/` 等 |
+| 可以改的檔案 | `designs/` 底下新增一個資料夾、`npm run lab:board` 產生的 `designs/LEADERBOARD.md` `designs/CANDIDATES.md` `designs/stats.csv` `designs/progress.svg`、`designs/candidates.json`(手動候選)、本文件最下方的「實驗日誌」| `src/`、`tests/`、`docs/` 等 |
 | PR 標題 | `[blade-lab] <設計名稱>:<一句話結論>` | `[autopilot] ...` |
 
 ## 每次執行的流程
@@ -16,7 +16,8 @@
    - `git fetch origin && git checkout main && git pull`,從最新的 `main` 開始。
    - 讀 `CLAUDE.md`、本文件、`designs/LEADERBOARD.md`,以及最近 3 個設計的 `README.md`(特別是「下一次可以試」)。
    - 若有開著的 `[blade-lab]` PR:先把它處理完(驗證 → 合併,或說明後關閉),本次不再開新設計。
-2. **提出一個新設計**
+   - 讀 `designs/CANDIDATES.md` 最上方的「下一次執行」:寫「**深入研究**」→ 本次照下方「深入研究」一節做(不做第 2 步的新方向);寫「探索新方向」→ 照第 2 步。
+2. **提出一個新設計(探索)**
    - 必須和排行榜上既有設計**有實質差異**(不是只把某個數值微調 5%)。寫下一個可以被驗證或推翻的**假設**:想改善什麼指標、為什麼這樣改會有效、預期代價是什麼。
    - 輪流探索不同方向,不要連續三次都在同一個家族或同一個參數上打轉。可探索的設計空間(都是本工具已支援、`design.json` 可以表達的):
      - 水平軸:葉片數 `B`、設計尖速比 `tsr`、設計風速 `Vd`、半徑 `R` / 輪轂 `Rhub`、最大弦長 `maxChord`、弦長/扭轉倍率、扭角方式 `twMode`(`bem`/`schmitz`/`linear` + `twRoot`/`twTip`)、線性化 `linearize`、材料 `material`(`gfrp`/`wood`/`alu`/`pla`/`cfrp`)、槳距 `pitch`
@@ -40,6 +41,7 @@
    ```
 
    `cfg` 只寫與預設不同的欄位(預設值見 `src/core.mjs` 的 `S`);`id` 必須等於資料夾名稱。
+   選填欄位:`"track": "explore"`(預設)或 `"deepen"`;深入研究設計必須另寫 `"parent": "<被深入的設計 id>"`(同模式,`tests/lab.test.mjs` 會檢查)。
 4. **驗證**(全部都要跑,全部通過才可以合併)
 
    ```bash
@@ -47,7 +49,7 @@
    npm run lab:eval -- designs/<id>/design.json   # Node:設計核心 → metrics.json
    npm run build
    THREE_LOCAL=<three.min.js> npm run lab:ui -- designs/<id>   # 瀏覽器:載入 dist → 比對、報告、截圖
-   npm run lab:board                        # 重建 designs/LEADERBOARD.md
+   npm run lab:board                        # 重建排行榜、候選清單、stats.csv、progress.svg
    npm run check && npm test                # tests/lab.test.mjs 會檢查所有設計檔
    ```
 
@@ -62,7 +64,27 @@
    - 建立 PR 前與合併前都 `git fetch origin main`,並列出開著的 `[blade-lab]` PR;若別的執行已經在做同樣的設計,關閉自己的 PR 並說明。
    - PR 內文:假設、主要數據(與基準比較)、驗證輸出摘要、結論、限制、下一次可以試。
    - 驗證全數通過 → squash merge。失敗且修不好 → 不合併、PR 保持開啟並說明。合併被權限擋 → PR 內文註明「等待手動合併」。合併後不要刪除遠端分支。
-8. **通知**:用 PushNotification 送一則摘要(設計名稱、一句話結論、關鍵數字、PR 連結)。
+8. **通知**:用 PushNotification 送一則摘要(設計名稱、探索或深入、一句話結論、關鍵數字、候選清單有無變動、PR 連結)。
+
+## 累積統計與候選(`npm run lab:board` 自動產生)
+
+- `designs/LEADERBOARD.md`:水平軸、垂直軸分表。每個設計都另算**標準場址**(Weibull 5.5 m/s、k 2)的年發電量與 LCOE,為其他場址設計的方案也能直接比較;原場址數字另列一欄。
+- **柏拉圖前緣**:同模式、結構可行的設計中,在「標準場址 LCOE(低)、標準場址年發電量(高)、起轉風速(低)」三項上沒有被別的設計全面勝過者。**綜合分數** 0–100 為這三項在同模式可行設計中的正規化平均。
+- **標記**:`結構不可行`(最小安全係數 < 1.5 或極端 < 1,不列入排名與候選)、`需輔助起轉`(3–5 m/s 都無法自啟動)、`可信度中低`(模型偏樂觀區)、`場址 x m/s`(非標準風況設計)。
+- `designs/CANDIDATES.md`:深入研究候選 = 前緣且綜合分數為同模式前 3 名,加上 `designs/candidates.json` 的 `pin`、減去 `drop`(每筆寫 `{ "id", "reason" }`)。排序:已深入輪數(以 `parent` 指向它的設計數)最少者優先,同輪數取綜合分數高者。檔案最上方寫明下一次該探索還是深入,以及建議深入哪個設計。
+- `designs/stats.csv`(含 BOM,可直接用 Excel 開)每列一個設計、所有指標;`designs/progress.svg` 是標準場址 LCOE 隨實驗累積的趨勢圖(含各模式至今最佳)。
+- 這些都是**模型預測的相對比較**,候選只代表「在本工具模型中值得再挖」,不代表實際最佳。
+
+## 深入研究(每 3 次執行有 1 次)
+
+連續 2 次探索後,`CANDIDATES.md` 會指示下一次深入研究。深入研究的做法:
+
+1. 取 `CANDIDATES.md` 建議的設計當 parent(若它的 README 已說明無法再改善,可改取清單下一個,並在 README 寫原因)。
+2. 讀 parent 的 README(特別是「下一次可以試」),選 1–2 個最可能改善的參數,用 `lab/evaluate.mjs` 的 `evaluate()` / `standardSite()` 在 Node 做**參數掃描**:至少 6 個變體,記下每個變體的 Cp,max、標準場址年發電量與 LCOE、起轉風速、質量(水平軸再加最小安全係數)。
+3. 挑一個最好的變體(或最能回答問題的變體)正式建立 `designs/<id>/design.json`,寫 `"track": "deepen"`、`"parent": "<parent id>"`,其餘流程(驗證、截圖、README、3D 模型)與探索相同。
+4. README 另加兩段:**參數掃描表**(所有變體)與**相對 parent 的改善**(三項目標的變化)。沒有任何變體優於 parent 也照樣記錄(負面結果),並建議下一步。
+5. 若同一個候選連續 2 輪深入都沒有改善,把它加入 `designs/candidates.json` 的 `drop`(reason 寫「已收斂:……」),讓下一次換別的候選。
+6. PR 標題照舊 `[blade-lab] <設計名稱>:<一句話結論>`,內文註明「深入研究 ← parent」。
 
 ## 誠實與限制
 
@@ -89,7 +111,7 @@
 步驟:
 1. 若容器裡沒有這個 repo,先用 add_repo(owner="dofliu", repo="bladeDesignNumericalTools", access="push") 加入並 clone。然後 git fetch origin && git checkout main && git pull。
 2. 完整閱讀 CLAUDE.md 與 docs/BLADE_LAB.md,嚴格照 docs/BLADE_LAB.md 執行(包括「先處理未完成的 [blade-lab] PR」「與既有設計有實質差異」「絕對不能做」:不可修改 src/ 與測試)。
-3. 讀 designs/LEADERBOARD.md 與最近幾個設計的 README,提出一個新設計與可驗證的假設,建立 designs/<id>/design.json。
+3. 讀 designs/LEADERBOARD.md、designs/CANDIDATES.md 與最近幾個設計的 README。CANDIDATES.md 指示「深入研究」時,照 docs/BLADE_LAB.md「深入研究」一節對建議的候選做參數掃描並記錄(design.json 寫 track: deepen 與 parent);否則提出一個新方向的設計與可驗證的假設。建立 designs/<id>/design.json。
 4. 驗證:npm run lab:eval、npm run build、npm run lab:ui(THREE_LOCAL 與 playwright 做法見 docs/AUTOPILOT.md「環境備忘」)、npm run lab:board、npm run check && npm test。自己打開截圖確認。
 5. 寫 designs/<id>/README.md 與 docs/BLADE_LAB.md 的實驗日誌,用工作階段指定的開發分支(沒有就建 claude/blade-lab-YYYYMMDD-HHMM)commit、push,用 GitHub MCP 工具建立標題為「[blade-lab] <設計名稱>:<一句話結論>」的 PR。
 6. 驗證全數通過 → squash merge 到 main。沒通過且修不好 → 不合併,PR 保持開啟並說明。合併被權限擋 → PR 內文註明「等待手動合併」。
@@ -102,6 +124,7 @@
 
 最新的放最上面。
 
+- 2026-11-04 — (規則更新)加入累積統計:標準場址重算、分模式排名、柏拉圖前緣與綜合分數、`CANDIDATES.md` 候選清單、`stats.csv`、`progress.svg`,以及每 3 次執行 1 次的深入研究軌道。下一次執行為深入研究,建議 `20261103-hawt-b3-lowwind-cap`。
 - 2026-11-04 — 三葉沙漏形自訂外形垂直軸(free 家族,兩端 1.0R、腰部 0.75R,與桶形僅外形不同):大致不成立,Cp,max 0.341(桶形 0.350)、年發電量 1814 kWh(−3.9% 對基準、−7.9% 對桶形)、起轉風速 2.84 m/s 與桶形無差別、仍無法自啟動;外形影響遠小於掃掠面積。附 3D 模型(STL)與實際以 bpy 產生的 .blend。
 - 2026-11-03 — 三葉低風速場址中型轉子加限額發電機(R 1.9 m、λd 5.5、額定 1.5 kW,Vavg 4 m/s):部分成立,LCOE 3.35(−50.5%)、容量因數 21.9%、起轉風速 1.4 m/s、年發電量 +48.7%(低於預期 +60%)、質量 21.5 kg。附 3D 模型(STL)與實際以 bpy 產生的 .blend。
 - 2026-11-03 — 三葉桶形自訂外形垂直軸(free 家族,兩端收 25%、NACA 0015、動態失速+流線彎曲):部分成立,同掃掠面積下 Cp,max 0.350(+4.8%)、年發電量 +4.4%、質量 −54%、LCOE −8.1%,但起轉風速 2.70 → 2.85 m/s、仍無法自啟動;非單變量比較。附 3D 模型(STL)與實際以 bpy 產生的 .blend。

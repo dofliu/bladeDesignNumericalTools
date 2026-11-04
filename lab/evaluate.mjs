@@ -75,6 +75,16 @@ export function metrics() {
 
 export function evaluate(d) { applyDesign(d); return metrics(); }
 
+// Standard site (Weibull 5.5 m/s, k 2): AEP and LCOE only, no time-domain simulation (fast, ~0.1 s per design).
+// Lets designs made for other sites be compared on equal terms; explicit cfg.load settings (e.g. Pmax) still win.
+export const STD_WIND = { Vavg: 5.5, k: 2 };
+export function standardSite(d) {
+  applyDesign({ ...d, wind: STD_WIND });
+  const rated = S.load.Pmax, mat = S.mode === 'HAWT' ? S.hawt.material : S.vawt.material;
+  const aep = idealAEP({ A: G.A, cpMax: G.cpMax }, rated);
+  return { aepKWh: aep, lcoe: costEstimate(G.mass, mat, rated, G.A, aep).lcoe, cf: aep / (rated * 8.76), ratedW: rated };
+}
+
 function evaluateFile(file) {
   const d = JSON.parse(readFileSync(file, 'utf8'));
   if (d.schema !== 'blade-lab-v1') throw new Error(`${file}:schema 必須是 blade-lab-v1`);
