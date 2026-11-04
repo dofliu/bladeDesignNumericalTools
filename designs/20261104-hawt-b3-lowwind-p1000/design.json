@@ -1,0 +1,12 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261104-hawt-b3-lowwind-p1000",
+ "name": "三葉低風速場址轉子限額 1.0 kW(深入研究:掃描發電機額定,R 1.9 m、λd 5.5,Vavg 4 m/s)",
+ "date": "2026-11-04",
+ "mode": "HAWT",
+ "track": "deepen",
+ "parent": "20261103-hawt-b3-lowwind-cap",
+ "hypothesis": "parent 的發電機額定 1.5 kW 不一定是 LCOE 最低點。掃描 Pmax 與半徑後預期:在 Vavg 4 m/s 場址,額定降到約 1.0 kW 可讓自身場址 LCOE 再降約 8%,代價是年發電量約 −10%;但在標準場址(5.5 m/s)LCOE 會變差,因為最佳額定隨風速上移。",
+ "cfg": { "hawt": { "R": 1.9, "Rhub": 0.15, "B": 3, "tsr": 5.5, "Vd": 4.5, "maxChord": 0.18, "material": "gfrp" }, "load": { "Pmax": 1000 } },
+ "wind": { "Vavg": 4, "k": 2 }
+}
