@@ -1,0 +1,12 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261105-hawt-b4-lowwind-p1500",
+ "name": "四葉低風速場址大轉子限額 1.5 kW(深入研究:掃描 Pmax、λd、弦長上限,R 2.2 m,Vavg 4 m/s)",
+ "date": "2026-11-05",
+ "mode": "HAWT",
+ "track": "deepen",
+ "parent": "20261102-hawt-b4-lowwind",
+ "hypothesis": "parent 的自動匹配發電機額定 7.3 kW 遠大於低風速場址能用到的功率(容量因數 6.8%),LCOE 因此偏高。把額定限制在 1.5 kW 並同時把 λd 降到 5.5、弦長上限降到 0.15 m(減質量),預期自身場址 LCOE 降低 50% 以上、標準場址 LCOE 也低於 parent 的 2.86,代價是年發電量下降約 15–20%、起轉風速略升但仍低於 2 m/s。",
+ "cfg": { "hawt": { "R": 2.2, "Rhub": 0.2, "B": 4, "tsr": 5.5, "Vd": 4.5, "maxChord": 0.15, "material": "gfrp" }, "load": { "Pmax": 1500 } },
+ "wind": { "Vavg": 4, "k": 2 }
+}
