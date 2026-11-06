@@ -18,44 +18,45 @@
 <text x="48" y="66" text-anchor="end" fill="#52514e">4.0</text>
 <text transform="translate(16 189) rotate(-90)" text-anchor="middle" fill="#52514e">NT$/kWh</text>
 <text x="56" y="334" text-anchor="middle" fill="#52514e">10-27</text>
-<text x="222.2" y="334" text-anchor="middle" fill="#52514e">10-30</text>
-<text x="277.6" y="334" text-anchor="middle" fill="#52514e">10-31</text>
-<text x="333" y="334" text-anchor="middle" fill="#52514e">11-01</text>
-<text x="388.4" y="334" text-anchor="middle" fill="#52514e">11-02</text>
-<text x="443.79999999999995" y="334" text-anchor="middle" fill="#52514e">11-03</text>
-<text x="499.20000000000005" y="334" text-anchor="middle" fill="#52514e">11-04</text>
-<text x="554.6" y="334" text-anchor="middle" fill="#52514e">11-05</text>
-<text x="610" y="334" text-anchor="middle" fill="#52514e">11-06</text>
+<text x="214.28571428571428" y="334" text-anchor="middle" fill="#52514e">10-30</text>
+<text x="267.04761904761904" y="334" text-anchor="middle" fill="#52514e">10-31</text>
+<text x="319.8095238095238" y="334" text-anchor="middle" fill="#52514e">11-01</text>
+<text x="372.57142857142856" y="334" text-anchor="middle" fill="#52514e">11-02</text>
+<text x="425.3333333333333" y="334" text-anchor="middle" fill="#52514e">11-03</text>
+<text x="478.0952380952381" y="334" text-anchor="middle" fill="#52514e">11-04</text>
+<text x="530.8571428571429" y="334" text-anchor="middle" fill="#52514e">11-05</text>
+<text x="583.6190476190476" y="334" text-anchor="middle" fill="#52514e">11-06</text>
 <text x="333" y="352" text-anchor="middle" fill="#52514e">設計日期(依序)</text>
-<path d="M56.0 167.8H83.7V167.8H111.4V167.8H139.1V167.8H166.8V167.8H194.5V167.8H222.2V167.8H249.9V167.8H277.6V167.8H305.3V167.8H333.0V168.3H360.7V168.3H388.4V168.3H416.1V168.3H443.8V249.7H471.5V249.7H499.2V249.7H526.9V249.7H554.6V249.7H582.3V250.6H610.0V250.6" fill="none" stroke="#2a78d6" stroke-width="2" opacity="0.55"/>
+<path d="M56.0 167.8H82.4V167.8H108.8V167.8H135.1V167.8H161.5V167.8H187.9V167.8H214.3V167.8H240.7V167.8H267.0V167.8H293.4V167.8H319.8V168.3H346.2V168.3H372.6V168.3H399.0V168.3H425.3V249.7H451.7V249.7H478.1V249.7H504.5V249.7H530.9V249.7H557.2V250.6H583.6V250.6H610.0V250.6" fill="none" stroke="#2a78d6" stroke-width="2" opacity="0.55"/>
 <text x="620" y="254.62583412756774" fill="#0b0b0b">水平軸最佳 1.77</text>
-<path d="M111.4 146.9H139.1V146.9H166.8V146.9H194.5V146.9H222.2V146.9H249.9V146.9H277.6V146.9H305.3V146.9H333.0V146.9H360.7V146.9H388.4V146.9H416.1V146.9H443.8V146.9H471.5V150.4H499.2V150.4H526.9V150.4H554.6V150.4H582.3V150.4H610.0V150.4" fill="none" stroke="#eb6834" stroke-width="2" opacity="0.55"/>
+<path d="M108.8 146.9H135.1V146.9H161.5V146.9H187.9V146.9H214.3V146.9H240.7V146.9H267.0V146.9H293.4V146.9H319.8V146.9H346.2V146.9H372.6V146.9H399.0V146.9H425.3V146.9H451.7V150.4H478.1V150.4H504.5V150.4H530.9V150.4H557.2V150.4H583.6V150.4H610.0V150.4" fill="none" stroke="#eb6834" stroke-width="2" opacity="0.55"/>
 <text x="620" y="154.35130585854748" fill="#0b0b0b">垂直軸最佳 2.96</text>
 <circle cx="56" cy="167.84767485185205" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>基準:預設三葉水平軸:標準場址 LCOE 2.75、年發電量 4758 kWh、起轉風速 3.7 m/s(基準)</title></circle>
-<circle cx="83.7" cy="164.45894050794422" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>四葉低尖速比(λd 5.5):標準場址 LCOE 2.79、年發電量 4845 kWh、起轉風速 2.7 m/s</title></circle>
-<circle cx="111.4" cy="146.91778476321434" r="9" fill="none" stroke="#eb6834" stroke-width="1.5"/>
-<rect x="106.4" y="141.91778476321434" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>四葉細長螺旋型垂直軸(弦長 0.10 m):標準場址 LCOE 3.00、年發電量 2060 kWh、起轉風速 2.8 m/s(需輔助起轉)</title></rect>
-<circle cx="139.1" cy="172.03893208297626" r="5" fill="#fcfcfb" stroke="#2a78d6" stroke-width="2"><title>五葉圓弧板低風速轉子(λd 4.5、木材):標準場址 LCOE 2.70、年發電量 4915 kWh、起轉風速 2.1 m/s(結構不可行)</title></circle>
-<circle cx="166.8" cy="153.14145819779884" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>五葉低風速轉子(λd 4.5、CFRP、根部加厚):標準場址 LCOE 2.92、年發電量 4906 kWh、起轉風速 2.2 m/s</title></circle>
-<rect x="189.5" y="57" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉 Savonius 阻力型垂直軸(重疊比 0.25、端板):標準場址 LCOE 6.35、年發電量 626 kWh、起轉風速 0.7 m/s(可信度中低)</title></rect>
-<text x="203.5" y="74" fill="#52514e">↑ 6.35</text>
-<rect x="217.2" y="139.6224082458513" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>兩葉 Φ 型垂直軸放大(R 1.5 m、開啟流線彎曲與動態失速):標準場址 LCOE 3.02、年發電量 1941 kWh、起轉風速 2.8 m/s(需輔助起轉)</title></rect>
-<rect x="244.89999999999998" y="136.35355332740951" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉 Φ 型(打蛋器)垂直軸(弦長 0.12 m、NACA 0015):標準場址 LCOE 3.06、年發電量 1431 kWh、起轉風速 2.5 m/s(需輔助起轉)</title></rect>
-<circle cx="277.6" cy="161.95733228503062" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>兩葉高尖速比水平軸(λd 9、薄翼型、CFRP):標準場址 LCOE 2.82、年發電量 4684 kWh、起轉風速 5.6 m/s(需輔助起轉)</title></circle>
-<rect x="300.3" y="127.80884360374449" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉 V 型垂直軸(頂端 R 2 m、弦長 0.12 m、NACA 0018):標準場址 LCOE 3.16、年發電量 1882 kWh、起轉風速 2.7 m/s(需輔助起轉、可信度中低)</title></rect>
-<circle cx="333" cy="168.26996972083688" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉易製造線性化葉片(線性弦長與線性扭角、木材):標準場址 LCOE 2.74、年發電量 4484 kWh、起轉風速 2.9 m/s</title></circle>
-<rect x="355.70000000000005" y="114.41805753924939" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉 V 型垂直軸(弦長 0.12 m、NACA 0018):標準場址 LCOE 3.32、年發電量 866 kWh、起轉風速 2.4 m/s(需輔助起轉、可信度中低)</title></rect>
-<circle cx="388.4" cy="162.4111090778277" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉高風速場址轉子(Vd 11 m/s、λd 8、弦長上限 0.10 m、CFRP):標準場址 LCOE 2.81、年發電量 4727 kWh、起轉風速 6.5 m/s(需輔助起轉、場址 7.5 m/s)</title></circle>
-<circle cx="416.1" cy="158.6657718726198" r="9" fill="none" stroke="#2a78d6" stroke-width="1.5"/>
-<circle cx="416.1" cy="158.6657718726198" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>四葉低風速場址大轉子(R 2.2 m、Vd 4.5 m/s、λd 5、GFRP,Vavg 4 m/s):標準場址 LCOE 2.86、年發電量 10758 kWh、起轉風速 1.3 m/s(場址 4 m/s)</title></circle>
-<circle cx="443.79999999999995" cy="249.7081363761482" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉低風速場址中型轉子加限額發電機(R 1.9 m、Vd 4.5 m/s、λd 5.5、額定 1.5 kW,Vavg 4 m/s):標準場址 LCOE 1.78、年發電量 5406 kWh、起轉風速 1.4 m/s(場址 4 m/s)</title></circle>
-<circle cx="471.5" cy="150.35130585854748" r="9" fill="none" stroke="#eb6834" stroke-width="1.5"/>
-<rect x="466.5" y="145.35130585854748" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉桶形自訂外形垂直軸(r(z) 兩端收 25%、NACA 0015、開啟動態失速與流線彎曲):標準場址 LCOE 2.96、年發電量 1969 kWh、起轉風速 2.9 m/s(需輔助起轉、可信度中低)</title></rect>
-<circle cx="499.20000000000005" cy="245.95677254088156" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉低風速場址轉子限額 1.0 kW(深入研究:掃描發電機額定,R 1.9 m、λd 5.5,Vavg 4 m/s):標準場址 LCOE 1.83、年發電量 4372 kWh、起轉風速 1.4 m/s(場址 4 m/s)</title></circle>
-<rect x="521.9" y="142.65789536446965" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉沙漏形自訂外形垂直軸(r(z) 兩端 1.0R、腰部 0.75R、NACA 0015):標準場址 LCOE 2.99、年發電量 1814 kWh、起轉風速 2.8 m/s(需輔助起轉、可信度中低)</title></rect>
-<circle cx="554.6" cy="166.92614019552278" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉五站翼型加 Schmitz 解析扭角(λd 6.5,根部 5 位數厚翼型到葉尖 6409):標準場址 LCOE 2.76、年發電量 4748 kWh、起轉風速 3.3 m/s</title></circle>
-<circle cx="582.3" cy="250.62583412756774" r="9" fill="none" stroke="#2a78d6" stroke-width="1.5"/>
-<circle cx="582.3" cy="250.62583412756774" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>四葉低風速場址大轉子限額 1.5 kW(深入研究:掃描 Pmax、λd、弦長上限,R 2.2 m,Vavg 4 m/s):標準場址 LCOE 1.77、年發電量 6279 kWh、起轉風速 1.4 m/s(場址 4 m/s)</title></circle>
+<circle cx="82.38095238095238" cy="164.45894050794422" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>四葉低尖速比(λd 5.5):標準場址 LCOE 2.79、年發電量 4845 kWh、起轉風速 2.7 m/s</title></circle>
+<circle cx="108.76190476190476" cy="146.91778476321434" r="9" fill="none" stroke="#eb6834" stroke-width="1.5"/>
+<rect x="103.76190476190476" y="141.91778476321434" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>四葉細長螺旋型垂直軸(弦長 0.10 m):標準場址 LCOE 3.00、年發電量 2060 kWh、起轉風速 2.8 m/s(需輔助起轉)</title></rect>
+<circle cx="135.14285714285714" cy="172.03893208297626" r="5" fill="#fcfcfb" stroke="#2a78d6" stroke-width="2"><title>五葉圓弧板低風速轉子(λd 4.5、木材):標準場址 LCOE 2.70、年發電量 4915 kWh、起轉風速 2.1 m/s(結構不可行)</title></circle>
+<circle cx="161.52380952380952" cy="153.14145819779884" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>五葉低風速轉子(λd 4.5、CFRP、根部加厚):標準場址 LCOE 2.92、年發電量 4906 kWh、起轉風速 2.2 m/s</title></circle>
+<rect x="182.9047619047619" y="57" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉 Savonius 阻力型垂直軸(重疊比 0.25、端板):標準場址 LCOE 6.35、年發電量 626 kWh、起轉風速 0.7 m/s(可信度中低)</title></rect>
+<text x="196.9047619047619" y="74" fill="#52514e">↑ 6.35</text>
+<rect x="209.28571428571428" y="139.6224082458513" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>兩葉 Φ 型垂直軸放大(R 1.5 m、開啟流線彎曲與動態失速):標準場址 LCOE 3.02、年發電量 1941 kWh、起轉風速 2.8 m/s(需輔助起轉)</title></rect>
+<rect x="235.66666666666666" y="136.35355332740951" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉 Φ 型(打蛋器)垂直軸(弦長 0.12 m、NACA 0015):標準場址 LCOE 3.06、年發電量 1431 kWh、起轉風速 2.5 m/s(需輔助起轉)</title></rect>
+<circle cx="267.04761904761904" cy="161.95733228503062" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>兩葉高尖速比水平軸(λd 9、薄翼型、CFRP):標準場址 LCOE 2.82、年發電量 4684 kWh、起轉風速 5.6 m/s(需輔助起轉)</title></circle>
+<rect x="288.42857142857144" y="127.80884360374449" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉 V 型垂直軸(頂端 R 2 m、弦長 0.12 m、NACA 0018):標準場址 LCOE 3.16、年發電量 1882 kWh、起轉風速 2.7 m/s(需輔助起轉、可信度中低)</title></rect>
+<circle cx="319.8095238095238" cy="168.26996972083688" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉易製造線性化葉片(線性弦長與線性扭角、木材):標準場址 LCOE 2.74、年發電量 4484 kWh、起轉風速 2.9 m/s</title></circle>
+<rect x="341.1904761904762" y="114.41805753924939" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉 V 型垂直軸(弦長 0.12 m、NACA 0018):標準場址 LCOE 3.32、年發電量 866 kWh、起轉風速 2.4 m/s(需輔助起轉、可信度中低)</title></rect>
+<circle cx="372.57142857142856" cy="162.4111090778277" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉高風速場址轉子(Vd 11 m/s、λd 8、弦長上限 0.10 m、CFRP):標準場址 LCOE 2.81、年發電量 4727 kWh、起轉風速 6.5 m/s(需輔助起轉、場址 7.5 m/s)</title></circle>
+<circle cx="398.95238095238096" cy="158.6657718726198" r="9" fill="none" stroke="#2a78d6" stroke-width="1.5"/>
+<circle cx="398.95238095238096" cy="158.6657718726198" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>四葉低風速場址大轉子(R 2.2 m、Vd 4.5 m/s、λd 5、GFRP,Vavg 4 m/s):標準場址 LCOE 2.86、年發電量 10758 kWh、起轉風速 1.3 m/s(場址 4 m/s)</title></circle>
+<circle cx="425.3333333333333" cy="249.7081363761482" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉低風速場址中型轉子加限額發電機(R 1.9 m、Vd 4.5 m/s、λd 5.5、額定 1.5 kW,Vavg 4 m/s):標準場址 LCOE 1.78、年發電量 5406 kWh、起轉風速 1.4 m/s(場址 4 m/s)</title></circle>
+<circle cx="451.7142857142857" cy="150.35130585854748" r="9" fill="none" stroke="#eb6834" stroke-width="1.5"/>
+<rect x="446.7142857142857" y="145.35130585854748" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉桶形自訂外形垂直軸(r(z) 兩端收 25%、NACA 0015、開啟動態失速與流線彎曲):標準場址 LCOE 2.96、年發電量 1969 kWh、起轉風速 2.9 m/s(需輔助起轉、可信度中低)</title></rect>
+<circle cx="478.0952380952381" cy="245.95677254088156" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉低風速場址轉子限額 1.0 kW(深入研究:掃描發電機額定,R 1.9 m、λd 5.5,Vavg 4 m/s):標準場址 LCOE 1.83、年發電量 4372 kWh、起轉風速 1.4 m/s(場址 4 m/s)</title></circle>
+<rect x="499.4761904761905" y="142.65789536446965" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>三葉沙漏形自訂外形垂直軸(r(z) 兩端 1.0R、腰部 0.75R、NACA 0015):標準場址 LCOE 2.99、年發電量 1814 kWh、起轉風速 2.8 m/s(需輔助起轉、可信度中低)</title></rect>
+<circle cx="530.8571428571429" cy="166.92614019552278" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉五站翼型加 Schmitz 解析扭角(λd 6.5,根部 5 位數厚翼型到葉尖 6409):標準場址 LCOE 2.76、年發電量 4748 kWh、起轉風速 3.3 m/s</title></circle>
+<circle cx="557.2380952380952" cy="250.62583412756774" r="9" fill="none" stroke="#2a78d6" stroke-width="1.5"/>
+<circle cx="557.2380952380952" cy="250.62583412756774" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>四葉低風速場址大轉子限額 1.5 kW(深入研究:掃描 Pmax、λd、弦長上限,R 2.2 m,Vavg 4 m/s):標準場址 LCOE 1.77、年發電量 6279 kWh、起轉風速 1.4 m/s(場址 4 m/s)</title></circle>
+<circle cx="583.6190476190476" cy="167.0225648941772" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>三葉線性化木製葉片加固定負槳距 −2°:標準場址 LCOE 2.76、年發電量 4699 kWh、起轉風速 3.7 m/s</title></circle>
 <circle cx="610" cy="147.7430524251354" r="9" fill="none" stroke="#eb6834" stroke-width="1.5"/>
 <rect x="605" y="142.7430524251354" width="10" height="10" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>四葉 H 型垂直軸負槳距 −3°(弦長 0.12 m、NACA 0015):標準場址 LCOE 2.99、年發電量 2101 kWh、起轉風速 2.8 m/s(需輔助起轉)</title></rect>
 <circle cx="634" cy="272" r="5" fill="#2a78d6"/><text x="646" y="276" fill="#0b0b0b">水平軸</text>
