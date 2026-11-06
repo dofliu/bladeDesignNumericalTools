@@ -1,0 +1,10 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261106-hawt-b3-linear-pitchm2",
+ "name": "三葉線性化木製葉片加固定負槳距 −2°",
+ "date": "2026-11-06",
+ "mode": "HAWT",
+ "hypothesis": "承接 20261101 線性化木製葉片(線性弦長、扭角 18°→2°,Cp,max 損失 5.7%):線性扭角在葉尖偏大,固定槳距 −2°(葉尖攻角加大、向 BEM 最佳扭角靠近)應可補回部分 Cp,預期 Cp,max 回升 3–5%、年發電量同步上升;代價是靜止攻角變小使起轉風速上升(約 +0.5–1 m/s),且過大的負槳距(−4° 以上)反而讓外側失速、Cp 下降。快速掃描 −5° 至 +8°:−2° 最佳。",
+ "cfg": { "hawt": { "linearize": true, "twMode": "linear", "twRoot": 18, "twTip": 2, "material": "wood", "pitch": -2 } },
+ "wind": { "Vavg": 5.5, "k": 2 }
+}
