@@ -1,0 +1,12 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261107-hawt-b4-lowwind-linwood",
+ "name": "四葉低風速大轉子限額 1.5 kW 線性化木製葉片(深入研究:扭角方式、線性化、材料、槳距掃描,R 2.2 m,Vavg 4 m/s)",
+ "date": "2026-11-07",
+ "mode": "HAWT",
+ "track": "deepen",
+ "parent": "20261105-hawt-b4-lowwind-p1500",
+ "hypothesis": "parent 為 BEM 最佳扭角與弦長的 GFRP 葉片,製造複雜。改用線性化(線性弦長與扭角)並以木材製作,預期 Cp,max 下降約 2%、年發電量 −1~2%,但製造成本降低使自身場址 LCOE 低於 parent 的 3.07、標準場址低於 1.77;起轉風速仍低於 2 m/s、極端安全係數仍大於 2。",
+ "cfg": { "hawt": { "R": 2.2, "Rhub": 0.2, "B": 4, "tsr": 5.5, "Vd": 4.5, "maxChord": 0.15, "material": "wood", "linearize": true }, "load": { "Pmax": 1500 } },
+ "wind": { "Vavg": 4, "k": 2 }
+}
