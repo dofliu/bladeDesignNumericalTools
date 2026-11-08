@@ -1,0 +1,12 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261107-hawt-b4-lowwind-lin",
+ "name": "四葉低風速限額 1.5 kW 轉子改線性化葉片(深入研究:掃描扭角方式、線性化、λd、槳距,R 2.2 m,Vavg 4 m/s)",
+ "date": "2026-11-07",
+ "mode": "HAWT",
+ "track": "deepen",
+ "parent": "20261105-hawt-b4-lowwind-p1500",
+ "hypothesis": "parent 的弦長與扭角為 BEM 最佳化的曲線外形,製造較複雜。改成線性化葉片(弦長與扭角線性),並把 λd 由 5.5 升到 6 以降質量,預期 Cp,max 損失 ≤ 2.5%、標準場址年發電量損失 ≤ 1%、質量下降 ≥ 20%、標準場址 LCOE 不高於 parent 的 1.77,代價是起轉風速由 1.4 升到約 1.7 m/s、極端安全係數下降但仍 > 3。",
+ "cfg": { "hawt": { "R": 2.2, "Rhub": 0.2, "B": 4, "tsr": 6, "Vd": 4.5, "maxChord": 0.15, "material": "gfrp", "linearize": true }, "load": { "Pmax": 1500 } },
+ "wind": { "Vavg": 4, "k": 2 }
+}
