@@ -1,0 +1,11 @@
+{
+ "schema": "blade-lab-v1",
+ "id": "20261108-hawt-b4-lowwind-arcmid",
+ "name": "四葉低風速大轉子線性化木製葉片:根部 4421 + 中外段圓弧板(arc:10→arc:8,Vavg 4 m/s)",
+ "date": "2026-11-08",
+ "mode": "HAWT",
+ "hypothesis": "前一輪(20261107-hawt-b4-lowwind-linwood)建議試圓弧板。圓弧板在低 Re 的升阻比模型預測優於 NACA 4 位數,因此在木材線性化 R 2.2 m 轉子上,保留根部 4421 厚翼型承重、中段改 arc:10、外段改 arc:8,預期 Cp,max +2%、質量 −30%、標準場址 LCOE −2%、起轉風速不變(<2 m/s);但圓弧板很薄,預期極端工況安全係數下降,可能低於 1(結構不可行),這是本實驗要驗證的代價。",
+ "cfg": { "hawt": { "R": 2.2, "Rhub": 0.2, "B": 4, "tsr": 5.5, "Vd": 4.5, "maxChord": 0.15, "material": "wood", "linearize": true }, "load": { "Pmax": 1500 },
+  "st": [ { "f": 0.2, "k": "n4:4421" }, { "f": 0.6, "k": "arc:10" }, { "f": 0.95, "k": "arc:8" } ] },
+ "wind": { "Vavg": 4, "k": 2 }
+}
