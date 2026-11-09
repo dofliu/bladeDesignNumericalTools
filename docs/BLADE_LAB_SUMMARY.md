@@ -86,7 +86,7 @@
 ## 5. 尚未解決與建議的下一步
 
 - 待試(來自各 README「下一次可以試」):六葉 + GFRP 或 R 1.8 m;六葉線性化葉片;大轉子木製葉片的結構補強。
-- 排程的下一次執行依規則是**深入研究**(見 `designs/CANDIDATES.md` 最上方);候選以大轉子限額 1.5 kW 線性化木製(`20261107-hawt-b4-lowwind-linwood`)與 R 1.0 m 五葉混合翼型為主。
+- 排程的下一次執行依規則是**深入研究**(見 `designs/CANDIDATES.md` 最上方);建議深入的是大轉子限額 1.5 kW 線性化木製(`20261107-hawt-b4-lowwind-linwood`);候選清單另有同家族設計與三個垂直軸設計。R 1.0 m 五葉混合翼型(標準場址 LCOE 最低)目前不在候選內,可考慮用 `designs/candidates.json` 的 `pin` 加入。
 - 垂直軸都需輔助起轉,尚未找到能自啟動的配置;可考慮 Savonius 與 H 型的混合(本工具的 `free` 家族無法直接表達,需要新功能時先開 `[blade-lab]` issue)。
 - 3D 模型上傳到共用 Drive:缺資料夾 ID(見 §1)。
 
