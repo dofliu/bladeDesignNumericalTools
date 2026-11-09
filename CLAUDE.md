@@ -128,4 +128,4 @@ rebuild(geo): designHAWT()/designVAWT() → computePerf() → autoMatchGen() →
 
 **自動開發排程**:使用者已設定每 6 小時自動推進一次 ROADMAP,並明確確認授權自動 commit / push / 建立 PR / 合併到 `main`(不需人工審查)。排程執行時依 `docs/AUTOPILOT.md` 的規則進行(依 ROADMAP 順序、不需再詢問),進度記在 `docs/AUTOPILOT_LOG.md`。
 
-**葉片設計實驗排程**:使用者 2026-10-27 另設每 12 小時一次的排程,每次設計一個新葉片並用本工具驗證,結果放 `designs/`(排行榜 `designs/LEADERBOARD.md`、深入研究候選 `designs/CANDIDATES.md`;每 3 次執行有 1 次對候選做參數掃描的深入研究)。規則與排程提示詞見 `docs/BLADE_LAB.md`;該排程不改 `src/`。
+**葉片設計實驗排程**:使用者 2026-10-27 另設每 12 小時一次的排程,每次設計一個新葉片並用本工具驗證,結果放 `designs/`(排行榜 `designs/LEADERBOARD.md`、深入研究候選 `designs/CANDIDATES.md`;每 3 次執行有 1 次對候選做參數掃描的深入研究)。規則與排程提示詞見 `docs/BLADE_LAB.md`;該排程不改 `src/`。目前累積設計的比較表、各家族結論與交接說明見 `docs/BLADE_LAB_SUMMARY.md`(互動版 `docs/blade-lab-overview.html`)。

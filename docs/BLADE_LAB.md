@@ -2,6 +2,8 @@
 
 使用者 2026-10-27 決定另開一個每 12 小時執行一次的排程:**每次設計一個新的葉片(或轉子),並用本工具的設計核心與網頁介面驗證效能**,結果累積在 `designs/`。使用者已授權自動 commit → push → 建立 PR → 驗證通過後 squash merge 到 `main`,不需人工審查。每一次執行都要遵守本文件;要調整這個排程的行為,改這份檔案即可。
 
+累積成果的總覽與交接說明:[BLADE_LAB_SUMMARY.md](BLADE_LAB_SUMMARY.md)(可依 `designs/stats.csv` 定期更新)。
+
 這個排程與 `docs/AUTOPILOT.md`(每 6 小時推進 ROADMAP)是兩個獨立的排程。分工如下:
 
 | | Blade Lab(本文件)| Autopilot |
