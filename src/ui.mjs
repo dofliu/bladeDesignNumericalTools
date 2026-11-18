@@ -1,4 +1,5 @@
 /* ===== UI ===== */
+import { validateTwistMode } from './core.mjs';
 import { t, applyI18n, setLang, getLang, translateTree, watchI18n } from './i18n.mjs';
 export const $ = s => document.querySelector(s);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -613,6 +614,9 @@ export function saveSnap() {
   storeSnaps(); toast('已儲存為比較方案'); if (S.ctab === 'cmp') redrawStatic();
 }
 export function loadSnap(sn) {
+  const c = JSON.parse(JSON.stringify(sn.cfg));
+  try { validateTwistMode({ ...S.hawt, ...c.hawt }.twMode); }
+  catch (e) { toast('無法載入方案:' + e.message); return false; }
   const remap = {};
   for (const [k, af] of Object.entries(sn.imp || {})) {
     let j = S.af.imported.findIndex(x => x.af.name === af.name && Math.abs(x.af.t - af.t) < 1e-6);
@@ -620,7 +624,6 @@ export function loadSnap(sn) {
     remap[k] = 'imp:' + j; afCache.delete(remap[k]);
   }
   const mk = k => remap[k] || k;
-  const c = JSON.parse(JSON.stringify(sn.cfg));
   S.hawt = Object.assign(S.hawt, c.hawt); S.vawt = Object.assign(S.vawt, c.vawt);
   if (c.arch) Object.assign(S.arch, c.arch);
   if (c.stl) Object.assign(S.stl, c.stl);

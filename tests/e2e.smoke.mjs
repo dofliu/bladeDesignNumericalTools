@@ -32,6 +32,20 @@ for (const vp of [{ width: 1440, height: 900, tag: 'desktop' }, { width: 390, he
   await prep(page);
   await page.goto(url); await page.waitForTimeout(2500);
   const mobile = vp.width < 860;
+  { // Invalid stored/lab snapshots must not mutate the current design or render undefined.
+    const rejected = await page.evaluate(() => {
+      const before = JSON.stringify(S), gen = G.gen;
+      const result = loadSnap({
+        name: 'invalid twist regression', mode: 'HAWT',
+        cfg: { hawt: { twMode: 'schmitz', R: 2.2 } },
+        imp: { 'imp:0': { name: 'must not be imported', t: 0.1 } },
+      });
+      return { result, unchanged: before === JSON.stringify(S) && gen === G.gen,
+        message: document.querySelector('#toast').textContent };
+    });
+    check(rejected.result === false && rejected.unchanged, `${vp.tag}: 無效扭角方案被拒絕且保留原設計`);
+    check(/schmitz/.test(rejected.message) && /opt/.test(rejected.message), `${vp.tag}: 扭角錯誤提示列出正確代碼`);
+  }
   for (const ws of ['tunnel', 'blade', 'flow', 'report']) {
     const fid = { tunnel: 'tunnel', blade: 'geometry', flow: 'field', report: 'report' }[ws]; // 桌面預設為流程版面
     await page.click(mobile ? `[data-mnav="${ws}"]` : `.flownav [data-flow="${fid}"]`);

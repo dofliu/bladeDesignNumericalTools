@@ -531,7 +531,14 @@ function viewKey() {
   const i = A.clamp(Math.round(+S.af.view) || 0, 0, S.af.st.length - 1);
   return S.af.st[i].k;
 }
+export function validateTwistMode(mode) {
+  if (!['bem', 'opt', 'linear'].includes(mode)) {
+    throw new Error(`未知扭角方式 ${String(mode)}(可用:bem、opt(Schmitz)、linear)`);
+  }
+}
+
 function designHAWT() {
+  validateTwistMode(S.hawt.twMode);
   const h = S.hawt, R = h.R, Rh = Math.min(h.Rhub, 0.45 * R), { rho, mu } = air();
   const n = Math.round(h.nSec);
   const rows = [], afs = [], pss = [];

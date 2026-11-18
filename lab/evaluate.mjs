@@ -11,11 +11,13 @@ const { S, G, SIM, air, designHAWT, designVAWT, computePerf, autoMatchGen, simSt
 const DEF = structuredClone(S); // pristine defaults, restored before every evaluation
 
 export function applyDesign(d) {
+  const c = d.cfg || {};
+  const hawt = { ...DEF.hawt, ...(c.hawt || {}) };
+  core.validateTwistMode(hawt.twMode); // reject invalid input before changing the active design
   for (const k of ['hawt', 'vawt', 'tun', 'load', 'perf']) S[k] = structuredClone(DEF[k]);
   S.af = structuredClone(DEF.af);
-  const c = d.cfg || {};
   S.mode = d.mode === 'VAWT' ? 'VAWT' : 'HAWT';
-  Object.assign(S.hawt, c.hawt || {}); Object.assign(S.vawt, c.vawt || {});
+  Object.assign(S.hawt, hawt); Object.assign(S.vawt, c.vawt || {});
   if (c.st) S.af.st = c.st.map(s => ({ f: s.f, k: s.k }));
   if (c.vaf) S.af.vawt = c.vaf;
   if (c.cdMax) S.af.cdMax = c.cdMax;

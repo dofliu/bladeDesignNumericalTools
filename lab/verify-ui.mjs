@@ -3,6 +3,7 @@
 // Usage: npm run build && node lab/verify-ui.mjs designs/<id>     (needs metrics.json from lab/evaluate.mjs)
 // Env: CHROME_PATH, THREE_LOCAL — same as tests/e2e.smoke.mjs.
 import { chromium } from 'playwright';
+import { S, validateTwistMode } from '../src/core.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -11,6 +12,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dir = process.argv[2];
 if (!dir) { console.error('usage: node lab/verify-ui.mjs designs/<id>'); process.exit(2); }
 const d = JSON.parse(readFileSync(join(dir, 'design.json'), 'utf8'));
+validateTwistMode({ ...S.hawt, ...d.cfg?.hawt }.twMode);
 const m = JSON.parse(readFileSync(join(dir, 'metrics.json'), 'utf8'));
 const url = 'file://' + join(root, 'dist/wind-turbine-designer.html');
 const three = process.env.THREE_LOCAL ? readFileSync(process.env.THREE_LOCAL, 'utf8') : null;
