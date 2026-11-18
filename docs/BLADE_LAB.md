@@ -22,7 +22,7 @@
 2. **提出一個新設計(探索)**
    - 必須和排行榜上既有設計**有實質差異**(不是只把某個數值微調 5%)。寫下一個可以被驗證或推翻的**假設**:想改善什麼指標、為什麼這樣改會有效、預期代價是什麼。
    - 輪流探索不同方向,不要連續三次都在同一個家族或同一個參數上打轉。可探索的設計空間(都是本工具已支援、`design.json` 可以表達的):
-     - 水平軸:葉片數 `B`、設計尖速比 `tsr`、設計風速 `Vd`、半徑 `R` / 輪轂 `Rhub`、最大弦長 `maxChord`、弦長/扭轉倍率、扭角方式 `twMode`(`bem`/`schmitz`/`linear` + `twRoot`/`twTip`)、線性化 `linearize`、材料 `material`(`gfrp`/`wood`/`alu`/`pla`/`cfrp`)、槳距 `pitch`
+     - 水平軸:葉片數 `B`、設計尖速比 `tsr`、設計風速 `Vd`、半徑 `R` / 輪轂 `Rhub`、最大弦長 `maxChord`、弦長/扭轉倍率、扭角方式 `twMode`(`bem`/`opt`/`linear` + `twRoot`/`twTip`;Schmitz 解析解的代碼是 `opt`,不是 `schmitz`;未知代碼會拒絕載入)、線性化 `linearize`、材料 `material`(`gfrp`/`wood`/`alu`/`pla`/`cfrp`)、槳距 `pitch`
      - 翼型站 `st`:1–6 站,`f` 為 r/R 位置,`k` 為翼型代碼(NACA 4 位數 `n4:xxxx`、5 位數 `n5:230xx`、圓弧板 `arc:5|8|10`,完整清單見 `src/core.mjs` 的 `AF_LIB`;寫錯 `lab:eval` 會列出可用代碼)
      - 垂直軸 `vawt.type`:`H`、`helical`、`phi`、`V`、`sav`(Savonius)、`free`;參數 `R`、`H`、`B`、`c`、`helix`、`struts`、`overlap`、`dynStall`、`curvature`,翼型 `vaf`
      - 風況 `wind`(Weibull 平均風速與 k)只在假設本身就是「為某種場址設計」時才改,並在 README 說明;排行榜比較預設都是 5.5 m/s、k 2
